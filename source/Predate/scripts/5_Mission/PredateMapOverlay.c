@@ -2,6 +2,7 @@ class PredateMapOverlay
 {
     static const float BEARING_LABEL_OFFSET = 22;
     static const float BEARING_LABEL_WIDTH = 68;
+    static const int DIAL_COLOR = 0xF04B4E52;
 
     MapWidget m_Map;
     CanvasWidget m_Canvas;
@@ -33,7 +34,11 @@ class PredateMapOverlay
             int degrees = index * PredateBearingPulse.DEGREES;
             string text = PredateMath.BearingDigits(degrees);
             if (degrees % 45 == 0) text = PredateMath.CompassPoint(degrees) + " " + text;
-            if (bearing) bearing.SetText(text);
+            if (bearing)
+            {
+                bearing.SetText(text);
+                bearing.SetColor(DIAL_COLOR);
+            }
             m_Bearings.Insert(bearing);
         }
         for (int slot = 0; slot < PredateProtocol.MAX_OPERATORS; slot++)
@@ -102,7 +107,7 @@ class PredateMapOverlay
     void DrawDial(float radius)
     {
         DrawArc(0, 360, radius, 96, 3 * m_Scale, 0xEB26292C);
-        DrawArc(0, 360, radius, 96, m_Scale, 0xF04B4E52);
+        DrawArc(0, 360, radius, 96, m_Scale, DIAL_COLOR);
         for (int index = 0; index < 24; index++)
         {
             int degrees = index * PredateBearingPulse.DEGREES;
@@ -110,7 +115,7 @@ class PredateMapOverlay
             if (degrees % 45 == 0) tick = 9 * m_Scale;
             vector outside = RadialPoint(degrees, radius);
             vector inside = RadialPoint(degrees, radius - tick);
-            m_Canvas.DrawLine(outside[0], outside[1], inside[0], inside[1], 2 * m_Scale, 0xEE4B4E52);
+            m_Canvas.DrawLine(outside[0], outside[1], inside[0], inside[1], 2 * m_Scale, DIAL_COLOR);
             TextWidget label = m_Bearings[index];
             if (!label) continue;
             vector point = RadialPoint(degrees, radius + BEARING_LABEL_OFFSET * m_Scale);
