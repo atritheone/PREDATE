@@ -8,4 +8,6 @@ add modern gear and weapons.
 
 add white phosphorous night vision with quad nod effect.
 
-fix the map circle changing size relative to zoom.
+allow numerical selection of enemy ai.
+
+increase max ai to 100.
