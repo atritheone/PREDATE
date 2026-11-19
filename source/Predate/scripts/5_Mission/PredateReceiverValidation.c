@@ -10,10 +10,12 @@ class PredateReceiverValidationResult
     int PulseStart;
     bool PauseBrandVerified;
 
-    void Check(bool passed)
+    void Check(bool passed, string label = "")
     {
         Checks++;
-        if (!passed) Failures++;
+        if (passed) return;
+        Failures++;
+        Print("[PredateReceiverTest] FAIL: check " + Checks + " " + label);
     }
 }
 
@@ -60,7 +62,9 @@ class PredateReceiverValidation
         result.Check(feed.m_Notices[0].Text == "You are KIA." && feed.m_Rows[0].GetColor() == PredateHuntFeed.DEATH && feed.m_Notices.Count() == noticeCount);
         feed.Update(player, state, 7);
         result.Check(!feed.m_Rows[0].IsVisible());
-        PredateTrackerMenu menu = PredateTrackerMenu.Cast(GetGame().GetUIManager().EnterScriptedMenu(PredateProtocol.MENU, null));
+        CheckReadyInteraction(result, player);
+        mission.PredateToggleMap();
+        PredateTrackerMenu menu = PredateTrackerMenu.Cast(GetGame().GetUIManager().GetMenu());
         result.Check(menu != null);
         if (menu)
         {
@@ -73,7 +77,10 @@ class PredateReceiverValidation
             {
                 PredateBearingPulse pulse = state.Pulses[0];
                 result.PulseStart = pulse.Start;
-                result.Check(pulse.Start == 0 && pulse.Start == state.Bearing);
+                result.Check(PredateBearingPulse.Contains(pulse.Start, 0) && pulse.Start == state.Bearing && pulse.DistanceBand == 2);
+                mission.m_PredateCompass.Render(pulse.Start + 7.5, state, 0);
+                result.Check(mission.m_PredateCompass.m_Sector.GetColor() == pulse.Color());
+                result.Check(pulse.DistanceText() == "250–500 m");
                 result.Check(state.NextPulse > 0 && state.NextPulse <= 90);
                 result.Check(menu.m_MapOverlay.m_Bearings.Count() == 24);
                 result.Check(menu.m_MapOverlay.m_Bearings[0].IsVisible() && Fits(menu.m_MapOverlay.m_Bearings[0]));
@@ -81,7 +88,7 @@ class PredateReceiverValidation
                 Widget centerPlayer = menu.GetLayoutRoot().FindAnyWidget("CenterPlayer");
                 menu.OnClick(centerPlayer, 0, 0, 0);
                 PredateMapOverlay overlay = menu.m_MapOverlay;
-                bool centeredPlayer = overlay.UpdateProjection() && vector.DistanceSq(overlay.LocalPoint(player.GetPosition()), overlay.ViewportCenter()) <= 64;
+                bool centeredPlayer = PredateSignalRules.WithinFinalApproach(menu.m_Map.GetMapPos(), player.GetPosition(), 1);
                 if (!centeredPlayer) Print("[PredateMapTest] could not center player");
                 result.Check(centeredPlayer);
                 float width, height;
@@ -91,15 +98,17 @@ class PredateReceiverValidation
                 {
                     menu.m_Map.SetScale(zoom);
                     menu.m_Map.SetMapPos(player.GetPosition());
-                    bool projectionReady = menu.m_MapOverlay.UpdateProjection();
-                    vector arrow = menu.m_MapOverlay.LocalPoint(player.GetPosition());
+                    menu.Update(0);
+                    vector arrow = overlay.m_PlayerPoint;
                     // The native map clamps panning when the viewport reaches a world edge.
                     // The blue marker should still land on the player at any zoom.
-                    vector underArrow = overlay.WorldPoint(arrow);
+                    vector screenArrow = arrow + Vector(overlay.m_Left, overlay.m_Top, 0);
+                    vector underArrow = menu.m_Map.ScreenToMap(screenArrow);
                     bool pointsToPlayer = PredateSignalRules.WithinFinalApproach(player.GetPosition(), underArrow, 25);
                     if (!pointsToPlayer) Print("[PredateMapTest] arrow " + arrow + " is over " + underArrow + " at zoom " + zoom);
-                    result.Check(projectionReady && pointsToPlayer && arrow[0] >= 0 && arrow[0] <= width && arrow[1] >= 0 && arrow[1] <= height);
+                    result.Check(pointsToPlayer && arrow[0] >= 0 && arrow[0] <= width && arrow[1] >= 0 && arrow[1] <= height);
                 }
+                CheckOverlappingPulses(result, menu, player);
                 string town;
                 GetGame().ConfigGetText("CfgWorlds ChernarusPlus Names Settlement_Chernogorsk name", town);
                 array<float> townPosition = {};
@@ -144,15 +153,65 @@ class PredateReceiverValidation
             menu.Update(0);
             result.Check(!menu.m_ConfirmReplacement && !menu.m_ConfirmDeploy.IsVisible());
             state.CanDeploy = false;
-            menu.Close();
+            mission.PredateToggleMap(true);
         }
         GetGame().GetCallQueue(CALL_CATEGORY_GUI).CallLater(Finish, 100, false, result, mission);
+    }
+
+    static void CheckReadyInteraction(PredateReceiverValidationResult result, PlayerBase player)
+    {
+        ActionManagerClient manager = ActionManagerClient.Cast(player.GetActionManager());
+        ActionBase open = ActionManagerBase.GetAction(ActionOpenBarrel);
+        vector position = player.GetPosition() + player.GetDirection() * 0.75;
+        Barrel_ColorBase barrel = Barrel_ColorBase.Cast(GetGame().CreateObjectEx("Barrel_Blue", position, ECE_LOCAL | ECE_KEEPHEIGHT));
+        bool ready = manager && open && barrel && player.PredateMayPreviewInteraction();
+        result.Check(ready, "weapon raised with interaction fixture ready");
+        if (ready)
+        {
+            barrel.Close();
+            ActionTarget target = new ActionTarget(barrel, null, -1, position, 0);
+            ItemBase item = player.GetItemInHands();
+            int conditions = ActionBase.ComputeConditionMask(player, target, item);
+            ActionInput interact = open.GetInput();
+            interact.UpdatePossibleActions(player, target, item, conditions);
+            result.Check(manager.GetPossibleActions(InteractActionInput).Find(open) >= 0, "the Open action appears while raised");
+            result.Check(!open.Can(player, target, item, conditions) && !player.m_PredateInteractionPreview, "preview does not authorize execution while raised");
+            player.PredateUpdateInteraction(0, true, true);
+            interact.Update();
+            result.Check(player.m_PredateInteractionTime > 0 && player.m_PredateInteractionTap && !interact.JustActivate(), "tap waits for the weapon to lower");
+            player.PredateUpdateInteraction(1, false, false);
+            interact.ActionsSelectReset();
+        }
+        if (barrel) GetGame().ObjectDelete(barrel);
+    }
+
+    static void CheckOverlappingPulses(PredateReceiverValidationResult result, PredateTrackerMenu menu, PlayerBase player)
+    {
+        PredateState example = new PredateState;
+        for (int index = 0; index < 3; index++)
+        {
+            PredateBearingPulse pulse = new PredateBearingPulse;
+            pulse.OperatorId = PredateProtocol.OperatorAt(index);
+            pulse.DistanceBand = 16 - index * 6;
+            example.Pulses.Insert(pulse);
+        }
+        example.Pulses[0].Start = 355;
+        example.Pulses[1].Start = 6;
+        example.Pulses[2].Start = 10;
+        PredateMapOverlay overlay = menu.m_MapOverlay;
+        overlay.Draw(player, example, menu.m_MapScale);
+        result.Check(overlay.m_ArcRadii[0] > overlay.m_ArcRadii[1] && overlay.m_ArcRadii[1] > overlay.m_ArcRadii[2] && overlay.m_ArcRadii[2] > 0);
+        vector click = overlay.RadialPoint(2, overlay.m_ArcRadii[0]);
+        result.Check(overlay.HitPulse(click[0] + overlay.m_Left, click[1] + overlay.m_Top, example) == example.Pulses[0].OperatorId);
     }
 
     static void Finish(PredateReceiverValidationResult result, MissionGameplay mission)
     {
         result.Check(!mission.IsInputExcludeActive("aiming"));
         result.Check(!GetGame().GetUIManager().GetMenu());
+        result.Check(!GetGame().GetUIManager().GetMenu() && !mission.IsPaused(), "map close returns to play without pausing");
+        mission.PredateToggleMap(true);
+        result.Check(!GetGame().GetUIManager().GetMenu(), "back-only input leaves the closed map closed");
         mission.Pause();
         InGameMenu pause = InGameMenu.Cast(GetGame().GetUIManager().GetMenu());
         result.PauseBrandVerified = PauseBrandVisible(pause);

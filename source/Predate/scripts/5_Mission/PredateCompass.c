@@ -179,6 +179,11 @@ class PredateCompass
         if (m_Sector) m_Sector.Show(false);
         if (showSample)
         {
+            int color = PULSE_COLOR;
+            PredateBearingPulse pulse = state.TrackedPulse();
+            if (pulse) color = pulse.Color();
+            m_Marker.SetColor(color);
+            if (m_Sector) m_Sector.SetColor(color);
             float halfSector = PredateBearingPulse.DEGREES / 2.0;
             float relative = PredateMath.RelativeBearing(state.Bearing + halfSector, heading);
             float center = Math.Clamp(0.5 + relative / 180.0, 0.03, 0.97);

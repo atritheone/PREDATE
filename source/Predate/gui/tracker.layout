@@ -34,16 +34,6 @@ style UIDefaultPanel
 priority 100
  {  }
 }
-PanelWidgetClass MapProjection {
- position 0 0
- size 0 0
- hexactpos 1
- vexactpos 1
- hexactsize 0
- vexactsize 0
- ignorepointer 1
- {  }
-}
 TextWidgetClass MapBearing0 {
  position 0 0
  size 0.12 0.035

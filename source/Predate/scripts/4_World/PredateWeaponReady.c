@@ -2,6 +2,9 @@ modded class PlayerBase
 {
     bool m_PredateAutoRaiseReported;
     bool m_PredateOwnRaiseOverride;
+    float m_PredateInteractionTime;
+    bool m_PredateInteractionTap;
+    bool m_PredateInteractionPreview;
     float m_PredateRaiseDiagnosticTimer;
     bool m_PredateOwnSpeedOverride;
     bool m_PredateWalkToggled;
@@ -23,15 +26,18 @@ modded class PlayerBase
                 m_PredateWalkToggled = !m_PredateWalkToggled;
             if (PredateShouldAutoRaise(pCurrentCommandID))
             {
-                autoRaise = true;
-                PredateReadyAnimations.Apply();
-                GetInputController().OverrideRaise(HumanInputControllerOverrideType.ENABLED, true);
+                PredateReadInteraction(pDt);
+                autoRaise = m_PredateInteractionTime <= 0;
+                if (autoRaise) PredateReadyAnimations.Apply();
+                GetInputController().OverrideRaise(HumanInputControllerOverrideType.ENABLED, autoRaise);
                 m_PredateOwnRaiseOverride = true;
             }
             else if (m_PredateOwnRaiseOverride)
             {
                 GetInputController().OverrideRaise(HumanInputControllerOverrideType.DISABLED, false);
                 m_PredateOwnRaiseOverride = false;
+                m_PredateInteractionTime = 0;
+                m_PredateInteractionTap = false;
             }
             PredateUpdateReadyPace(autoRaise);
         }
@@ -83,6 +89,33 @@ modded class PlayerBase
             m_PredateTravelTime = 0;
             m_PredateTravelDistance = 0;
         }
+    }
+
+    void PredateReadInteraction(float seconds)
+    {
+        UAInterface input = GetInputInterface();
+        bool pressed = input.SyncedPress_ID(UAAction) || input.SyncedValue_ID(UAAction) > 0;
+        bool clicked = input.SyncedClick_ID(UAAction);
+        if (GetGame().GetPlayer() == this)
+        {
+            UAInput interact = GetUApi().GetInputByID(UAAction);
+            pressed = pressed || interact.LocalPress() || interact.LocalValue() > 0;
+            clicked = clicked || interact.LocalClick();
+        }
+        PredateUpdateInteraction(seconds, pressed, clicked);
+    }
+
+    void PredateUpdateInteraction(float seconds, bool pressed, bool clicked)
+    {
+        if (pressed || clicked) m_PredateInteractionTime = 0.65;
+        else m_PredateInteractionTime = Math.Max(0, m_PredateInteractionTime - seconds);
+        if (clicked) m_PredateInteractionTap = true;
+        else if (m_PredateInteractionTime <= 0) m_PredateInteractionTap = false;
+    }
+
+    bool PredateMayPreviewInteraction()
+    {
+        return m_PredateOwnRaiseOverride && IsRaised() && !IsInOptics() && !IsInIronsights() && !GetGame().GetUIManager().GetMenu();
     }
 
     void PredateUpdateReadyPace(bool autoRaise)

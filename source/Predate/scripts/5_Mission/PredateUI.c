@@ -138,10 +138,12 @@ class PredateTrackerMenu : UIScriptedMenu
         if (state.Locked && state.Available && !state.CloseApproach)
             m_Timing.SetText("Sample age " + Math.Floor(state.Age).ToString() + "s    |    Next pulse " + Math.Ceil(state.NextPulse).ToString() + "s");
         else if (m_ConfirmReplacement) m_Timing.SetText("Keep your gear for the next hunt?");
-        else if (state.CanDeploy) m_Timing.SetText("Start another hunt to bring in a rival.");
+        else if (state.CanDeploy) m_Timing.SetText("Start another hunt to bring in an Operator.");
         else m_Timing.SetText("");
-        m_Origin.SetText("No rival pulses in range");
-        if (state.Pulses.Count() > 0) m_Origin.SetText("Select a rival’s bearing arc");
+        m_Origin.SetText("No Operator pulses in range");
+        if (state.Pulses.Count() > 0) m_Origin.SetText("Select an Operator’s bearing arc");
+        PredateBearingPulse tracked = state.TrackedPulse();
+        if (tracked) m_Origin.SetText("Pulse range " + tracked.DistanceText());
         ShowHistory(state);
     }
 
@@ -184,16 +186,6 @@ class PredateTrackerMenu : UIScriptedMenu
         if (!m_Map) return;
         if (m_Map.GetScale() > 0.22) m_Map.SetScale(0.22);
         m_Map.SetMapPos(position);
-        if (!m_MapOverlay || !m_MapOverlay.UpdateProjection()) return;
-        // The native map anchor can be offset from the visible pane's center.
-        vector center = m_MapOverlay.ViewportCenter();
-        for (int attempt = 0; attempt < 6; attempt++)
-        {
-            if (vector.DistanceSq(m_MapOverlay.LocalPoint(position), center) <= 64) break;
-            vector offset = position - m_MapOverlay.WorldPoint(center);
-            offset[1] = 0;
-            m_Map.SetMapPos(m_Map.GetMapPos() + offset * 0.55);
-        }
     }
 
     void BeginMapPress(int x, int y)
@@ -315,18 +307,22 @@ modded class MissionGameplay
     override protected void HandleMapToggleByKeyboardShortcut(Man player)
     {
         PlayerBase localPlayer = PlayerBase.Cast(player);
-        if (localPlayer && localPlayer.IsAlive() && !InGameMenu.PredateNeedsRedeploy(localPlayer))
-            PredateOpenMap();
+        if (localPlayer && localPlayer.IsAlive() && !InGameMenu.PredateNeedsRedeploy(localPlayer) && !GetGame().GetUIManager().GetMenu())
+            PredateToggleMap();
     }
 
-    void PredateOpenMap()
+    void PredateToggleMap(bool closeOnly = false)
     {
         UIManager ui = GetGame().GetUIManager();
-        if (!ui.GetMenu()) ui.EnterScriptedMenu(PredateProtocol.MENU, null);
+        UIScriptedMenu menu = ui.GetMenu();
+        PredateTrackerMenu tracker = PredateTrackerMenu.Cast(menu);
+        if (tracker) tracker.Close();
+        else if (!menu && !closeOnly) ui.EnterScriptedMenu(PredateProtocol.MENU, null);
     }
 
     override void OnUpdate(float timeslice)
     {
+        UIScriptedMenu previousMenu = GetGame().GetUIManager().GetMenu();
         super.OnUpdate(timeslice);
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
         bool needsRedeploy = InGameMenu.PredateNeedsRedeploy(player);
@@ -367,7 +363,15 @@ modded class MissionGameplay
             if (deploymentAgent) deploymentAgent.m_DeployAfterRespawn = false;
         }
         if (!player || !player.IsAlive()) { if (m_PredateHud) m_PredateHud.Show(false); return; }
-        if (GetUApi().GetInputByID(UAMapToggle).LocalPress()) PredateOpenMap();
+        // Run after vanilla checks Pause, while the map was still the open menu.
+        if (GetGame().GetUIManager().GetMenu() == previousMenu && !GetGame().GetUIManager().IsDialogVisible())
+        {
+            if (PredateTrackerMenu.Cast(previousMenu) && (GetUApi().GetInputByID(UAUIBack).LocalPress() || GetUApi().GetInputByID(UAUIMenu).LocalPress()))
+                PredateToggleMap(true);
+            // Vanilla may already have opened the map on this press.
+            else if (GetUApi().GetInputByID(UAMapToggle).LocalPress())
+                PredateToggleMap();
+        }
         if (m_PredateHud) m_PredateHud.Show(!PredateTrackerMenu.Cast(GetGame().GetUIManager().GetMenu()));
         if (!m_PredateHudText) return;
         PredateState state = player.m_PredateState;
@@ -404,7 +408,7 @@ modded class MissionGameplay
             return;
         }
 #endif
-        if (m_PredateReceiverValidation && state && state.HasPulseOrigin && state.Intercepted && !GetGame().GetUIManager().GetMenu())
+        if (m_PredateReceiverValidation && state && state.HasPulseOrigin && state.Intercepted && player.PredateMayPreviewInteraction() && !GetDayZGame().m_PredateRestoreJoinInput)
         {
             m_PredateReceiverValidation = false;
             PredateReceiverValidation.Run(this, player, state);

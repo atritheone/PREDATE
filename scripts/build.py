@@ -38,6 +38,7 @@ def copy_changed(src, dst):
 
 
 def widget(kind, name, x, y, w, h, extra="", children=""):
+    attributes = f" {extra}" if extra else ""
     return f'''{kind} {name} {{
  position {x} {y}
  size {w} {h}
@@ -45,7 +46,7 @@ def widget(kind, name, x, y, w, h, extra="", children=""):
  vexactpos 0
  hexactsize 0
  vexactsize 0
- {extra}
+{attributes}
  {{ {children} }}
 }}
 '''
@@ -66,12 +67,10 @@ def layouts():
     gui = ROOT / "source/Predate/gui"
     gui.mkdir(exist_ok=True)
     canvas = widget("CanvasWidgetClass", "MapOverlay", 0,0,1,1,"ignorepointer 1\npriority 100")
-    projection = widget("PanelWidgetClass", "MapProjection", 0,0,0,0,"ignorepointer 1")
-    projection = projection.replace("exactpos 0", "exactpos 1")
     bearing_labels = "".join(map_label(f"MapBearing{index}", "0.70 0.85 0.95 1") for index in range(24))
     pulse_labels = "".join(map_label(f"MapPulse{index}", "1 0.79 0.44 1") for index in range(30))
     children = widget("MapWidgetClass", "Terrain", .016,.085,.644,.89,
-                      'clipchildren 1', canvas+projection+bearing_labels+pulse_labels)
+                      'clipchildren 1', canvas+bearing_labels+pulse_labels)
     children += label("Title", "Operation Map", .016,.012,.32,.06,"0.82 0.91 0.96 1")
     children += widget("ButtonWidgetClass","Overview",.259,.023,.11,.044,
                        'style Default\ntext "Overview"')

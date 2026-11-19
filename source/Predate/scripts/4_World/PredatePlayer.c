@@ -187,6 +187,7 @@ modded class PlayerBase
         {
             PredateBearingPulse pulse = new PredateBearingPulse;
             if (!ctx.Read(pulse.OperatorId) || !ctx.Read(pulse.Start) || !PredateBearingPulse.Valid(pulse.Start)) return false;
+            if (!ctx.Read(pulse.DistanceBand) || pulse.DistanceBand < 1 || pulse.DistanceBand > PredateBearingPulse.MAX_BAND) return false;
             int bit = PredateProtocol.OperatorBit(pulse.OperatorId);
             if (bit == 0 || (seen & bit) != 0) return false;
             seen = seen | bit;

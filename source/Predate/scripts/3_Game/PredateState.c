@@ -1,6 +1,6 @@
 class PredateProtocol
 {
-    static const int VERSION = 14;
+    static const int VERSION = 15;
     static const int MAX_OPERATORS = 30;
     static const int ALL_OPERATORS = 1073741823;
     static const int MAX_BEARING_HISTORY = 4;
@@ -96,6 +96,14 @@ class PredateState
     string Message = "Establishing receiver link...";
 
     bool CanShowHistory() { return Available && Locked && !CloseApproach; }
+
+    PredateBearingPulse TrackedPulse()
+    {
+        if (!HasPulse || !Locked || !Available || CloseApproach) return null;
+        foreach (PredateBearingPulse pulse : Pulses)
+            if (pulse.OperatorId == OperatorId) return pulse;
+        return null;
+    }
 }
 
 class PredateConfig

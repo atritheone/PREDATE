@@ -136,8 +136,12 @@ class PredateSignalService
 
     static void AddMapPulse(array<PredateSignalTrack> tracks, PredateSignalTrack track, float now)
     {
-        if (track && track.PlayerPulseFormat == 1 && track.LastSample && !track.LastSample.Expired(now))
-            tracks.Insert(track);
+        if (!track || track.PlayerPulseFormat != 2 || !track.LastSample || track.LastSample.Expired(now)) return;
+        // Sort on the server so the overlay can stack even rivals in the same distance band.
+        int position;
+        while (position < tracks.Count() && tracks[position].LastSample.PulseDistance >= track.LastSample.PulseDistance)
+            position++;
+        tracks.InsertAt(track, position);
     }
 
     static void WriteMapPulses(PredateSession s, ScriptRPC rpc, bool visible)
@@ -159,7 +163,16 @@ class PredateSignalService
             rpc.Write(track.SubjectId);
             int sector = track.LastSample.Bearing;
             rpc.Write(sector);
+            int distanceBand = Math.Ceil(track.LastSample.PulseDistance / PredateBearingPulse.BAND_METRES);
+            rpc.Write(distanceBand);
         }
+    }
+
+    static void MarkPlayerHunted(PredateSession s, float now)
+    {
+        // Renew a single hunt episode across successive interception pulses.
+        float until = now + s.m_HuntConfig.PulseInterval + 30;
+        s.m_WorldState.PlayerInterceptionUntil = Math.Max(s.m_WorldState.PlayerInterceptionUntil, until);
     }
 
     static void SyncReceiverProgress(PredateSession s)
@@ -212,7 +225,7 @@ class PredateSignalService
                 if (botSample)
                 {
                     state.Observations.Add(botSample, now);
-                    state.PlayerInterceptionUntil = now + 30;
+                    MarkPlayerHunted(s, now);
                 }
             }
         }

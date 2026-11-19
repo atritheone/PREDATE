@@ -227,13 +227,14 @@ class PredateSession
                 }
                 else if (availableOperators == 0)
                 {
-                    message = "All operators eliminated.";
-                    if (m_HuntConfig.EnableOperatorRespawns) message = "Rivals awaiting redeployment.";
+                    message = "All Operators eliminated.";
+                    if (m_HuntConfig.EnableOperatorRespawns) message = "Operators awaiting redeployment.";
                 }
                 else if (!locked) message = "Click a pulse to track it";
             }
         }
         if (m_HuntError != "") message = "Recovery required. " + m_HuntError;
+        nextPulse = Math.Clamp(nextPulse, 0, PredateBearingPulse.INTERVAL);
         bool first = !m_HuntSentState;
         m_HuntSentState = true;
         ScriptRPC rpc = new ScriptRPC;
@@ -270,7 +271,7 @@ class PredateSession
             rpc.Write(m_HuntProgress.Defeated);
             rpc.Write(player.m_PredateSpawnRejected);
         }
-        // Pulse payloads expose bearing sectors without target coordinates or distance.
+        // Only the sampled bearing and coarse distance band reach the receiver.
         PredateSignalService.WriteHistory(this, rpc, available && locked && !closeApproach, receiverTrack);
         PredateSignalService.WriteMapPulses(this, rpc, !needsRedeploy && m_HuntReady && m_HuntError == "");
         rpc.Write(availableOperators);

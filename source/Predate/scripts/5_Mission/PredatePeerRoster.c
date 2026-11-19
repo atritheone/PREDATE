@@ -446,11 +446,12 @@ class PredatePeerRoster
         return "";
     }
 
-    void MarkInterception(PredateSession session, string subject, float until)
+    void MarkInterception(PredateSession session, string subject, float now)
     {
         PredateWorldState state = session.m_WorldState;
+        float until = now + 30;
         if (subject == "raven-01") state.BotInterceptionUntil = Math.Max(until, state.BotInterceptionUntil);
-        else if (subject == "player-01") state.PlayerInterceptionUntil = Math.Max(until, state.PlayerInterceptionUntil);
+        else if (subject == "player-01") PredateSignalService.MarkPlayerHunted(session, now);
         else
         {
             PredatePeerBinding peer = Find(subject);
@@ -490,7 +491,7 @@ class PredatePeerRoster
             {
                 receiver.LastSample = null;
                 if (peer.Hunter.HasGoal && peer.Hunter.EvidenceKey.IndexOf("signal-") == 0)
-                    PredateHunterBrain.Hold(peer.Hunter, "hold", "Selected rival is unavailable");
+                    PredateHunterBrain.Hold(peer.Hunter, "hold", "Selected Operator is unavailable");
                 string replacement = FallbackSubject(session, peer, player);
                 if (replacement != "")
                 {
@@ -508,7 +509,7 @@ class PredatePeerRoster
                 if (sample)
                 {
                     peer.Memory.Add(sample, now);
-                    MarkInterception(session, receiver.SubjectId, now + 30);
+                    MarkInterception(session, receiver.SubjectId, now);
                 }
             }
         }

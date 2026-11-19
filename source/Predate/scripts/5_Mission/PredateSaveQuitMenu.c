@@ -101,7 +101,7 @@ modded class InGameMenu
             if (receiver && receiver.DeploymentSpawnRejected)
             {
                 m_PredateRedeployPending = false;
-                if (m_PredateSpawnStatus) m_PredateSpawnStatus.SetText("Choose dry ground at least 1.5 km from rivals.");
+                if (m_PredateSpawnStatus) m_PredateSpawnStatus.SetText("Choose dry ground at least 1.5 km from other Operators.");
             }
             m_PredateDeploymentScreen = true;
             m_ContinueButton.Show(false);

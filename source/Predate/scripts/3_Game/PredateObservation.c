@@ -28,6 +28,7 @@ class PredateObservation
     float BearingError;
     vector MapCenter;
     float MapRadius;
+    float PulseDistance;
 
     PredateObservation Copy()
     {
@@ -50,6 +51,7 @@ class PredateObservation
         copied.BearingError = BearingError;
         copied.MapCenter = MapCenter;
         copied.MapRadius = MapRadius;
+        copied.PulseDistance = PulseDistance;
         return copied;
     }
 
@@ -66,6 +68,8 @@ class PredateObservation
         if (HasBearing && (!PredateInformationMath.FiniteVector(Origin) || !PredateInformationMath.Finite(Bearing) || Bearing < 0 || Bearing >= 360 || !PredateInformationMath.Finite(BearingError) || BearingError < 0 || BearingError > 180)) return false;
         if (Source == PredateObservationSource.SIGNAL && (!HasBearing || HasPosition || SubjectId == "")) return false;
         if (MapRadius != 0 && (Source != PredateObservationSource.SIGNAL || owner != "player-01" || !PredatePulseArea.Valid(MapCenter, MapRadius))) return false;
+        if (!PredateInformationMath.Finite(PulseDistance) || PulseDistance < 0 || PulseDistance > PredateBearingPulse.REACH) return false;
+        if (PulseDistance > 0 && (Source != PredateObservationSource.SIGNAL || owner != "player-01" || MapRadius != 0)) return false;
         // Noise and bullet impact alone never prove who produced them.
         if ((Source == PredateObservationSource.AUDIBLE || Source == PredateObservationSource.IMPACT) && SubjectId != "") return false;
         if (Source == PredateObservationSource.FOOTPRINT && (!HasPosition || HasBearing || SubjectId != "")) return false;

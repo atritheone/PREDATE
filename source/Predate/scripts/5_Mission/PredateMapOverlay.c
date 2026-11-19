@@ -6,7 +6,6 @@ class PredateMapOverlay
 
     MapWidget m_Map;
     CanvasWidget m_Canvas;
-    Widget m_Projection;
     ref array<TextWidget> m_Labels = new array<TextWidget>;
     ref array<TextWidget> m_Bearings = new array<TextWidget>;
     ref array<vector> m_LabelPositions = new array<vector>;
@@ -19,15 +18,11 @@ class PredateMapOverlay
     float m_Top;
     float m_Scale;
     vector m_PlayerPoint;
-    vector m_NativeOrigin;
-    float m_NativeScaleX;
-    float m_NativeScaleY;
 
     void PredateMapOverlay(MapWidget terrain, CanvasWidget canvas)
     {
         m_Map = terrain;
         m_Canvas = canvas;
-        m_Projection = terrain.FindAnyWidget("MapProjection");
         for (int index = 0; index < 24; index++)
         {
             TextWidget bearing = TextWidget.Cast(terrain.FindAnyWidget("MapBearing" + index));
@@ -53,38 +48,17 @@ class PredateMapOverlay
 
     bool UpdateProjection()
     {
-        if (!m_Projection) return false;
         m_Canvas.GetScreenSize(m_Width, m_Height);
         m_Canvas.GetScreenPos(m_Left, m_Top);
-        // MapToScreen returns positions for exact-position children of the map.
-        // Convert that layout space into the physical pixels used by the canvas.
-        float originX, originY, unitX, unitY;
-        m_Projection.SetPos(0, 0);
-        m_Projection.GetScreenPos(originX, originY);
-        m_Projection.SetPos(100, 100);
-        m_Projection.GetScreenPos(unitX, unitY);
-        m_NativeOrigin = Vector(originX - m_Left, originY - m_Top, 0);
-        m_NativeScaleX = (unitX - originX) / 100;
-        m_NativeScaleY = (unitY - originY) / 100;
-        return m_NativeScaleX > 0 && m_NativeScaleY > 0;
+        return m_Width > 0 && m_Height > 0;
     }
 
     vector LocalPoint(vector worldPoint)
     {
         worldPoint[1] = 0;
-        vector nativePoint = m_Map.MapToScreen(worldPoint);
-        return m_NativeOrigin + Vector(nativePoint[0] * m_NativeScaleX, nativePoint[1] * m_NativeScaleY, 0);
-    }
-
-    vector WorldPoint(vector localPoint)
-    {
-        vector relative = localPoint - m_NativeOrigin;
-        return m_Map.ScreenToMap(Vector(relative[0] / m_NativeScaleX, relative[1] / m_NativeScaleY, 0));
-    }
-
-    vector ViewportCenter()
-    {
-        return Vector(m_Width / 2, m_Height / 2, 0);
+        vector screen = m_Map.MapToScreen(worldPoint);
+        // The native map gives absolute screen pixels. The canvas is local to the map pane.
+        return Vector(screen[0] - m_Left, screen[1] - m_Top, 0);
     }
 
     vector RadialPoint(float bearing, float radius)
@@ -203,7 +177,7 @@ class PredateMapOverlay
             if (label && label.IsVisible() && Math.AbsFloat(click[0] - center[0]) <= m_LabelHalfWidth * 0.65 && Math.AbsFloat(click[1] - center[1]) <= m_LabelHeight / 2)
                 labelMatch = pulse.OperatorId;
             float gap = Math.AbsFloat(distance - m_ArcRadii[slot]);
-            if (m_ArcRadii[slot] > 0 && gap < closestGap && bearing >= pulse.Start && bearing < pulse.Start + PredateBearingPulse.DEGREES)
+            if (m_ArcRadii[slot] > 0 && gap < closestGap && PredateBearingPulse.Contains(pulse.Start, bearing))
             {
                 closestGap = gap;
                 closest = pulse.OperatorId;
@@ -233,25 +207,32 @@ class PredateMapOverlay
         float room = Math.Max(60 * scale, Math.Min(horizontalRoom, verticalRoom));
         radius = Math.Min(radius, room);
         DrawDial(radius);
-        if (state)
+        if (state && state.Pulses.Count() > 0)
         {
+            // The wire order is farthest to nearest. Any overlapping nearer arc
+            // takes a lane inside all of the farther arcs it touches.
             array<int> lanes = {};
-            for (int lane = 0; lane < 24; lane++) lanes.Insert(0);
-            foreach (PredateBearingPulse pulse : state.Pulses)
+            int deepest;
+            for (int index = 0; index < state.Pulses.Count(); index++)
             {
-                int sector = pulse.Start / PredateBearingPulse.DEGREES;
+                int lane;
+                for (int previous = 0; previous < index; previous++)
+                    if (PredateBearingPulse.Overlap(state.Pulses[index].Start, state.Pulses[previous].Start))
+                        lane = Math.Max(lane, lanes[previous] + 1);
+                lanes.Insert(lane);
+                deepest = Math.Max(deepest, lane);
+            }
+            float outerArc = radius - 8 * scale;
+            float spacing = Math.Min(29 * scale, (outerArc - 20 * scale) / Math.Max(1, deepest));
+            for (int pulseIndex = 0; pulseIndex < state.Pulses.Count(); pulseIndex++)
+            {
+                PredateBearingPulse pulse = state.Pulses[pulseIndex];
                 int operatorSlot = PredateProtocol.s_OperatorIds.Find(pulse.OperatorId);
-                float arcRadius = radius - (8 + lanes[sector] * 29) * scale;
-                lanes[sector] = lanes[sector] + 1;
-                if (arcRadius < 20 * scale) continue;
+                float arcRadius = outerArc - lanes[pulseIndex] * spacing;
                 m_ArcRadii[operatorSlot] = arcRadius;
-                int color = 0xFFFFB853;
+                int color = pulse.Color();
                 float width = 4 * scale;
-                if (state.Locked && pulse.OperatorId == state.OperatorId)
-                {
-                    color = 0xFFFFF2B5;
-                    width = 6 * scale;
-                }
+                if (state.Locked && pulse.OperatorId == state.OperatorId) width = 6 * scale;
                 DrawArc(pulse.Start, PredateBearingPulse.DEGREES, arcRadius, 8, width + 3 * scale, 0xE52C1B0C);
                 DrawArc(pulse.Start, PredateBearingPulse.DEGREES, arcRadius, 8, width, color);
                 ShowPulseLabel(operatorSlot, RadialPoint(pulse.Start + PredateBearingPulse.DEGREES / 2.0, arcRadius - 14 * scale), color);

@@ -59,7 +59,7 @@ class PredateSignalTrack
         // default object. Only that exact empty representation means absent.
         PredateObservation sample = LastSample;
         if (!sample) return;
-        if (sample.MapCenter != vector.Zero || sample.MapRadius != 0) return;
+        if (sample.MapCenter != vector.Zero || sample.MapRadius != 0 || sample.PulseDistance != 0) return;
         if (sample.Serial == 0 && sample.EventKey == "" && sample.ObserverId == "" && sample.SubjectId == "" && sample.Source == 0 && sample.ObservedAt == 0 && sample.ExpiresAt == 0 && sample.Confidence == 0 && sample.Magnitude == 0 && !sample.HasPosition && !sample.HasBearing && sample.Estimate == vector.Zero && sample.Origin == vector.Zero && sample.Radius == 0 && sample.Bearing == 0 && sample.BearingError == 0)
             LastSample = null;
     }
@@ -91,8 +91,15 @@ class PredateSignalTrack
 
     void UseBearingSectors(float now)
     {
-        if (PlayerPulseFormat == 1) return;
-        PlayerPulseFormat = 1;
+        if (PlayerPulseFormat == 2) return;
+        if (PlayerPulseFormat == 1)
+        {
+            // Keep historical bearings and the schedule. Older saved pulses have no sampled distance.
+            PlayerPulseFormat = 2;
+            LastSample = null;
+            return;
+        }
+        PlayerPulseFormat = 2;
         BroadcastCenter = vector.Zero;
         BroadcastRadius = 0;
         BroadcastTime = 0;
@@ -126,8 +133,9 @@ class PredateSignalTrack
         if (OwnerId == "" || SubjectId == "" || OwnerId == SubjectId || NextSampleSerial < 1) return false;
         if (!PredateInformationMath.Finite(NextPulseAt) || NextPulseAt < 0 || !History || History.Count() > 4) return false;
         if (Selected && !EverLocked) return false;
-        if (PlayerPulseFormat < 0 || PlayerPulseFormat > 1) return false;
-        if (PlayerPulseFormat == 1 && (OwnerId != "player-01" || BroadcastRadius != 0)) return false;
+        if (PlayerPulseFormat < 0 || PlayerPulseFormat > 2) return false;
+        if (PlayerPulseFormat > 0 && (OwnerId != "player-01" || BroadcastRadius != 0)) return false;
+        if (PlayerPulseFormat == 2 && LastSample && LastSample.PulseDistance <= 0) return false;
         if (BroadcastRadius != 0)
         {
             if (OwnerId != "player-01" || !PredatePulseArea.Valid(BroadcastCenter, BroadcastRadius)) return false;
@@ -166,20 +174,56 @@ class PredateBearingPulse
     static const int DEGREES = 15;
     static const float INTERVAL = 90;
     static const float REACH = 5000;
+    static const int BAND_METRES = 250;
+    static const int MAX_BAND = 20;
     string OperatorId;
     int Start;
+    int DistanceBand;
 
-    static bool Valid(int start) { return start >= 0 && start < 360 && start % DEGREES == 0; }
+    static bool Valid(int start) { return start >= 0 && start < 360; }
 
-    static int Sector(vector origin, vector target)
+    static bool Contains(int start, float bearing)
     {
-        float heading = PredateMath.CameraHeading(target - origin);
-        return Math.Floor(heading / DEGREES) * DEGREES;
+        return PredateMath.WrapHeading(bearing - start) < DEGREES;
+    }
+
+    static bool Overlap(int first, int second)
+    {
+        return Contains(first, second) || Contains(second, first);
+    }
+
+    static int SampleStart(float heading, PredateObservation previous)
+    {
+        int whole = Math.Floor(heading);
+        int excluded = DEGREES;
+        if (previous)
+        {
+            int previousStart = previous.Bearing;
+            excluded = (whole - previousStart + 360) % 360;
+        }
+        int count = DEGREES;
+        if (excluded < DEGREES) count--;
+        int offset = Math.RandomInt(0, count);
+        if (excluded < DEGREES && offset >= excluded) offset++;
+        return (whole - offset + 360) % 360;
+    }
+
+    int Color()
+    {
+        float fraction = (DistanceBand - 1) / (MAX_BAND - 1.0);
+        return ARGB(255, 255, Math.Round(52 + 168 * fraction), Math.Round(42 + 30 * fraction));
+    }
+
+    string DistanceText()
+    {
+        int start = (DistanceBand - 1) * BAND_METRES;
+        int end = DistanceBand * BAND_METRES;
+        return start.ToString() + "–" + end.ToString() + " m";
     }
 
     static string RangeText(int start)
     {
-        return PredateMath.BearingDigits(start) + "–" + PredateMath.BearingDigits(start + DEGREES) + "°";
+        return PredateMath.BearingDigits(start) + "–" + PredateMath.BearingDigits((start + DEGREES) % 360) + "°";
     }
 }
 
@@ -197,18 +241,19 @@ class PredateSignalRules
         if (!PredateInformationMath.FiniteVector(origin) || !PredateInformationMath.FiniteVector(targetTruth)) return null;
         vector difference = targetTruth - origin;
         difference[1] = 0;
-        if (difference.LengthSq() > PredateBearingPulse.REACH * PredateBearingPulse.REACH) return null;
+        float distanceSquared = difference.LengthSq();
+        if (distanceSquared > PredateBearingPulse.REACH * PredateBearingPulse.REACH) return null;
         PredateObservation observation = Reading(track, origin, targetTruth, now, PredateBearingPulse.INTERVAL, config, 0, 0);
         if (!observation) return null;
-        observation.Bearing = PredateBearingPulse.Sector(origin, targetTruth);
+        observation.Bearing = PredateBearingPulse.SampleStart(PredateMath.CameraHeading(difference), track.LastSample);
         observation.BearingError = PredateBearingPulse.DEGREES / 2.0;
+        observation.PulseDistance = Math.Min(PredateBearingPulse.REACH, Math.Sqrt(distanceSquared));
         observation.MapCenter = vector.Zero;
         observation.MapRadius = 0;
         return observation;
     }
 
-    // Bearings remain private to each receiver. Only the human receives the
-    // coarse map area, sampled once at the same instant as the bearing.
+    // Each AI receiver takes its own bearing sample and retains its own history.
     static PredateObservation Sample(PredateSignalTrack track, vector origin, vector targetTruth, float now, PredateConfig config, float energy, float randomUnit)
     {
         if (!track || !track.Due(now)) return null;

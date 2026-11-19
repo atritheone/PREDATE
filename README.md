@@ -25,14 +25,14 @@ The operation persists between sessions. Surviving Operators carry their injurie
 ## Highlights
 
 - First-person hunts across the full Chernarus map with a configurable roster of up to 30 AI enemies.
-- Scheduled bearing pulses on the operation map and compass, with interception warnings when an enemy is tracking you.
+- Scheduled bearing pulses on the operation map and compass, with one interception warning per continuous hunt.
 - Custom insertion points, loadouts, time of day, and respawn settings for each operation.
 - Persistent saves, redeployment, and backup restoration through the launcher.
 
 ## How an operation works
 
 1. Choose **New Operation** and set the game rules, spawn, and loadout. Select **Create and Play** to deploy.
-2. Open the operation map to see bearing pulses from rivals within 5 km of you when sampled. The bearing dial expands to fit the map pane around your marker. Select an arc to track that signal on your compass.
+2. Open the operation map to see bearing pulses from Operators within 5 km of you when sampled. Each pulse covers a 15° range that can shift between samples. Overlapping arcs stack with nearer Operators inside farther ones. Pulse colours run from yellow for distant signals to red for nearby ones. Select an arc to see its estimated distance band and track it on your compass.
 3. Use successive samples from different positions to narrow the search. The compass hands off to sight and sound inside 200 metres.
 4. Use **Save and Quit** to save the operation and stop the local server. Select **Continue** in the launcher to resume it.
 
@@ -42,8 +42,9 @@ If you die, choose **Redeploy** to return with the operation's starting kit or s
 
 | Input | Action |
 | --- | --- |
-| <kbd>M</kbd> | Open the operation map. Select a bearing arc or name to track a rival. |
-| <kbd>Esc</kbd> | Pause the operation and open the game menu. |
+| <kbd>M</kbd> | Open or close the operation map. Select a bearing arc or name to track an Operator. |
+| <kbd>Esc</kbd> | Close the operation map, or pause and open the game menu during play. |
+| <kbd>F</kbd> | Interact. An equipped firearm lowers briefly as needed. |
 | Tap <kbd>N</kbd> | Toggle equipped night vision goggles. |
 | Tap <kbd>R</kbd> | Reload the equipped firearm. |
 | Double-tap <kbd>R</kbd> | Rack the action or clear a jam. |
