@@ -4,4 +4,8 @@
 
 add low ready.
 
-add carry weight, stamina effect.
+add modern gear and weapons.
+
+add white phosphorous night vision with quad nod effect.
+
+fix the map circle changing size relative to zoom.

@@ -199,13 +199,10 @@ class PredateMapOverlay
         m_PlayerPoint = LocalPoint(player.GetPosition());
         m_LabelHalfWidth = 50 * scale;
         m_LabelHeight = 25 * scale;
-        float radius = Math.Min(m_Width, m_Height) * 0.72;
-        float horizontalRoom = Math.Min(m_PlayerPoint[0], m_Width - m_PlayerPoint[0]);
-        float verticalRoom = Math.Min(m_PlayerPoint[1], m_Height - m_PlayerPoint[1]);
-        horizontalRoom -= (BEARING_LABEL_OFFSET + BEARING_LABEL_WIDTH / 2) * scale;
-        verticalRoom -= BEARING_LABEL_OFFSET * scale + m_LabelHeight / 2;
-        float room = Math.Max(60 * scale, Math.Min(horizontalRoom, verticalRoom));
-        radius = Math.Min(radius, room);
+        // Set the radius from the viewport. The map clips the dial when the player is off-centre.
+        float horizontalRoom = m_Width / 2 - (BEARING_LABEL_OFFSET + BEARING_LABEL_WIDTH / 2) * scale;
+        float verticalRoom = m_Height / 2 - BEARING_LABEL_OFFSET * scale - m_LabelHeight / 2;
+        float radius = Math.Max(60 * scale, Math.Min(horizontalRoom, verticalRoom));
         DrawDial(radius);
         if (state && state.Pulses.Count() > 0)
         {

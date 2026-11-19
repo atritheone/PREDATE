@@ -1,5 +1,5 @@
 // Root-motion distances derived from matching installed lowered-weapon clips.
-// Change translation only: animation timing, inputs and stamina stay native.
+// Keep animation timing and inputs while matching the lowered-weapon distances.
 class PredateReadyAnimations
 {
     static bool s_Applied;

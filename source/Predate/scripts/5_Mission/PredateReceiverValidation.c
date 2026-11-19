@@ -93,6 +93,8 @@ class PredateReceiverValidation
                 result.Check(centeredPlayer);
                 float width, height;
                 menu.m_MapCanvas.GetScreenSize(width, height);
+                int pulseSlot = PredateProtocol.s_OperatorIds.Find(pulse.OperatorId);
+                float arcRadius;
                 array<float> zooms = {0.085, 0.33, 0.68};
                 foreach (float zoom : zooms)
                 {
@@ -107,7 +109,20 @@ class PredateReceiverValidation
                     bool pointsToPlayer = PredateSignalRules.WithinFinalApproach(player.GetPosition(), underArrow, 25);
                     if (!pointsToPlayer) Print("[PredateMapTest] arrow " + arrow + " is over " + underArrow + " at zoom " + zoom);
                     result.Check(pointsToPlayer && arrow[0] >= 0 && arrow[0] <= width && arrow[1] >= 0 && arrow[1] <= height);
+                    if (arcRadius == 0) arcRadius = overlay.m_ArcRadii[pulseSlot];
+                    result.Check(arcRadius > 0 && Math.AbsFloat(overlay.m_ArcRadii[pulseSlot] - arcRadius) < 0.1, "pulse radius stays fixed as the map zooms");
                 }
+                menu.m_Map.SetScale(zooms[0]);
+                menu.m_Map.SetMapPos(player.GetPosition());
+                menu.Update(0);
+                vector centeredArrow = overlay.m_PlayerPoint;
+                vector pan = Vector(overlay.m_Left + width * 0.72, overlay.m_Top + height * 0.72, 0);
+                menu.m_Map.SetMapPos(menu.m_Map.ScreenToMap(pan));
+                menu.Update(0);
+                result.Check(vector.Distance(centeredArrow, overlay.m_PlayerPoint) > 20, "panning moves the map marker");
+                result.Check(Math.AbsFloat(overlay.m_ArcRadii[pulseSlot] - arcRadius) < 0.1, "panning does not resize the bearing dial");
+                menu.m_Map.SetMapPos(player.GetPosition());
+                menu.Update(0);
                 CheckOverlappingPulses(result, menu, player);
                 string town;
                 GetGame().ConfigGetText("CfgWorlds ChernarusPlus Names Settlement_Chernogorsk name", town);

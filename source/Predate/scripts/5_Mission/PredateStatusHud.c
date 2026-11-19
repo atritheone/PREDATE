@@ -10,7 +10,6 @@ modded class IngameHud
     override void Init(Widget hud_panel_widget)
     {
         super.Init(hud_panel_widget);
-        // Hide presentation only; stamina consumption remains unchanged.
         SetStaminaBarVisibility(false);
         SetPermanentCrossHair(false);
         bool staminaHidden = m_Stamina && !m_Stamina.IsVisible() && m_StaminaBackground && !m_StaminaBackground.IsVisible();

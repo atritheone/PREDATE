@@ -25,6 +25,7 @@ The operation persists between sessions. Surviving Operators carry their injurie
 ## Highlights
 
 - First-person hunts across the full Chernarus map with a configurable roster of up to 30 AI enemies.
+- Operators carry rifles ready on patrol. Stamina never drains for the player or Operators, and bullet damage between them is doubled.
 - Scheduled bearing pulses on the operation map and compass, with one interception warning per continuous hunt.
 - Custom insertion points, loadouts, time of day, and respawn settings for each operation.
 - Persistent saves, redeployment, and backup restoration through the launcher.

@@ -39,10 +39,7 @@ modded class eAIBase
         if (!modifiers) return false;
         if (type == "Epinephrine")
         {
-            if (modifiers.IsModifierActive(eModifiers.MDF_EPINEPHRINE)) return false;
-            if (GetHealth01("", "Shock") < 0.60) return true;
-            StaminaHandler stamina = GetStaminaHandler();
-            return stamina && m_PredateLastVisualAt >= 0 && now - m_PredateLastVisualAt < 30 && stamina.GetStamina() < stamina.GetStaminaMax() * 0.15;
+            return GetHealth01("", "Shock") < 0.60 && !modifiers.IsModifierActive(eModifiers.MDF_EPINEPHRINE);
         }
         // Let Expansion's native bandaging state deal with cuts first.
         if (IsBleeding() && GetBandageToUse()) return false;

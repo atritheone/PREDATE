@@ -44,7 +44,7 @@ modded class PlayerBase
         super.CommandHandler(pDt, pCurrentCommandID, pCurrentCommandFinished);
         if (autoRaise && IsRaised() && !m_PredateAutoRaiseReported)
         {
-            Print("[Predate] Automatic firearm ready stance confirmed; vanilla movement and stamina limits retained.");
+            Print("[Predate] Automatic firearm ready stance confirmed.");
             m_PredateAutoRaiseReported = true;
         }
         if (!m_PredateAutoRaiseReported && GetGame().GetPlayer() == this)
@@ -59,7 +59,7 @@ modded class PlayerBase
         HumanCommandMove move = GetCommand_Move();
         if (m_PredateOwnSpeedOverride && move && move.GetCurrentMovementSpeed() >= 1.9 && !m_PredateReadyPaceReported)
         {
-            Print("[Predate] Raised firearm jog confirmed: movement gait=" + move.GetCurrentMovementSpeed() + "; stamina rules retained.");
+            Print("[Predate] Raised firearm jog confirmed: movement gait=" + move.GetCurrentMovementSpeed());
             m_PredateReadyPaceReported = true;
         }
         if (!m_PredateTravelReported && m_PredateOwnSpeedOverride && move && move.GetCurrentMovementSpeed() >= 1.99 && IsRaised())
