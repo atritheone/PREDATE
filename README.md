@@ -5,7 +5,7 @@
 <h1 align="center">PREDATE</h1>
 
 <p align="center">
-  A single-player DayZ mod where Operators hunt one another
+  A single-player DayZ mod where Operators hunt one another.
 </p>
 
 <p align="center">
