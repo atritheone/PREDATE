@@ -31,6 +31,7 @@ class PredateTrackerMenu : UIScriptedMenu
     TextWidget m_Timing;
     TextWidget m_Origin;
     Widget m_HistoryTitle;
+    TextWidget m_InterceptionStatus;
     ref array<TextWidget> m_HistoryRows = new array<TextWidget>;
     ref array<TextWidget> m_MapLabels = new array<TextWidget>;
     ButtonWidget m_Select;
@@ -57,10 +58,12 @@ class PredateTrackerMenu : UIScriptedMenu
         m_Timing = TextWidget.Cast(layoutRoot.FindAnyWidget("Timing"));
         m_Origin = TextWidget.Cast(layoutRoot.FindAnyWidget("Hint"));
         m_HistoryTitle = layoutRoot.FindAnyWidget("HistoryTitle");
+        m_InterceptionStatus = TextWidget.Cast(layoutRoot.FindAnyWidget("InterceptionStatus"));
         for (int index = 0; index < PredateProtocol.MAX_BEARING_HISTORY; index++)
             m_HistoryRows.Insert(TextWidget.Cast(layoutRoot.FindAnyWidget("History" + index)));
         m_MapLabels = {m_Status, m_Bearing, m_Timing, m_Origin};
         m_MapLabels.Insert(TextWidget.Cast(m_HistoryTitle));
+        m_MapLabels.Insert(m_InterceptionStatus);
         m_MapLabels.Insert(TextWidget.Cast(layoutRoot.FindAnyWidget("TrackingTitle")));
         foreach (TextWidget historyLabel : m_HistoryRows) m_MapLabels.Insert(historyLabel);
         m_Select = ButtonWidget.Cast(layoutRoot.FindAnyWidget("Select"));
@@ -126,16 +129,17 @@ class PredateTrackerMenu : UIScriptedMenu
         m_Select.Show(!state.CanDeploy && state.Locked);
         int available = state.AvailableOperators;
         m_Status.SetText(state.Message);
+        if (m_InterceptionStatus) m_InterceptionStatus.Show(state.Intercepted);
         if (state.CloseApproach)
             m_Bearing.SetText("Use sight and sound");
         else if (state.HasPulse)
             m_Bearing.SetText("Bearing " + PredateBearingPulse.RangeText(state.Bearing));
         else if (state.CanDeploy) m_Bearing.SetText("HUNT COMPLETE");
         else if (available == 0) m_Bearing.SetText("OPERATION COMPLETE");
-        else if (state.Locked && !state.Available) m_Bearing.SetText("TARGET ELIMINATED");
+        else if (state.Locked && !state.Available) m_Bearing.SetText("Signal ended");
         else if (PredateReceiverText.LostContact(state)) m_Bearing.SetText("CONTACT LOST");
         else m_Bearing.SetText("No pulse");
-        if (state.Locked && state.Available && !state.CloseApproach)
+        if (state.Locked && !state.CanDeploy)
             m_Timing.SetText("Sample age " + Math.Floor(state.Age).ToString() + "s    |    Next pulse " + Math.Ceil(state.NextPulse).ToString() + "s");
         else if (m_ConfirmReplacement) m_Timing.SetText("Keep your gear for the next hunt?");
         else if (state.CanDeploy) m_Timing.SetText("Start another hunt to bring in an Operator.");

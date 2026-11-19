@@ -150,89 +150,55 @@ class PredateSession
     {
         // Keep the payload in local values. Filling a temporary receiver object
         // in this path triggered a native access violation after the first send.
-        bool available;
         bool needsRedeploy = m_WorldState && m_WorldState.PlayerAwaitingRedeploy;
-        if (!needsRedeploy && m_HuntReady && m_HuntError == "" && !m_HuntProgress.Defeated && m_HuntBot)
-            available = m_HuntBot.IsAlive();
-        string operatorId = "raven-01";
-        bool development = m_Development && !m_PeerRoster;
-        bool canDeploy = !needsRedeploy && m_HuntReady && m_HuntProgress.Defeated && m_HuntError == "" && !m_PeerRoster && !m_HuntConfig.EnableOperatorRespawns;
-        string signature = "RAVEN-01";
-        bool locked = !needsRedeploy && m_HuntProgress.Selected;
-        bool hasPulse = m_HuntProgress.HasPulse && locked;
-        bool closeApproach;
-        int bearing = m_HuntProgress.LastBearing;
-        float age = m_HuntProgress.PulseAge;
-        float nextPulse = m_HuntProgress.PulseRemaining;
-        string message;
-        if (needsRedeploy) message = "Deployment ended";
-        else if (available && locked)
-        {
-            closeApproach = PredateSignalRules.WithinFinalApproach(player.GetPosition(), m_HuntBot.GetPosition(), m_HuntConfig.FinalApproachRadius);
-            if (closeApproach) { hasPulse = false; bearing = 0; }
-            message = "Tracking Raven";
-        }
-        else if (m_HuntProgress.Defeated)
-        {
-            message = "Raven is KIA.";
-            if (m_HuntConfig.EnableOperatorRespawns) message = "Raven awaiting redeployment.";
-        }
-        else if (available) message = "Click a pulse to track it";
-        else message = "Waiting for operator initialization...";
-        bool intercepted = !needsRedeploy && m_HuntError == "" && m_HuntConfig.EnableSharedSignals && m_WorldState.PlayerInterceptionUntil > m_WorldState.SimulationSeconds;
-        bool hasPulseOrigin = hasPulse && m_HuntProgress.HasPulseOrigin && !closeApproach;
-        vector pulseOrigin;
-        float bearingError;
-        if (hasPulseOrigin)
-        {
-            pulseOrigin = m_HuntProgress.PulseOrigin;
-            bearingError = m_HuntProgress.LastBearingError;
-        }
-        int availableOperators = -1;
+        bool receiverReady = !needsRedeploy && m_HuntReady && m_HuntError == "";
         PredateSignalTrack receiverTrack;
         if (m_WorldState) receiverTrack = m_WorldState.PlayerSignal;
-        if (m_PeerRoster && m_HuntError == "")
+        string operatorId = "raven-01";
+        int availableOperators = -1;
+        if (m_PeerRoster)
         {
             PredatePeerBinding chosen = m_PeerRoster.PlayerLock();
-            if (chosen) receiverTrack = chosen.State.PlayerReceiver;
-            if (!needsRedeploy)
+            if (chosen)
             {
-                availableOperators = m_PeerRoster.AvailableMask(this);
-                if (chosen)
-                {
-                    operatorId = chosen.State.Operator.Id;
-                    signature = chosen.State.Operator.Signature;
-                    locked = true;
-                    available = chosen.Actor && chosen.Actor.IsAlive();
-                    closeApproach = available && PredateSignalRules.WithinFinalApproach(player.GetPosition(), chosen.Actor.GetPosition(), m_HuntConfig.FinalApproachRadius);
-                    PredateObservation sample = receiverTrack.LastSample;
-                    float now = m_WorldState.SimulationSeconds;
-                    hasPulse = available && !closeApproach && sample && !sample.Expired(now);
-                    hasPulseOrigin = hasPulse;
-                    bearing = 0;
-                    age = 0;
-                    pulseOrigin = vector.Zero;
-                    bearingError = 0;
-                    if (hasPulse)
-                    {
-                        bearing = Math.Round(sample.Bearing);
-                        bearing = bearing % 360;
-                        age = now - sample.ObservedAt;
-                        pulseOrigin = sample.Origin;
-                        bearingError = sample.BearingError;
-                    }
-                    nextPulse = Math.Max(0, receiverTrack.NextPulseAt - now);
-                    if (available) message = "Tracking " + PredateProtocol.DisplayName(operatorId);
-                    else message = PredateProtocol.DisplayName(operatorId) + " is KIA.";
-                }
-                else if (availableOperators == 0)
-                {
-                    message = "All Operators eliminated.";
-                    if (m_HuntConfig.EnableOperatorRespawns) message = "Operators awaiting redeployment.";
-                }
-                else if (!locked) message = "Click a pulse to track it";
+                receiverTrack = chosen.State.PlayerReceiver;
+                operatorId = chosen.State.Operator.Id;
             }
+            if (receiverReady && m_WorldState.PlayerSignal) availableOperators = m_PeerRoster.AvailableMask(this);
         }
+        string signature = PredateProtocol.SignatureFor(operatorId);
+        bool development = m_Development && !m_PeerRoster;
+        bool available = receiverReady && receiverTrack && receiverTrack.Reception != PredatePulseReception.UNAVAILABLE;
+        bool locked = receiverReady && receiverTrack && receiverTrack.Selected;
+        bool canDeploy = receiverReady && !available && m_HuntProgress.Defeated && !m_PeerRoster && !m_HuntConfig.EnableOperatorRespawns;
+        bool closeApproach = available && locked && receiverTrack.Reception == PredatePulseReception.CLOSE;
+        bool intercepted = receiverReady && m_HuntConfig.EnableSharedSignals && m_WorldState.PlayerInterceptionUntil > m_WorldState.SimulationSeconds;
+        float now = m_WorldState.SimulationSeconds;
+        PredateObservation sample;
+        if (receiverTrack) sample = receiverTrack.LastSample;
+        bool hasPulse = available && locked && !closeApproach && sample && !sample.Expired(now);
+        bool hasPulseOrigin = hasPulse;
+        int bearing;
+        float age;
+        vector pulseOrigin;
+        float bearingError;
+        if (hasPulse)
+        {
+            bearing = Math.Round(sample.Bearing);
+            bearing = bearing % 360;
+            age = now - sample.ObservedAt;
+            pulseOrigin = sample.Origin;
+            bearingError = sample.BearingError;
+        }
+        float nextPulse;
+        if (receiverTrack) nextPulse = Math.Max(0, receiverTrack.NextPulseAt - now);
+        string message;
+        if (needsRedeploy) message = "Deployment ended";
+        else if (!receiverReady) message = "Waiting for receiver initialization...";
+        else if (locked && available) message = "Tracking " + PredateProtocol.DisplayName(operatorId);
+        else if (locked) message = PredateProtocol.DisplayName(operatorId) + "’s signal ended.";
+        else if (availableOperators == 0 || (!m_PeerRoster && !available)) message = "No active Operator signals.";
+        else message = "Click a pulse to track it";
         if (m_HuntError != "") message = "Recovery required. " + m_HuntError;
         nextPulse = Math.Clamp(nextPulse, 0, PredateBearingPulse.INTERVAL);
         bool first = !m_HuntSentState;
@@ -272,7 +238,7 @@ class PredateSession
             rpc.Write(player.m_PredateSpawnRejected);
         }
         // Only the sampled bearing and coarse distance band reach the receiver.
-        PredateSignalService.WriteHistory(this, rpc, available && locked && !closeApproach, receiverTrack);
+        PredateSignalService.WriteHistory(this, rpc, locked, receiverTrack);
         PredateSignalService.WriteMapPulses(this, rpc, !needsRedeploy && m_HuntReady && m_HuntError == "");
         rpc.Write(availableOperators);
         vector footprintGround;
@@ -472,7 +438,7 @@ class PredateSession
                 if (request == 1) selection = requestedOperator;
                 if (m_PeerRoster.SelectPlayerTarget(this, selection)) PredateSave();
             }
-            else if (request == 1 && requestedOperator == "raven-01" && m_HuntBot && m_HuntBot.IsAlive())
+            else if (request == 1 && requestedOperator == "raven-01" && m_WorldState.PlayerSignal.Reception != PredatePulseReception.UNAVAILABLE)
             {
                 PredateSignalService.Select(this, true);
                 Print("[Predate] Player selected RAVEN-01.");

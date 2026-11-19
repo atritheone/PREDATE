@@ -69,7 +69,6 @@ class PredateHuntLead
     PredateObservation Evidence;
     float Distance;
     float Uncertainty;
-    bool Visual;
 }
 
 class PredateHuntSelection
@@ -89,23 +88,13 @@ class PredateHuntSelection
 
     static void Offer(map<string, ref PredateHuntLead> leads, string id, PredateObservation evidence, vector own, float now)
     {
-        bool visual = evidence.Source == PredateObservationSource.VISUAL;
         PredateHuntLead previous;
         if (leads.Find(id, previous) && previous.Evidence.ObservedAt > evidence.ObservedAt) return;
         PredateHuntLead lead = new PredateHuntLead;
         lead.Id = id;
         lead.Evidence = evidence;
-        lead.Visual = visual;
-        if (visual)
-        {
-            lead.Distance = PredateHunterBrain.Distance(own, evidence.Estimate);
-            lead.Uncertainty = evidence.RadiusAt(now);
-        }
-        else
-        {
-            lead.Distance = PredateHunterBrain.Distance(own, SectorCenter(evidence));
-            lead.Uncertainty = SectorRadius(evidence, now);
-        }
+        lead.Distance = PredateHunterBrain.Distance(own, SectorCenter(evidence));
+        lead.Uncertainty = SectorRadius(evidence, now);
         leads.Set(id, lead);
     }
 
@@ -114,14 +103,7 @@ class PredateHuntSelection
         if (!other) return true;
         PredateObservation a = candidate.Evidence;
         PredateObservation b = other.Evidence;
-        bool aVisible = candidate.Visual && candidate.Uncertainty <= 5;
-        bool bVisible = other.Visual && other.Uncertainty <= 5;
-        if (aVisible || bVisible)
-        {
-            if (aVisible != bVisible) return aVisible;
-            if (candidate.Distance != other.Distance) return candidate.Distance < other.Distance;
-        }
-        if (!candidate.Visual && !other.Visual && a.ObservedAt == b.ObservedAt && a.DistanceBand == b.DistanceBand && PredateBearingPulse.Overlap(a.Bearing, b.Bearing))
+        if (a.ObservedAt == b.ObservedAt && a.DistanceBand == b.DistanceBand && PredateBearingPulse.Overlap(a.Bearing, b.Bearing))
         {
             if (a.OverlapLane != b.OverlapLane) return a.OverlapLane > b.OverlapLane;
         }
@@ -131,7 +113,7 @@ class PredateHuntSelection
             if (other.Distance + other.Uncertainty < candidate.Distance - candidate.Uncertainty) return false;
             // Fresh, distinct distance bands give a useful ranking even where
             // their bearing wedges touch. Ambiguous estimates favour a held lock.
-            if (!candidate.Visual && !other.Visual && a.ObservedAt == b.ObservedAt && a.DistanceBand != b.DistanceBand)
+            if (a.ObservedAt == b.ObservedAt && a.DistanceBand != b.DistanceBand)
                 return candidate.Distance < other.Distance;
         }
         if (candidate.Id == current || other.Id == current) return candidate.Id == current;
@@ -140,7 +122,7 @@ class PredateHuntSelection
         return candidate.Distance < other.Distance;
     }
 
-    static PredateHuntLead Update(PredateHuntReceiver receiver, PredateHunterState hunter, PredateObservationMemory memory, vector own, string playerId, float now, bool interrupted, float retiredPlayerAt = -1)
+    static PredateHuntLead Update(PredateHuntReceiver receiver, PredateHunterState hunter, vector own, float now, bool interrupted)
     {
         float elapsed = now - receiver.LastDecisionAt;
         receiver.LastDecisionAt = now;
@@ -153,28 +135,17 @@ class PredateHuntSelection
         foreach (PredateSignalTrack track : receiver.Tracks)
         {
             PredateObservation sample = track.LastSample;
-            if (!sample && track.SubjectId == receiver.TargetId && track.History.Count() > 0)
+            if (!sample && track.Reception == PredatePulseReception.CLOSE && track.SubjectId == receiver.TargetId && track.History.Count() > 0)
             {
                 PredateObservation last = track.History[track.History.Count() - 1];
                 if (last.DistanceBand <= 2) sample = last;
             }
             if (sample && !sample.Expired(now)) Offer(leads, track.SubjectId, sample, own, now);
         }
-        foreach (PredateObservation observation : memory.Entries)
-        {
-            if (observation.Source != PredateObservationSource.VISUAL || observation.Expired(now)) continue;
-            string id = observation.SubjectId;
-            if (id == playerId)
-            {
-                if (observation.ObservedAt <= retiredPlayerAt) continue;
-                id = "player-01";
-            }
-            if (receiver.KnownSubject(id)) Offer(leads, id, observation, own, now);
-        }
         PredateHuntLead current;
         leads.Find(receiver.TargetId, current);
         bool searchActive = (hunter.Mode == "search" || hunter.Mode == "investigate" || hunter.Mode == "approach") && hunter.HasGoal && hunter.SearchUntil > now;
-        if (current && (current.Distance + 50 < receiver.BestDistance || current.Uncertainty + 50 < receiver.BestUncertainty || (current.Visual && now - current.Evidence.ObservedAt < 2)))
+        if (current && (current.Distance + 50 < receiver.BestDistance || current.Uncertainty + 50 < receiver.BestUncertainty))
         {
             receiver.ProgressAt = now;
             receiver.BestDistance = current.Distance;
@@ -187,7 +158,7 @@ class PredateHuntSelection
         foreach (string subject, PredateHuntLead lead : leads)
         {
             if (stalled && subject == receiver.TargetId) continue;
-            if (subject == receiver.DeferredId && now < receiver.DeferredUntil && !(lead.Visual && now - lead.Evidence.ObservedAt < 2)) continue;
+            if (subject == receiver.DeferredId && now < receiver.DeferredUntil) continue;
             if (Closer(lead, chosen, receiver.TargetId)) chosen = lead;
         }
         if (!chosen && (searchActive || current))

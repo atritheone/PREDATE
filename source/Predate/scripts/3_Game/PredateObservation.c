@@ -14,6 +14,7 @@ class PredateObservation
     string EventKey;
     string ObserverId;
     string SubjectId;
+    string VisualContactKey;
     int Source;
     float ObservedAt;
     float ExpiresAt;
@@ -39,6 +40,7 @@ class PredateObservation
         copied.EventKey = EventKey;
         copied.ObserverId = ObserverId;
         copied.SubjectId = SubjectId;
+        copied.VisualContactKey = VisualContactKey;
         copied.Source = Source;
         copied.ObservedAt = ObservedAt;
         copied.ExpiresAt = ExpiresAt;
@@ -79,8 +81,16 @@ class PredateObservation
         // Noise and bullet impact alone never prove who produced them.
         if ((Source == PredateObservationSource.AUDIBLE || Source == PredateObservationSource.IMPACT) && SubjectId != "") return false;
         if (Source == PredateObservationSource.FOOTPRINT && (!HasPosition || HasBearing || SubjectId != "")) return false;
-        if (Source == PredateObservationSource.VISUAL && (!HasPosition || SubjectId == "")) return false;
+        if (Source == PredateObservationSource.VISUAL && (!HasPosition || (SubjectId == "" && VisualContactKey == ""))) return false;
         return true;
+    }
+
+    bool SameContact(PredateObservation other)
+    {
+        if (Source != other.Source) return false;
+        if (Source == PredateObservationSource.VISUAL && (VisualContactKey != "" || other.VisualContactKey != ""))
+            return VisualContactKey == other.VisualContactKey;
+        return SubjectId == other.SubjectId;
     }
 
     bool Expired(float now) { return now >= ExpiresAt; }
@@ -105,20 +115,30 @@ class PredateObservationMemory
     int NextSerial = 1;
     ref array<ref PredateObservation> Entries = new array<ref PredateObservation>;
 
+    void AnonymizeSightings()
+    {
+        foreach (PredateObservation entry : Entries)
+        {
+            if (!entry || entry.Source != PredateObservationSource.VISUAL || entry.SubjectId == "") continue;
+            if (entry.VisualContactKey == "") entry.VisualContactKey = "previous-sighting-" + entry.Serial;
+            entry.SubjectId = "";
+        }
+    }
+
     bool Add(PredateObservation observation, float now)
     {
         if (!observation || !observation.Valid(OwnerId, now) || observation.Expired(now)) return false;
         foreach (PredateObservation existing : Entries)
         {
             if (existing.EventKey == observation.EventKey) return false;
-            if (existing.SubjectId == observation.SubjectId && existing.Source == observation.Source && observation.ObservedAt < existing.ObservedAt) return false;
+            if (existing.SameContact(observation) && observation.ObservedAt < existing.ObservedAt) return false;
         }
         Prune(now);
         // Keep the current visual fix; signal origins retain a short history.
         if (observation.Source == PredateObservationSource.VISUAL)
         {
             for (int i = Entries.Count() - 1; i >= 0; i--)
-                if (Entries[i].Source == observation.Source && Entries[i].SubjectId == observation.SubjectId) Entries.RemoveOrdered(i);
+                if (Entries[i].SameContact(observation)) Entries.RemoveOrdered(i);
         }
         PredateObservation stored = observation.Copy();
         stored.Serial = NextSerial;

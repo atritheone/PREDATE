@@ -120,17 +120,26 @@ class PredateSignalService
             float age = Math.Max(0, s.m_WorldState.SimulationSeconds - sample.ObservedAt);
             rpc.Write(age);
             rpc.Write(sample.Origin);
+            int distanceBand = Math.Ceil(sample.PulseDistance / PredateBearingPulse.BAND_METRES);
+            rpc.Write(distanceBand);
         }
     }
 
     static bool SamplePlayerPulse(PredateSignalTrack track, PlayerBase player, PlayerBase actor, float now, PredateConfig config)
     {
-        if (!track || !actor || !actor.IsAlive()) return false;
+        if (!track) return false;
         track.UseBearingSectors(now);
         if (now < track.NextPulseAt) return false;
         track.BroadcastTime = now;
         track.NextPulseAt = now + PredateBearingPulse.INTERVAL;
-        PredateObservation reading = PredateSignalRules.ReceiverReading(track, player.GetPosition(), actor.GetPosition(), now, config);
+        vector origin = player.GetPosition();
+        vector position;
+        bool transmitting = actor && actor.IsAlive();
+        if (transmitting) position = actor.GetPosition();
+        track.Reception = PredateSignalRules.Reception(origin, position, transmitting, config);
+        PredateObservation reading;
+        if (track.Reception == PredatePulseReception.BEARING)
+            reading = PredateSignalRules.ReceiverReading(track, origin, position, now, config);
         track.RecordSample(reading);
         return true;
     }
@@ -155,7 +164,7 @@ class PredateSignalService
         }
         array<PredateSignalTrack> tracks = {};
         float now = s.m_WorldState.SimulationSeconds;
-        if (s.PredateTargetAvailable()) AddMapPulse(tracks, s.m_WorldState.PlayerSignal, now);
+        AddMapPulse(tracks, s.m_WorldState.PlayerSignal, now);
         if (s.m_PeerRoster) s.m_PeerRoster.AddMapPulses(tracks, now);
         count = tracks.Count();
         rpc.Write(count);
@@ -199,11 +208,8 @@ class PredateSignalService
     {
         PredateWorldState state = s.m_WorldState;
         float now = state.SimulationSeconds;
-        if (s.PredateTargetAvailable())
-        {
-            bool sampled = SamplePlayerPulse(state.PlayerSignal, player, s.m_HuntBot, now, s.m_HuntConfig);
-            if (sampled && state.PlayerSignal.Selected && state.PlayerSignal.LastSample) state.BotInterceptionUntil = now + 30;
-        }
+        bool sampled = SamplePlayerPulse(state.PlayerSignal, player, s.m_HuntBot, now, s.m_HuntConfig);
+        if (sampled && state.PlayerSignal.Selected && state.PlayerSignal.LastSample) state.BotInterceptionUntil = now + PredateBearingPulse.INTERVAL + 30;
         SyncReceiverProgress(s);
         if (!s.m_HuntConfig.EnableSharedSignals) return;
         player.m_PredateSignatureRegistered = true;
@@ -212,20 +218,15 @@ class PredateSignalService
         if (OperatingEngine(s.m_HuntBot)) state.BotActivity.RecordEngineUse(seconds);
         state.PlayerActivity.Advance(seconds);
         state.BotActivity.Advance(seconds);
-        if (!s.PredateTargetAvailable())
-        {
-            state.PlayerSignal.SetPlayerTracking(false);
-            s.m_HuntProgress.HasPulse = false;
-        }
     }
 
-    static void NewDeployment(PredateSession s)
+    static void NewDeployment(PredateSession s, bool preserveReceiver = false)
     {
         s.m_WorldState.Hunter = new PredateHunterState;
-        s.m_WorldState.PlayerSignal = Track("player-01", "raven-01");
+        if (!preserveReceiver) s.m_WorldState.PlayerSignal = Track("player-01", "raven-01");
         s.m_WorldState.HuntReceiver = new PredateHuntReceiver;
         s.m_WorldState.BotActivity = new PredateSignatureActivity;
-        s.m_WorldState.PlayerInterceptionUntil = 0;
+        if (!preserveReceiver) s.m_WorldState.PlayerInterceptionUntil = 0;
         s.m_WorldState.BotInterceptionUntil = 0;
         s.m_HuntProgress.HasPulseOrigin = false;
     }

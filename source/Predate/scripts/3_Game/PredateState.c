@@ -1,6 +1,6 @@
 class PredateProtocol
 {
-    static const int VERSION = 15;
+    static const int VERSION = 16;
     static const int MAX_OPERATORS = 30;
     static const int ALL_OPERATORS = 1073741823;
     static const int MAX_BEARING_HISTORY = 4;
@@ -60,6 +60,7 @@ class PredateReceiverSample
     float Error;
     float Age;
     vector Origin;
+    int DistanceBand;
 }
 
 class PredateState
@@ -95,7 +96,7 @@ class PredateState
     ref array<ref PredateBearingPulse> Pulses = new array<ref PredateBearingPulse>;
     string Message = "Establishing receiver link...";
 
-    bool CanShowHistory() { return Available && Locked && !CloseApproach; }
+    bool CanShowHistory() { return Locked && !NeedsRedeploy; }
 
     PredateBearingPulse TrackedPulse()
     {

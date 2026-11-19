@@ -4,7 +4,7 @@ class PredateReceiverText
 {
     static bool LostContact(PredateState state)
     {
-        return state.CanShowHistory() && !state.HasPulse && state.History.Count() > 0;
+        return state.CanShowHistory() && state.Available && !state.HasPulse && !state.CloseApproach && state.History.Count() > 0;
     }
 
     static string HistoryLine(PredateReceiverSample sample)

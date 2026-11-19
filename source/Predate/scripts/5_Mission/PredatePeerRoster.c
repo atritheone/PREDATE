@@ -94,6 +94,7 @@ class PredatePeerRoster
         {
             PredatePeerState peer = m_State.Peers[index];
             if (peer && !peer.HuntReceiver) peer.HuntReceiver = new PredateHuntReceiver;
+            if (peer && peer.Memory && peer.Memory.Entries) peer.Memory.AnonymizeSightings();
             if (peer) peer.Receiver = null;
             if (peer && peer.Operator && m_State.Schema == 1)
                 peer.PlayerReceiver = PredateSignalService.Track("player-01", peer.Operator.Id);
@@ -234,9 +235,9 @@ class PredatePeerRoster
     int AvailableMask(PredateSession session)
     {
         int mask;
-        if (session.PredateTargetAvailable()) mask = PredateProtocol.OperatorBit("raven-01");
+        if (session.m_WorldState.PlayerSignal.Reception != PredatePulseReception.UNAVAILABLE) mask = PredateProtocol.OperatorBit("raven-01");
         foreach (PredatePeerBinding binding : m_Bindings)
-            if (binding.Actor && binding.Actor.IsAlive())
+            if (binding.State.PlayerReceiver.Reception != PredatePulseReception.UNAVAILABLE)
                 mask = mask | PredateProtocol.OperatorBit(binding.State.Operator.Id);
         return mask;
     }
@@ -265,15 +266,14 @@ class PredatePeerRoster
         {
             PredateSignalTrack track = peer.State.PlayerReceiver;
             bool sampled = PredateSignalService.SamplePlayerPulse(track, player, peer.Actor, now, session.m_HuntConfig);
-            if (sampled && track.Selected && track.LastSample) peer.State.InterceptedUntil = now + 30;
+            if (sampled && track.Selected && track.LastSample) peer.State.InterceptedUntil = now + PredateBearingPulse.INTERVAL + 30;
         }
     }
 
     void AddMapPulses(array<PredateSignalTrack> tracks, float now)
     {
         foreach (PredatePeerBinding binding : m_Bindings)
-            if (binding.Actor && binding.Actor.IsAlive())
-                PredateSignalService.AddMapPulse(tracks, binding.State.PlayerReceiver, now);
+            PredateSignalService.AddMapPulse(tracks, binding.State.PlayerReceiver, now);
     }
 
     bool ClearOfActors(vector position, float minimumDistance)
@@ -323,6 +323,7 @@ class PredatePeerRoster
             record.RifleKit = "";
             record.Supplies = new PredateSupplyPlan;
             PredatePeerState fresh = MakePeer(index + 1, site);
+            fresh.PlayerReceiver = previous.PlayerReceiver;
             fresh.Operator = record;
             binding.State = fresh;
             m_State.Peers[index] = fresh;
@@ -386,7 +387,7 @@ class PredatePeerRoster
     void MarkInterception(PredateSession session, string subject, float now)
     {
         PredateWorldState state = session.m_WorldState;
-        float until = now + 30;
+        float until = now + PredateBearingPulse.INTERVAL + 30;
         if (subject == "raven-01") state.BotInterceptionUntil = Math.Max(until, state.BotInterceptionUntil);
         else if (subject == "player-01") PredateSignalService.MarkPlayerHunted(session, now);
         else

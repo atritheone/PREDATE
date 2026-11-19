@@ -81,7 +81,9 @@ def layouts():
     readout += label("Bearing", "No pulse", .06,.145,.88,.042)
     readout += label("Timing", "", .06,.20,.88,.04)
     readout += label("Hint", "", .06,.26,.88,.04)
-    readout += label("HistoryTitle", "Recent bearings", .06,.50,.88,.048,
+    readout += label("InterceptionStatus", "You are being hunted.", .06,.31,.88,.045,
+                     "1 0.698 0.325 1").replace('ignorepointer 1','ignorepointer 1\nvisible 0')
+    readout += label("HistoryTitle", "Historical sectors", .06,.50,.88,.048,
                      "0.55 0.85 0.90 1").replace('ignorepointer 1','ignorepointer 1\nvisible 0')
     for index in range(4):
         row = label(f"History{index}", "", .06,.548 + index * .044,.88,.043)

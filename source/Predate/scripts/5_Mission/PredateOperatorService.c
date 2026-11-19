@@ -318,7 +318,7 @@ class PredateOperatorService
             s.m_WorldState.HasBotVitals = false;
             s.m_WorldState.Observations.Entries.Clear();
             s.m_WorldState.PendingSounds.Clear();
-            PredateSignalService.NewDeployment(s);
+            PredateSignalService.NewDeployment(s, true);
         }
     }
 

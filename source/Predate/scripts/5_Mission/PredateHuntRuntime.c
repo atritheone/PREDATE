@@ -48,7 +48,10 @@ class PredateHuntRuntime
             bool existing = track != null;
             if (!track) track = PredateSignalService.Track(observer.Id, contact.Id);
             vector samplePosition = contact.Position;
-            PredateObservation sample = PredateSignalRules.ReceiverReading(track, origin, samplePosition, now, config);
+            track.Reception = PredateSignalRules.Reception(origin, samplePosition, true, config);
+            PredateObservation sample;
+            if (track.Reception == PredatePulseReception.BEARING)
+                sample = PredateSignalRules.ReceiverReading(track, origin, samplePosition, now, config);
             if (!sample)
             {
                 if (existing) track.RecordSample(null);
@@ -100,6 +103,7 @@ class PredateHuntRuntime
                 for (int legacy = observer.Memory.Entries.Count() - 1; legacy >= 0; legacy--)
                     if (observer.Memory.Entries[legacy].Source == PredateObservationSource.SIGNAL) observer.Memory.Entries.RemoveOrdered(legacy);
             Prepare(observer.Receiver, observer.Hunter, observer.Id, now);
+            if (now < observer.Receiver.NextPulseAt) continue;
             for (int index = observer.Receiver.Tracks.Count() - 1; index >= 0; index--)
             {
                 string subject = observer.Receiver.Tracks[index].SubjectId;
@@ -128,11 +132,11 @@ class PredateHuntRuntime
         bool recover = actor.PredateOwnActionPriority();
         PredateHuntReceiver receiver = hunter.Receiver;
         vector position = hunter.Position;
-        PredateHuntSelection.Update(receiver, hunter.Hunter, hunter.Memory, position, playerId, now, combat || recover, session.m_WorldState.PlayerLastDeathAt);
+        PredateHuntSelection.Update(receiver, hunter.Hunter, position, now, combat || recover);
         PredateSignalTrack track = receiver.Find(receiver.TargetId);
         string subject = receiver.TargetId;
         if (subject == "player-01") subject = playerId;
-        if (!combat && !recover && track && !track.LastSample && track.History.Count() > 0)
+        if (!combat && !recover && track && track.Reception == PredatePulseReception.CLOSE && track.History.Count() > 0)
         {
             PredateObservation last = track.History[track.History.Count() - 1];
             if (last.DistanceBand <= 2 && !last.Expired(now) && receiver.FinalSearchKey != last.EventKey)
@@ -155,6 +159,41 @@ class PredateHuntRuntime
         {
             if (actor.m_PredateAppliedGoal != -1) actor.PredateReleaseRoute();
         }
-        else actor.PredateApplyRoute(hunter.Hunter);
+        else
+        {
+            if (!hunter.Hunter.HasGoal && receiver.TargetId == "" && now >= hunter.Hunter.ScoutAt)
+                Scout(hunter.Hunter, position, now);
+            actor.PredateApplyRoute(hunter.Hunter);
+        }
+    }
+
+    static void Scout(PredateHunterState state, vector own, float now)
+    {
+        state.ScoutAt = now + 12;
+        float heading = PredateMath.WrapHeading(state.ScoutHeading + Math.RandomFloat(-55, 55));
+        if (state.GoalRevision == 0) heading = Math.RandomFloat(0, 359);
+        float best = 1000000;
+        vector destination;
+        for (int index = 0; index < 4; index++)
+        {
+            float bearing = PredateMath.WrapHeading(heading + index * 90);
+            vector point = own + PredateInformationMath.BearingDirection(bearing) * 160;
+            if (!PredateRoutePlanner.Land(point)) continue;
+            point[1] = GetGame().SurfaceY(point[0], point[2]);
+            vector grounded;
+            if (!PredateRoutePlanner.Snap(point, 12, grounded)) continue;
+            float cost = PredateRoutePlanner.LegCost(own, grounded) + index * 5;
+            if (cost >= best) continue;
+            best = cost;
+            destination = grounded;
+        }
+        if (best >= 1000000)
+        {
+            state.ScoutHeading = PredateMath.WrapHeading(heading + 90);
+            return;
+        }
+        state.ScoutHeading = PredateMath.Bearing(own, destination);
+        state.SearchUntil = now + 100;
+        PredateHunterBrain.Goal(state, own, destination, now, "scout", "Scout traversable terrain while the receiver is quiet", "");
     }
 }

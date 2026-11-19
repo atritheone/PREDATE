@@ -321,12 +321,13 @@ class PredatePeerRetargetMission : MissionServer
     ref PredatePeerTrialReport m_Result = new PredatePeerTrialReport;
     int m_Phase;
     float m_NextSlot;
+    float m_ResampleAt;
     string m_PlayerSample;
 
     override void OnUpdate(float timeslice)
     {
         super.OnUpdate(timeslice);
-        if (m_Phase == 3 || !m_PredateSession.m_ActorsActive || !m_PredateSession.m_PeerRoster) return;
+        if (m_Phase == 4 || !m_PredateSession.m_ActorsActive || !m_PredateSession.m_PeerRoster) return;
         PredatePeerBinding rook = m_PredateSession.m_PeerRoster.Find("rook-01");
         PredatePeerBinding lynx = m_PredateSession.m_PeerRoster.Find("lynx-01");
         PredateHuntReceiver receiver = rook.State.HuntReceiver;
@@ -362,12 +363,19 @@ class PredatePeerRetargetMission : MissionServer
             lynx.Actor.SetHealth("", "Health", 0);
             m_Phase = 2;
         }
-        else if (m_Phase == 2 && lynx.State.Operator.LifeState == "defeated" && !receiver.Find("lynx-01"))
+        else if (m_Phase == 2 && lynx.State.Operator.LifeState == "defeated")
+        {
+            m_Result.Check(receiver.NextPulseAt == m_NextSlot && receiver.Find("lynx-01") && receiver.TargetId == "lynx-01", "remote defeat stays private between pulses");
+            // Advance only this disposable fixture's scheduled scan.
+            m_ResampleAt = now;
+            receiver.NextPulseAt = now;
+            m_Phase = 3;
+        }
+        else if (m_Phase == 3 && receiver.NextPulseAt > m_ResampleAt)
         {
             PredateSignalTrack retained = receiver.Find("player-01");
-            m_Result.Check(receiver.TargetId == "player-01", "closest remaining legitimate contact is selected");
-            m_Result.Check(receiver.NextPulseAt == m_NextSlot, "switch preserves the receiver schedule");
-            m_Result.Check(retained && retained.LastSample && retained.LastSample.EventKey == m_PlayerSample, "switch uses an existing reading");
+            m_Result.Check(!receiver.Find("lynx-01") && receiver.TargetId == "player-01", "the next scan removes the lost contact and selects a legitimate alternative");
+            m_Result.Check(retained && retained.LastSample && retained.LastSample.EventKey != m_PlayerSample, "switch uses a new scheduled reading");
             m_Result.Check(receiver.Valid(now, "rook-01"), "private receiver still validates");
             m_Result.Actors.Insert(PredatePeerTrialRow.Capture(rook));
             m_Result.SimulationSeconds = now;
@@ -376,7 +384,7 @@ class PredatePeerRetargetMission : MissionServer
             m_Result.Check(m_Result.Error == "", "switch and receiver can be saved");
             string error;
             JsonFileLoader<PredatePeerTrialReport>.SaveFile("$profile:PeerRetarget.json", m_Result, error);
-            m_Phase = 3;
+            m_Phase = 4;
         }
     }
 }
@@ -389,6 +397,17 @@ class PredatePeerEncounterMission : MissionServer
     float m_StartedAt = -1;
     float m_NextDiagnostic;
     bool m_Done;
+
+    bool ObservedAnonymously(eAIBase observer, eAIBase candidate, float now)
+    {
+        eAITargetInformationState known = observer.eAI_GetTargetInformationState(candidate.GetTargetInformation(), false);
+        if (!known || known.m_PredateVisualContactKey == "") return false;
+        foreach (PredateObservation sighting : observer.m_PredateMemory.Entries)
+        {
+            if (sighting.Source == PredateObservationSource.VISUAL && sighting.VisualContactKey == known.m_PredateVisualContactKey && sighting.SubjectId == "" && !sighting.Expired(now)) return true;
+        }
+        return false;
+    }
 
     override void OnUpdate(float timeslice)
     {
@@ -415,12 +434,12 @@ class PredatePeerEncounterMission : MissionServer
             m_Result.Diagnostics.Insert("Lynx at " + now + ": " + m_LynxActor.PredateCombatDiagnostic());
             m_Result.Diagnostics.Insert("Rook at " + now + ": " + m_RookActor.PredateCombatDiagnostic());
         }
-        bool lynxSawRook = lynx.State.Memory.Latest("rook-01", PredateObservationSource.VISUAL, now) != null;
-        bool rookSawLynx = rook.State.Memory.Latest("lynx-01", PredateObservationSource.VISUAL, now) != null;
+        bool lynxSawRook = ObservedAnonymously(m_LynxActor, m_RookActor, now);
+        bool rookSawLynx = ObservedAnonymously(m_RookActor, m_LynxActor, now);
         int fired = m_LynxActor.m_PredateFiredShots + m_RookActor.m_PredateFiredShots;
         float health = m_LynxActor.GetHealth("", "Health") + m_RookActor.GetHealth("", "Health");
         if (now < m_StartedAt + 50 && !(fired > 0 && health < 200 && (lynxSawRook || rookSawLynx))) return;
-        m_Result.Check(lynxSawRook || rookSawLynx, "a rival was acquired by the native visual sensor");
+        m_Result.Check(lynxSawRook || rookSawLynx, "native sight acquires an anonymous contact");
         m_Result.Check(fired > 0, "one or both independent rivals fired after acquiring contact");
         m_Result.Check(health < 200, "the encounter produces native damage");
         m_Result.Check(!lynx.State.HuntReceiver.Find("rook-01") && !rook.State.HuntReceiver.Find("lynx-01"), "the encounter stayed within the bearing cutoff");

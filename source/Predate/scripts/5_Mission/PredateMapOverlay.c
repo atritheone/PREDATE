@@ -97,6 +97,43 @@ class PredateMapOverlay
         }
     }
 
+    vector HistoryPoint(PredateReceiverSample sample, float bearing, float metres)
+    {
+        return LocalPoint(sample.Origin + PredateInformationMath.BearingDirection(bearing) * metres);
+    }
+
+    void DrawHistory(PredateState state)
+    {
+        if (!state || !state.CanShowHistory()) return;
+        for (int index = state.History.Count() - 1; index >= 0; index--)
+        {
+            PredateReceiverSample sample = state.History[index];
+            if (!sample || sample.DistanceBand <= 0) continue;
+            float outer = sample.DistanceBand * PredateBearingPulse.BAND_METRES;
+            float inner = outer - PredateBearingPulse.BAND_METRES;
+            int alpha = Math.Round(Math.Clamp(215 - sample.Age * 0.5, 70, 215));
+            int edge = ARGB(alpha, 100, 226, 255);
+            int guide = ARGB(alpha / 2, 100, 226, 255);
+            vector origin = HistoryPoint(sample, sample.Bearing, 0);
+            vector nearPoint = HistoryPoint(sample, sample.Bearing, inner);
+            vector farPoint = HistoryPoint(sample, sample.Bearing, outer);
+            m_Canvas.DrawLine(origin[0], origin[1], nearPoint[0], nearPoint[1], m_Scale, guide);
+            m_Canvas.DrawLine(nearPoint[0], nearPoint[1], farPoint[0], farPoint[1], 2 * m_Scale, edge);
+            for (int step = 1; step <= 8; step++)
+            {
+                float bearing = sample.Bearing + PredateBearingPulse.DEGREES * step / 8.0;
+                vector nextNear = HistoryPoint(sample, bearing, inner);
+                vector nextFar = HistoryPoint(sample, bearing, outer);
+                m_Canvas.DrawLine(nearPoint[0], nearPoint[1], nextNear[0], nextNear[1], 2 * m_Scale, edge);
+                m_Canvas.DrawLine(farPoint[0], farPoint[1], nextFar[0], nextFar[1], 2 * m_Scale, edge);
+                nearPoint = nextNear;
+                farPoint = nextFar;
+            }
+            m_Canvas.DrawLine(origin[0], origin[1], nearPoint[0], nearPoint[1], m_Scale, guide);
+            m_Canvas.DrawLine(nearPoint[0], nearPoint[1], farPoint[0], farPoint[1], 2 * m_Scale, edge);
+        }
+    }
+
     void DrawPlayer(PlayerBase player, float scale)
     {
         vector position = player.GetPosition();
@@ -197,6 +234,7 @@ class PredateMapOverlay
         if (!UpdateProjection()) return;
         m_Scale = scale;
         m_PlayerPoint = LocalPoint(player.GetPosition());
+        DrawHistory(state);
         m_LabelHalfWidth = 50 * scale;
         m_LabelHeight = 25 * scale;
         // Set the radius from the viewport. The map clips the dial when the player is off-centre.

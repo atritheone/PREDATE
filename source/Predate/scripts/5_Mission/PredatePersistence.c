@@ -105,6 +105,7 @@ class PredatePersistence
             s.m_WorldState.InformationSchema = 1;
         }
         if (s.m_WorldState.InformationSchema != 1 || !s.m_WorldState.Observations) return Fail(s, "Unsupported private information schema");
+        if (s.m_WorldState.Observations.Entries) s.m_WorldState.Observations.AnonymizeSightings();
         if (s.m_WorldState.Observations.OwnerId != record.Id || !s.m_WorldState.Observations.Validate(s.m_WorldState.SimulationSeconds))
             return Fail(s, "Invalid private observation memory");
         if (!s.m_WorldState.PendingSounds) s.m_WorldState.PendingSounds = new array<ref PredateObservation>;

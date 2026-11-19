@@ -21,6 +21,7 @@ class PredateHuntFeed
     bool m_WasClose;
     bool m_HadBearing;
     bool m_DeathObserved;
+    bool m_Visible = true;
 
     void PredateHuntFeed()
     {
@@ -37,7 +38,12 @@ class PredateHuntFeed
         notice.Color = color;
         notice.Remaining = 6;
         m_Notices.InsertAt(notice, 0);
-        if (m_Notices.Count() > ROWS) m_Notices.RemoveOrdered(ROWS);
+        if (m_Notices.Count() > ROWS)
+        {
+            int victim = ROWS;
+            while (victim > 0 && m_Notices[victim].Color == HUNTED) victim--;
+            m_Notices.RemoveOrdered(victim);
+        }
     }
 
     void Observe(PlayerBase player, PredateState state)
@@ -84,7 +90,7 @@ class PredateHuntFeed
 
     void Update(PlayerBase player, PredateState state, float timeslice)
     {
-        for (int index = m_Notices.Count() - 1; index >= 0; index--)
+        for (int index = m_Notices.Count() - 1; m_Visible && index >= 0; index--)
         {
             m_Notices[index].Remaining -= timeslice;
             if (m_Notices[index].Remaining <= 0) m_Notices.RemoveOrdered(index);
@@ -105,6 +111,7 @@ class PredateHuntFeed
 
     void Show(bool visible)
     {
+        m_Visible = visible;
         if (m_Root) m_Root.Show(visible);
     }
 

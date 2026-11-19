@@ -169,7 +169,8 @@ modded class PlayerBase
         for (int index = 0; index < count; index++)
         {
             PredateReceiverSample sample = new PredateReceiverSample;
-            if (!ctx.Read(sample.Bearing) || !ctx.Read(sample.Error) || !ctx.Read(sample.Age) || !ctx.Read(sample.Origin)) return false;
+            if (!ctx.Read(sample.Bearing) || !ctx.Read(sample.Error) || !ctx.Read(sample.Age) || !ctx.Read(sample.Origin) || !ctx.Read(sample.DistanceBand)) return false;
+            if (sample.DistanceBand < 0 || sample.DistanceBand > PredateBearingPulse.MAX_BAND) return false;
             if (!PredateBearingPulse.Valid(sample.Bearing) || !PredateInformationMath.FiniteVector(sample.Origin)) return false;
             if (!PredateInformationMath.Finite(sample.Age) || sample.Age < 0 || !PredateInformationMath.Finite(sample.Error) || sample.Error < 0) return false;
             state.History.Insert(sample);

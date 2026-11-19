@@ -34,7 +34,7 @@ The operation persists between sessions. Surviving Operators carry their injurie
 
 1. Choose **New Operation** and set the game rules, spawn, and loadout. Select **Create and Play** to deploy.
 2. Open the operation map to see bearing pulses from Operators within 5 km of you when sampled. Each pulse covers a 15° range that can shift between samples. Overlapping arcs stack with nearer Operators inside farther ones. Pulse colours run from yellow for distant signals to red for nearby ones. Select an arc to see its estimated distance band and track it on your compass.
-3. Use successive samples from different positions to narrow the search. The compass hands off to sight and sound inside 200 metres.
+3. Select a contact to see its historical sectors on the terrain from where you took each reading. The receiver hands off to sight and sound when a scheduled pulse finds the target inside 200 metres. Earlier sectors stay on the map.
 4. Use **Save and Quit** to save the operation and stop the local server. Select **Continue** in the launcher to resume it.
 
 If you die, choose **Redeploy** to return with the operation's starting kit or save from the debrief and return later.

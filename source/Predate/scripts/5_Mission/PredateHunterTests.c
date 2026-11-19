@@ -65,7 +65,12 @@ class PredateHunterTests
         ray = PredateSignalRules.Sample(warnedTrack, own, "5000 0 5500", 1, config, 0, 0);
         warnedTrack.Consume(1, 60, ray);
         PredateHunterBrain.Step(evasion, own, 1, memory, warnedTrack, false, false, true);
-        Check(evasion.Mode == "evade" && evasion.Goal == "5100 0 5020", "tracking warning changes a lawful plan without a hunter position");
+        Check(evasion.Mode == "evade" && evasion.HasGoal && evasion.EvidenceKey == "", "warning changes the route without supplying a hunter position");
+        PredateHunterState noSignal = new PredateHunterState;
+        PredateHunterBrain.Step(noSignal, own, 1, memory, null, false, false, true);
+        int warningRoute = noSignal.GoalRevision;
+        PredateHunterBrain.Step(noSignal, own, 3, memory, null, false, false, true);
+        Check(noSignal.Mode == "evade" && noSignal.HasGoal && noSignal.GoalRevision == warningRoute, "warning also prompts one reposition during a quiet receiver window");
         PredateHunterBrain.Step(state, own, 62, memory, track, true, false);
         Check(!state.HasGoal && state.Mode == "combat", "lawful combat yields strategic movement to native tactics");
         PredateHunterBrain.Step(state, own, 63, memory, track, false, true);

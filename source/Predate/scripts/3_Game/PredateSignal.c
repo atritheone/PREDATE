@@ -25,6 +25,15 @@ class PredateSignatureActivity
     }
 }
 
+enum PredatePulseReception
+{
+    WAITING,
+    BEARING,
+    CLOSE,
+    OUT_OF_RANGE,
+    UNAVAILABLE
+}
+
 class PredateSignalTrack
 {
     string OwnerId;
@@ -37,6 +46,7 @@ class PredateSignalTrack
     float BroadcastRadius;
     float BroadcastTime;
     int PlayerPulseFormat;
+    int Reception;
     ref PredateObservation LastSample;
     ref array<ref PredateObservation> History = new array<ref PredateObservation>;
 
@@ -134,6 +144,7 @@ class PredateSignalTrack
         if (!PredateInformationMath.Finite(NextPulseAt) || NextPulseAt < 0 || !History || History.Count() > 4) return false;
         if (Selected && !EverLocked) return false;
         if (PlayerPulseFormat < 0 || PlayerPulseFormat > 2) return false;
+        if (Reception < PredatePulseReception.WAITING || Reception > PredatePulseReception.UNAVAILABLE) return false;
         if (PlayerPulseFormat > 0 && (OwnerId != "player-01" || BroadcastRadius != 0)) return false;
         if (PlayerPulseFormat == 2 && LastSample && LastSample.PulseDistance <= 0) return false;
         if (BroadcastRadius != 0)
@@ -229,6 +240,14 @@ class PredateBearingPulse
 
 class PredateSignalRules
 {
+    static int Reception(vector origin, vector subject, bool transmitting, PredateConfig config)
+    {
+        if (!transmitting) return PredatePulseReception.UNAVAILABLE;
+        if (WithinFinalApproach(origin, subject, config.FinalApproachRadius)) return PredatePulseReception.CLOSE;
+        if (PredateHunterBrain.Distance(origin, subject) > PredateBearingPulse.REACH) return PredatePulseReception.OUT_OF_RANGE;
+        return PredatePulseReception.BEARING;
+    }
+
     static bool WithinFinalApproach(vector observer, vector subject, float radius)
     {
         vector delta = subject - observer;

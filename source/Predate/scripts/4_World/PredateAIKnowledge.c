@@ -108,22 +108,16 @@ modded class eAIBase
     void PredateRememberVisual(eAITargetInformationState state)
     {
         if (!m_PredateMemory || !state || !state.m_Info) return;
-        PlayerBase person = PlayerBase.Cast(state.m_Info.GetEntity());
-        if (!person) return;
-        string subject;
-        if (person.GetIdentity()) subject = person.GetIdentity().GetId();
-        else
-        {
-            eAIBase rival = eAIBase.Cast(person);
-            if (rival && rival.m_PredateSignatureRegistered) subject = rival.m_PredateOperatorId;
-        }
-        if (subject == "") return;
-        PredateObservation previous = m_PredateMemory.Latest(subject, PredateObservationSource.VISUAL, m_PredateSimulationTime);
-        if (previous && m_PredateSimulationTime - previous.ObservedAt < 0.5) return;
+        if (state.m_PredateVisualContactKey != "" && m_PredateSimulationTime - state.m_PredateVisualContactAt < 0.5) return;
+        // The sensor can recognize its current visual contact without assigning
+        // that silhouette to a radio call sign.
+        if (state.m_PredateVisualContactKey == "" || m_PredateSimulationTime - state.m_PredateVisualContactAt > 2)
+            state.m_PredateVisualContactKey = "sighting-" + m_PredateMemory.NextSerial;
+        state.m_PredateVisualContactAt = m_PredateSimulationTime;
         PredateObservation observation = new PredateObservation;
         observation.EventKey = "visual-" + m_PredateMemory.NextSerial;
         observation.ObserverId = m_PredateOperatorId;
-        observation.SubjectId = subject;
+        observation.VisualContactKey = state.m_PredateVisualContactKey;
         observation.Source = PredateObservationSource.VISUAL;
         observation.ObservedAt = m_PredateSimulationTime;
         observation.ExpiresAt = m_PredateSimulationTime + 120;
@@ -262,6 +256,8 @@ modded class eAIBase
 
 modded class eAITargetInformationState
 {
+    string m_PredateVisualContactKey;
+    float m_PredateVisualContactAt;
     bool m_PredateHasPosition;
     vector m_PredateObservedAimOffset = "0 1.4 0";
     bool m_PredateObservedUnconscious;

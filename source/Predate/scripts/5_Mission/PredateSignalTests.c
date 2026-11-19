@@ -144,16 +144,16 @@ class PredateSignalTests
         far.RecordSample(PredateSignalRules.ReceiverReading(far, vector.Zero, "0 0 1800", 10, config));
         receiver.Tracks.Insert(near);
         receiver.Tracks.Insert(far);
-        PredateHuntSelection.Update(receiver, hunter, memory, vector.Zero, "fixture-player", 10, false);
+        PredateHuntSelection.Update(receiver, hunter, vector.Zero, 10, false);
         Check(receiver.TargetId == "lynx-01", "same receiver prefers a nearer AI over a farther human");
         Check(!PredateSignalRules.ReceiverReading(near, vector.Zero, "0 0 199", 10, config) && !PredateSignalRules.ReceiverReading(far, vector.Zero, "0 0 5001", 10, config), "private receiver uses the player cutoff and outer range");
         near.RecordSample(PredateSignalRules.ReceiverReading(near, vector.Zero, "0 0 400", 100, config));
         far.RecordSample(PredateSignalRules.ReceiverReading(far, vector.Zero, "0 0 1800", 100, config));
-        PredateHuntSelection.Update(receiver, hunter, memory, vector.Zero, "fixture-player", 100, false);
+        PredateHuntSelection.Update(receiver, hunter, vector.Zero, 100, false);
         Check(receiver.TargetId == "lynx-01" && receiver.Replanned, "one stalled window tries a new approach");
-        PredateHuntSelection.Update(receiver, hunter, memory, vector.Zero, "fixture-player", 190, false);
+        PredateHuntSelection.Update(receiver, hunter, vector.Zero, 190, false);
         Check(receiver.TargetId == "player-01" && receiver.DeferredId == "lynx-01", "two stalled windows choose the closest alternative");
-        PredateHuntSelection.Update(receiver, hunter, memory, vector.Zero, "fixture-player", 191, false);
+        PredateHuntSelection.Update(receiver, hunter, vector.Zero, 191, false);
         Check(receiver.TargetId == "player-01", "cooldown prevents an immediate return to the stalled target");
         Check(receiver.Valid(191, "raven-01") && !receiver.Valid(191, "rook-01"), "private hunt persistence validates ownership");
         receiver.Retire("player-01");
@@ -165,8 +165,9 @@ class PredateSignalTests
         oldContact.HasPosition = true;
         oldContact.Estimate = "0 0 15";
         memory.Entries.Insert(oldContact);
-        PredateHuntSelection.Update(receiver, hunter, memory, vector.Zero, "fixture-player", 192, false, 191);
-        Check(receiver.TargetId != "player-01", "prior-life sight cannot select a fresh deployment");
+        memory.AnonymizeSightings();
+        PredateHuntSelection.Update(receiver, hunter, vector.Zero, 192, false);
+        Check(oldContact.SubjectId == "" && oldContact.VisualContactKey != "" && receiver.TargetId != "player-01", "a visual contact cannot select a radio call sign");
     }
 
     void RunService(PredateSession session, PlayerBase player)
@@ -196,13 +197,24 @@ class PredateSignalTests
         Check(state.PlayerSignal.LastSample.Origin == humanPosition && privateTrack.LastSample.Origin == botPosition, "live service captures each recipient origin");
         Check(privateTrack.LastSample.DistanceBand == 2 && privateTrack.LastSample.PulseDistance == 0, "AI receives the player-visible distance band");
         PredateSignalService.MarkPlayerHunted(session, now);
-        Check(state.PlayerInterceptionUntil == now + PredateBearingPulse.INTERVAL + 30 && state.BotInterceptionUntil == now + 30, "interceptions retain the shared pulse cadence");
+        Check(state.PlayerInterceptionUntil == now + PredateBearingPulse.INTERVAL + 30 && state.BotInterceptionUntil == state.PlayerInterceptionUntil, "interceptions retain the shared pulse cadence");
         int serial = privateTrack.NextSampleSerial;
         vector displaced = botPosition + "400 0 0";
         bot.SetPosition(displaced);
         PredateSignalService.Tick(session, player, 0);
         PredateHuntRuntime.Scan(observer, participants, session.m_HuntConfig, now);
         Check(privateTrack.NextSampleSerial == serial && privateTrack.LastSample.Origin == botPosition, "ordinary ticks cannot refresh historical origin");
+        PredateSignalTrack scheduled = PredateSignalService.Track("player-01", "raven-01");
+        PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now, session.m_HuntConfig);
+        bot.SetPosition(humanPosition + "0 0 50");
+        Check(!PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now + 1, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.BEARING && scheduled.LastSample, "crossing the cutoff between polls preserves the previous display");
+        Check(PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now + 90, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.CLOSE && !scheduled.LastSample && scheduled.History.Count() == 1, "scheduled cutoff retains historical evidence");
+        Check(!PredateSignalService.SamplePlayerPulse(scheduled, player, null, now + 91, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.CLOSE, "vanishing contact does not leak between scheduled polls");
+        Check(PredateSignalService.SamplePlayerPulse(scheduled, player, null, now + 180, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.UNAVAILABLE && scheduled.History.Count() == 1, "the next poll confirms signal loss");
+        bot.SetPosition(displaced);
+        PredateHunterState scout = new PredateHunterState;
+        PredateHuntRuntime.Scout(scout, botPosition, now);
+        Check(scout.HasGoal && scout.Mode == "scout" && PredateHunterBrain.Distance(botPosition, scout.Goal) > 90, "quiet receivers can request a traversable scouting leg without a target");
         Check(PredateBearingPulse.Contains(state.PlayerSignal.LastSample.Bearing, 0) && state.PlayerSignal.LastSample.MapRadius == 0 && Math.AbsFloat(state.PlayerSignal.LastSample.PulseDistance - 400) < 0.05, "player pulse keeps its sampled bearing and horizontal distance without target position");
         Check(state.PlayerSignal.BroadcastTime == state.PlayerSignal.LastSample.ObservedAt, "map and compass read one pulse");
         Check(Math.AbsFloat(state.PlayerSignal.NextPulseAt - state.PlayerSignal.BroadcastTime - 90) < 0.005, "both displays wait 90 seconds for the next pulse");

@@ -60,6 +60,10 @@ class PredateReceiverValidation
         int noticeCount = feed.m_Notices.Count();
         feed.Update(player, death, 0);
         result.Check(feed.m_Notices[0].Text == "You are KIA." && feed.m_Rows[0].GetColor() == PredateHuntFeed.DEATH && feed.m_Notices.Count() == noticeCount);
+        feed.Show(false);
+        feed.Update(player, state, 7);
+        result.Check(feed.m_Notices.Count() == noticeCount && HuntWarningVisible(feed), "notices remain queued behind a menu");
+        feed.Show(true);
         feed.Update(player, state, 7);
         result.Check(!feed.m_Rows[0].IsVisible());
         CheckReadyInteraction(result, player);
@@ -133,12 +137,17 @@ class PredateReceiverValidation
             }
             result.Check(Fits(menu.m_Origin));
             result.Check(Fits(menu.m_Bearing));
-            result.Check(!menu.GetLayoutRoot().FindAnyWidget("InterceptionWarning"));
+            result.Check(menu.m_InterceptionStatus && menu.m_InterceptionStatus.IsVisible() && Fits(menu.m_InterceptionStatus), "active interception is visible on the map");
             bool historyMatches;
             if (state.History.Count() == 1)
             {
                 PredateReceiverSample entry = state.History[0];
-                historyMatches = entry.Origin == state.PulseOrigin && entry.Bearing == state.Bearing && entry.Error == state.BearingError && entry.Age >= 0;
+                historyMatches = entry.Origin == state.PulseOrigin && entry.Bearing == state.Bearing && entry.Error == state.BearingError && entry.Age >= 0 && entry.DistanceBand == 2;
+                PredateMapOverlay historicalMap = menu.m_MapOverlay;
+                vector savedMarker = historicalMap.m_PlayerPoint;
+                historicalMap.m_PlayerPoint += "200 100 0";
+                result.Check(vector.Distance(historicalMap.HistoryPoint(entry, entry.Bearing, 0), historicalMap.LocalPoint(entry.Origin)) < 0.1, "historical sector stays at the observer's sampled location");
+                historicalMap.m_PlayerPoint = savedMarker;
             }
             result.Check(historyMatches);
             result.Check(Fits(menu.m_HistoryRows[0]) && menu.m_HistoryRows[0].IsVisible() && !menu.m_HistoryRows[1].IsVisible());
@@ -146,7 +155,7 @@ class PredateReceiverValidation
             result.Check(PredateReceiverText.LostContact(state));
             state.CloseApproach = true;
             menu.ShowHistory(state);
-            result.Check(!menu.m_HistoryTitle.IsVisible() && !menu.m_HistoryRows[0].IsVisible());
+            result.Check(menu.m_HistoryTitle.IsVisible() && menu.m_HistoryRows[0].IsVisible(), "history stays visible on the final approach");
             result.Check(!PredateReceiverText.LostContact(state));
             state.CloseApproach = false;
             state.Locked = false;

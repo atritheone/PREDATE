@@ -21,6 +21,9 @@ class PredateHunterState
     vector ProgressPosition;
     float ProgressAt;
     int RouteFailures;
+    bool InterceptionHandled;
+    float ScoutAt;
+    float ScoutHeading;
 
     bool Validate(float now, string expectedOwner = "raven-01")
     {
@@ -29,7 +32,8 @@ class PredateHunterState
         if (!PredateInformationMath.Finite(NextDecisionAt) || NextDecisionAt < 0 || !PredateInformationMath.Finite(ProgressAt) || ProgressAt < 0 || ProgressAt > now) return false;
         if (!PredateInformationMath.Finite(SearchObservedAt) || SearchObservedAt < 0 || SearchObservedAt > now) return false;
         if (!PredateInformationMath.Finite(SearchRadius) || SearchRadius < 0 || SearchRadius > 1000 || !PredateInformationMath.Finite(SearchUntil) || SearchUntil < 0) return false;
-        return Mode == "hold" || Mode == "observe" || Mode == "evade" || Mode == "approach" || Mode == "search" || Mode == "investigate" || Mode == "combat" || Mode == "recover" || Mode == "reassess";
+        if (!PredateInformationMath.Finite(ScoutAt) || ScoutAt < 0 || !PredateInformationMath.Finite(ScoutHeading) || ScoutHeading < 0 || ScoutHeading >= 360) return false;
+        return Mode == "hold" || Mode == "observe" || Mode == "evade" || Mode == "approach" || Mode == "search" || Mode == "investigate" || Mode == "combat" || Mode == "recover" || Mode == "reassess" || Mode == "scout";
     }
 
     float SearchRadiusAt(float now) { return SearchRadius + Math.Max(0, now - SearchObservedAt) * 1.5; }
@@ -118,10 +122,23 @@ class PredateHunterBrain
     static void Step(PredateHunterState state, vector ownPosition, float now, PredateObservationMemory memory, PredateSignalTrack track, bool combat, bool recover, bool beingTracked = false, float retiredLifeAt = -1, string retiredSubject = "", string selectedSubject = "", bool replan = false)
     {
         if (!state || !memory || memory.OwnerId != state.OwnerId || (track && track.OwnerId != state.OwnerId)) return;
+        if (!beingTracked) state.InterceptionHandled = false;
         if (recover) { Hold(state, "recover", "Own medical or action priority"); return; }
         if (combat) { Hold(state, "combat", "Native tactical control after a lawful contact"); return; }
         if (now < state.NextDecisionAt) return;
         state.NextDecisionAt = now + 1;
+        if (beingTracked && !state.InterceptionHandled)
+        {
+            state.InterceptionHandled = true;
+            float heading = state.ScoutHeading;
+            if (state.HasGoal && Distance(ownPosition, state.Goal) > 1) heading = PredateMath.Bearing(ownPosition, state.Goal);
+            else if (track && track.LastSample) heading = track.LastSample.Bearing + track.LastSample.BearingError;
+            vector escapeDirection = PredateInformationMath.BearingDirection(PredateMath.WrapHeading(heading + 90));
+            state.SearchUntil = now + 45;
+            Goal(state, ownPosition, ownPosition + escapeDirection * 90, now, "evade", "Reposition after an interception warning", "");
+            return;
+        }
+        if (state.Mode == "evade" && state.HasGoal && now < state.SearchUntil && Distance(ownPosition, state.Goal) > 8) return;
         PredateObservation contact = LatestContact(memory, now, retiredLifeAt, retiredSubject, selectedSubject);
         if (contact && contact.EventKey != state.LastContactKey)
         {
@@ -176,19 +193,12 @@ class PredateHunterBrain
                     vector flank = Vector(forward[2], 0, -forward[0]);
                     if (replan) flank = -flank;
                     vector flankGoal = ownPosition + forward * travel + flank * Math.Clamp(travel * 0.45, 35, 85);
-                    if (beingTracked) flankGoal = ownPosition + forward * Math.Min(travel, 35) + flank * 100;
-                    if (beingTracked) Goal(state, ownPosition, flankGoal, now, "evade", "Change approach after an interception warning", signal.EventKey);
-                    else Goal(state, ownPosition, flankGoal, now, "observe", "Close distance from a different bearing", signal.EventKey);
+                    Goal(state, ownPosition, flankGoal, now, "observe", "Close distance from a different bearing", signal.EventKey);
                     return;
                 }
                 vector lateral = Vector(forward[2], 0, -forward[0]);
                 vector observationPosition = ownPosition + lateral * 80 + forward * 60;
-                if (beingTracked)
-                {
-                    observationPosition = ownPosition + lateral * 100 + forward * 20;
-                    Goal(state, ownPosition, observationPosition, now, "evade", "Interception warning prompts a lateral route change without locating the hunter", signal.EventKey);
-                }
-                else Goal(state, ownPosition, observationPosition, now, "observe", "Create a lateral baseline for the next scheduled sample", signal.EventKey);
+                Goal(state, ownPosition, observationPosition, now, "observe", "Create a lateral baseline for the next scheduled sample", signal.EventKey);
             }
             return;
         }
@@ -205,6 +215,12 @@ class PredateHunterBrain
         }
         if (Distance(ownPosition, state.Goal) <= 8)
         {
+            if (state.Mode == "scout")
+            {
+                state.ScoutAt = now + 12;
+                Hold(state, "hold", "Observe from the scouting waypoint");
+                return;
+            }
             if (state.Mode == "observe" || state.Mode == "evade")
             {
                 Hold(state, "hold", "Observation baseline reached; wait for scheduled sample");
