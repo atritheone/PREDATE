@@ -184,6 +184,16 @@ class PredateTrackerMenu : UIScriptedMenu
         if (!m_Map) return;
         if (m_Map.GetScale() > 0.22) m_Map.SetScale(0.22);
         m_Map.SetMapPos(position);
+        if (!m_MapOverlay || !m_MapOverlay.UpdateProjection()) return;
+        // The native map anchor can be offset from the visible pane's center.
+        vector center = m_MapOverlay.ViewportCenter();
+        for (int attempt = 0; attempt < 6; attempt++)
+        {
+            if (vector.DistanceSq(m_MapOverlay.LocalPoint(position), center) <= 64) break;
+            vector offset = position - m_MapOverlay.WorldPoint(center);
+            offset[1] = 0;
+            m_Map.SetMapPos(m_Map.GetMapPos() + offset * 0.55);
+        }
     }
 
     void BeginMapPress(int x, int y)

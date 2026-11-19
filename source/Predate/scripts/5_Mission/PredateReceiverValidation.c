@@ -80,7 +80,8 @@ class PredateReceiverValidation
                 menu.m_Map.SetScale(0.33);
                 Widget centerPlayer = menu.GetLayoutRoot().FindAnyWidget("CenterPlayer");
                 menu.OnClick(centerPlayer, 0, 0, 0);
-                bool centeredPlayer = PredateSignalRules.WithinFinalApproach(menu.m_Map.GetMapPos(), player.GetPosition(), 1);
+                PredateMapOverlay overlay = menu.m_MapOverlay;
+                bool centeredPlayer = overlay.UpdateProjection() && vector.DistanceSq(overlay.LocalPoint(player.GetPosition()), overlay.ViewportCenter()) <= 64;
                 if (!centeredPlayer) Print("[PredateMapTest] could not center player");
                 result.Check(centeredPlayer);
                 float width, height;
@@ -94,10 +95,7 @@ class PredateReceiverValidation
                     vector arrow = menu.m_MapOverlay.LocalPoint(player.GetPosition());
                     // The native map clamps panning when the viewport reaches a world edge.
                     // The blue marker should still land on the player at any zoom.
-                    PredateMapOverlay overlay = menu.m_MapOverlay;
-                    vector relative = arrow - overlay.m_NativeOrigin;
-                    vector nativePoint = Vector(relative[0] / overlay.m_NativeScaleX, relative[1] / overlay.m_NativeScaleY, 0);
-                    vector underArrow = menu.m_Map.ScreenToMap(nativePoint);
+                    vector underArrow = overlay.WorldPoint(arrow);
                     bool pointsToPlayer = PredateSignalRules.WithinFinalApproach(player.GetPosition(), underArrow, 25);
                     if (!pointsToPlayer) Print("[PredateMapTest] arrow " + arrow + " is over " + underArrow + " at zoom " + zoom);
                     result.Check(projectionReady && pointsToPlayer && arrow[0] >= 0 && arrow[0] <= width && arrow[1] >= 0 && arrow[1] <= height);

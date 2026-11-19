@@ -32,7 +32,7 @@ The operation persists between sessions. Surviving Operators carry their injurie
 ## How an operation works
 
 1. Choose **New Operation** and set the game rules, spawn, and loadout. Select **Create and Play** to deploy.
-2. Open the operation map to see bearing pulses from rivals within 10 km of you when sampled. Select an arc to track that signal on your compass.
+2. Open the operation map to see bearing pulses from rivals within 5 km of you when sampled. The bearing dial expands to fit the map pane around your marker. Select an arc to track that signal on your compass.
 3. Use successive samples from different positions to narrow the search. The compass hands off to sight and sound inside 200 metres.
 4. Use **Save and Quit** to save the operation and stop the local server. Select **Continue** in the launcher to resume it.
 

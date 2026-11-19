@@ -146,9 +146,9 @@ class PredateSignalTests
         Check(state.PlayerSignal.LastSample.Bearing == 0 && state.PlayerSignal.LastSample.MapRadius == 0, "player pulse keeps its original sector without target position");
         Check(state.PlayerSignal.BroadcastTime == state.PlayerSignal.LastSample.ObservedAt, "map and compass read one pulse");
         Check(Math.AbsFloat(state.PlayerSignal.NextPulseAt - state.PlayerSignal.BroadcastTime - 90) < 0.005, "both displays wait 90 seconds for the next pulse");
-        Check(!PredateSignalRules.PlayerReading(state.PlayerSignal, "0 0 0", "0 0 10001", now, session.m_HuntConfig), "a rival outside ten kilometres does not broadcast a sector");
-        PredateObservation boundary = PredateSignalRules.PlayerReading(state.PlayerSignal, "0 0 0", "0 300 10000", now, session.m_HuntConfig);
-        Check(boundary && boundary.Bearing == 0, "horizontal ten kilometre boundary is included");
+        Check(!PredateSignalRules.PlayerReading(state.PlayerSignal, "0 0 0", "0 0 5001", now, session.m_HuntConfig), "a rival outside five kilometres does not broadcast a sector");
+        PredateObservation boundary = PredateSignalRules.PlayerReading(state.PlayerSignal, "0 0 0", "0 300 5000", now, session.m_HuntConfig);
+        Check(boundary && boundary.Bearing == 0, "horizontal five kilometre boundary is included");
         Check(PredateBearingPulse.Sector("0 0 0", "-10 0 300") == 345 && PredateBearingPulse.Sector("0 0 0", "10 0 300") == 0, "sectors wrap at north without disclosing their inner bearing");
         PredateSignalService.Select(session, false);
         PredateSignalService.Select(session, true);

@@ -1,5 +1,8 @@
 class PredateMapOverlay
 {
+    static const float BEARING_LABEL_OFFSET = 22;
+    static const float BEARING_LABEL_WIDTH = 68;
+
     MapWidget m_Map;
     CanvasWidget m_Canvas;
     Widget m_Projection;
@@ -68,6 +71,17 @@ class PredateMapOverlay
         return m_NativeOrigin + Vector(nativePoint[0] * m_NativeScaleX, nativePoint[1] * m_NativeScaleY, 0);
     }
 
+    vector WorldPoint(vector localPoint)
+    {
+        vector relative = localPoint - m_NativeOrigin;
+        return m_Map.ScreenToMap(Vector(relative[0] / m_NativeScaleX, relative[1] / m_NativeScaleY, 0));
+    }
+
+    vector ViewportCenter()
+    {
+        return Vector(m_Width / 2, m_Height / 2, 0);
+    }
+
     vector RadialPoint(float bearing, float radius)
     {
         float angle = bearing * Math.DEG2RAD;
@@ -87,8 +101,8 @@ class PredateMapOverlay
 
     void DrawDial(float radius)
     {
-        DrawArc(0, 360, radius, 96, 3 * m_Scale, 0xDB10242D);
-        DrawArc(0, 360, radius, 96, m_Scale, 0xDDB0D3E4);
+        DrawArc(0, 360, radius, 96, 3 * m_Scale, 0xEB26292C);
+        DrawArc(0, 360, radius, 96, m_Scale, 0xF04B4E52);
         for (int index = 0; index < 24; index++)
         {
             int degrees = index * PredateBearingPulse.DEGREES;
@@ -96,11 +110,11 @@ class PredateMapOverlay
             if (degrees % 45 == 0) tick = 9 * m_Scale;
             vector outside = RadialPoint(degrees, radius);
             vector inside = RadialPoint(degrees, radius - tick);
-            m_Canvas.DrawLine(outside[0], outside[1], inside[0], inside[1], 2 * m_Scale, 0xEEB0D3E4);
+            m_Canvas.DrawLine(outside[0], outside[1], inside[0], inside[1], 2 * m_Scale, 0xEE4B4E52);
             TextWidget label = m_Bearings[index];
             if (!label) continue;
-            vector point = RadialPoint(degrees, radius + 22 * m_Scale);
-            PlaceLabel(label, point, 68 * m_Scale, Math.Round(12 * m_Scale));
+            vector point = RadialPoint(degrees, radius + BEARING_LABEL_OFFSET * m_Scale);
+            PlaceLabel(label, point, BEARING_LABEL_WIDTH * m_Scale, Math.Round(12 * m_Scale));
         }
     }
 
@@ -206,10 +220,12 @@ class PredateMapOverlay
         m_PlayerPoint = LocalPoint(player.GetPosition());
         m_LabelHalfWidth = 50 * scale;
         m_LabelHeight = 25 * scale;
-        float radius = Math.Min(m_Width, m_Height) * 0.36;
+        float radius = Math.Min(m_Width, m_Height) * 0.72;
         float horizontalRoom = Math.Min(m_PlayerPoint[0], m_Width - m_PlayerPoint[0]);
         float verticalRoom = Math.Min(m_PlayerPoint[1], m_Height - m_PlayerPoint[1]);
-        float room = Math.Max(60 * scale, Math.Min(horizontalRoom, verticalRoom) - 35 * scale);
+        horizontalRoom -= (BEARING_LABEL_OFFSET + BEARING_LABEL_WIDTH / 2) * scale;
+        verticalRoom -= BEARING_LABEL_OFFSET * scale + m_LabelHeight / 2;
+        float room = Math.Max(60 * scale, Math.Min(horizontalRoom, verticalRoom));
         radius = Math.Min(radius, room);
         DrawDial(radius);
         if (state)

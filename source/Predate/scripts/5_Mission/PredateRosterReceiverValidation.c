@@ -58,6 +58,13 @@ class PredateRosterReceiverValidation
             Finish();
             return;
         }
+        if (m_Phase == 1)
+        {
+            float firstArcRadius = overlay.m_ArcRadii[slot];
+            float originalRadius = Math.Min(overlay.m_Width, overlay.m_Height) * 0.36;
+            Print("[PredateRosterReceiverTest] dial arc=" + firstArcRadius + "; former radius=" + originalRadius + "; arrow=" + overlay.m_PlayerPoint + "; viewport=" + overlay.m_Width + "x" + overlay.m_Height);
+            m_Result.Check(firstArcRadius > originalRadius, "the centered bearing dial draws a larger selectable arc");
+        }
         vector position = overlay.m_LabelPositions[slot];
         if (!useLabel) position = overlay.RadialPoint(pulse.Start + 7.5, overlay.m_ArcRadii[slot]);
         int clickX = Math.Round(overlay.m_Left + position[0]);
@@ -102,6 +109,9 @@ class PredateRosterReceiverValidation
             m_Menu = PredateTrackerMenu.Cast(ui.EnterScriptedMenu(PredateProtocol.MENU, null));
             m_Result.Check(m_Menu != null, "receiver opens in the operation");
             if (!m_Menu) return Finish();
+            PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+            m_Menu.m_Map.SetScale(0.085);
+            m_Menu.CenterOn(player.GetPosition());
             m_Menu.Update(0);
             m_Count = state.Pulses.Count();
             m_First = state.Pulses[0].OperatorId;

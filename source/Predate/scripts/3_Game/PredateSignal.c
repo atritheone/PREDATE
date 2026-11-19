@@ -165,7 +165,7 @@ class PredateBearingPulse
 {
     static const int DEGREES = 15;
     static const float INTERVAL = 90;
-    static const float REACH = 10000;
+    static const float REACH = 5000;
     string OperatorId;
     int Start;
 
