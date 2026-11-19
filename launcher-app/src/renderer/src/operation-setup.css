@@ -283,14 +283,6 @@
   scrollbar-width: thin;
 }
 
-.night-vision-shortcut {
-  grid-column: 1 / -1;
-  min-height: 30px;
-  padding: 4px 7px;
-  text-align: left;
-  font-size: 11px;
-}
-
 .equipment-slot {
   display: grid;
   gap: 1px;

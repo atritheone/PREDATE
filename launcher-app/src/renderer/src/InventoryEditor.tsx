@@ -21,7 +21,7 @@ import {
 interface PickerRequest {
   title: string
   options: Gear[]
-  choose: (item: Gear) => PickerRequest | void
+  choose: (item: Gear) => void
   fits?: (item: Gear) => boolean
 }
 
@@ -31,14 +31,9 @@ const searchAliases: Record<string, string> = {
   NVGoggles: 'nvg nvgs nightvision',
   NVGHeadstrap: 'nvg nvgs night vision mount',
 }
-const nightVisionMountSlots = ['Headgear', 'Eyewear'] as const
 
 function itemVariant(id: string): string {
   return id.replace(/_dayz\b/i, '_Logo')
-}
-
-function nightVisionSlot(item?: Gear): string | undefined {
-  return item?.accepts.find((slot) => slot.toLowerCase() === 'nvg')
 }
 
 function ItemPicker({
@@ -111,7 +106,10 @@ function ItemPicker({
               type="button"
               className="picker-item"
               disabled={!fits}
-              onClick={() => showPicker(request.choose(item) ?? null)}
+              onClick={() => {
+                request.choose(item)
+                showPicker(null)
+              }}
             >
               <span>
                 <strong>{item.name}</strong>
@@ -270,12 +268,10 @@ function ItemDetails({
   item,
   update,
   pick,
-  reveal,
 }: {
   item: InventoryItem
   update: (item: InventoryItem) => void
   pick: OpenPicker
-  reveal?: string
 }): ReactNode {
   const info = gearById.get(item.id)
   if (!info) return null
@@ -326,7 +322,7 @@ function ItemDetails({
                 choose: (part) => attach(slot, newItem(part.id)),
               })
             return installed ? (
-              <details key={slot} open={reveal === slot || undefined}>
+              <details key={slot}>
                 <summary>
                   <span>{slotLabel(slot)}</span>
                   <strong>{gearById.get(installed.id)?.name ?? installed.id}</strong>
@@ -381,7 +377,6 @@ export function InventoryEditor({
 }): ReactNode {
   const [slot, setSlot] = useState<string>('Hands')
   const [picker, setPicker] = useState<PickerRequest | null>(null)
-  const [reveal, setReveal] = useState<string>()
   const entry = inventory[slot]
   const label = equipment.find(([id]) => id === slot)?.[1] ?? slot
   const replace = (next?: InventoryItem): void => {
@@ -396,64 +391,9 @@ export function InventoryEditor({
       options: compatibleGear(slot),
       choose: (item) => replace(newItem(item.id)),
     })
-  const chooseNightVision = (): void => {
-    const mounts = nightVisionMountSlots.flatMap((equipmentSlot) => {
-      const mount = inventory[equipmentSlot]
-      const attachment = mount && nightVisionSlot(gearById.get(mount.id))
-      return attachment ? [{ equipmentSlot, mount, attachment }] : []
-    })
-    const equipped =
-      mounts.find(({ mount, attachment }) => !!mount.attachments[attachment]) ?? mounts[0]
-    const gogglesPicker = (
-      equipmentSlot: string,
-      mount: InventoryItem,
-      attachment: string,
-    ): PickerRequest => ({
-      title: 'Night Vision Goggles',
-      options: compatibleGear(attachment),
-      choose: (goggles) => {
-        setSlot(equipmentSlot)
-        setReveal(attachment)
-        update({
-          ...inventory,
-          [equipmentSlot]: {
-            ...mount,
-            attachments: { ...mount.attachments, [attachment]: newItem(goggles.id) },
-          },
-        })
-      },
-    })
-
-    if (equipped) {
-      const { equipmentSlot, mount, attachment } = equipped
-      setSlot(equipmentSlot)
-      if (mount.attachments[attachment]) setReveal(attachment)
-      else setPicker(gogglesPicker(equipmentSlot, mount, attachment))
-      return
-    }
-
-    setPicker({
-      title: 'Choose a Night Vision Mount',
-      options: nightVisionMountSlots.flatMap((equipmentSlot) =>
-        compatibleGear(equipmentSlot).filter((item) => nightVisionSlot(item)),
-      ),
-      choose: (item) => {
-        const equipmentSlot = nightVisionMountSlots.find((candidate) =>
-          item.slots.some((supported) => supported.toLowerCase() === candidate.toLowerCase()),
-        )
-        const attachment = nightVisionSlot(item)
-        if (equipmentSlot && attachment)
-          return gogglesPicker(equipmentSlot, newItem(item.id), attachment)
-      },
-    })
-  }
-
   return (
     <div className="inventory-workspace">
       <div className="equipment-list" aria-label="Equipment slots">
-        <button type="button" className="night-vision-shortcut" onClick={chooseNightVision}>
-          Night Vision
-        </button>
         {equipment.map(([id, name]) => {
           const item = inventory[id]
           return (
@@ -462,10 +402,7 @@ export function InventoryEditor({
               type="button"
               className="equipment-slot"
               aria-pressed={slot === id}
-              onClick={() => {
-                setSlot(id)
-                setReveal(undefined)
-              }}
+              onClick={() => setSlot(id)}
             >
               <span>{name}</span>
               <strong title={item ? gearById.get(item.id)?.name : undefined}>
@@ -490,13 +427,7 @@ export function InventoryEditor({
           </div>
         </header>
         {entry ? (
-          <ItemDetails
-            key={slot + entry.id}
-            item={entry}
-            update={replace}
-            pick={setPicker}
-            reveal={reveal}
-          />
+          <ItemDetails key={slot + entry.id} item={entry} update={replace} pick={setPicker} />
         ) : (
           <p className="hint">Empty slot</p>
         )}
