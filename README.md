@@ -13,11 +13,7 @@
   ·
   <a href="#how-an-operation-works">How to play</a>
   ·
-  <a href="#quick-start">Quick start</a>
-  ·
-  <a href="#building-and-packaging">Builds</a>
-  ·
-  <a href="#testing">Testing</a>
+  <a href="#installation">Installation</a>
 </p>
 
 ## About the game
@@ -53,7 +49,7 @@ If you die, choose **Redeploy** to return with the operation's starting kit or s
 | Double-tap <kbd>R</kbd> | Rack the action or clear a jam. |
 | Hold <kbd>R</kbd> | Check roughly how full the magazine is. |
 
-## Quick start
+## Installation
 
 PREDATE is set up with a coding agent on your Windows PC. Download or clone this repository, open its folder in your coding agent, and ask it to run the setup.
 
@@ -62,59 +58,3 @@ PREDATE is set up with a coding agent on your Windows PC. Download or clone this
 The agent follows [AGENTS.md](AGENTS.md) to check your installation, build the DayZ mod, package `PREDATE.exe`, and verify the launcher. If Steam needs you to sign in or install missing game content, the agent will tell you what to do and continue once it is ready.
 
 Once setup is complete, keep Steam signed in online and open `PREDATE.exe` or `scripts/Play PREDATE.cmd`. Choose **New Operation** to start fresh or **Continue** to resume an existing save. The portable launcher bundles its Python backend.
-
-## Building and packaging
-
-These commands are a reference for coding agents and contributors. For a guided installation, use the [quick start](#quick-start).
-
-### DayZ mod
-
-Install DayZ, DayZ Server, and DayZ Tools in the default Steam library. Subscribe to CF, Dabs Framework, DayZ Expansion Core, and DayZ Expansion AI in the Steam Workshop. Install Python 3 with the Windows `py` launcher and close DayZ and its server before building.
-
-From the repository root, populate the local runtime and mod copies on the first build, then build against the checked-in release lock.
-
-```powershell
-Push-Location scripts
-py -3 -c "import build; build.runtime()"
-Pop-Location
-py -3 scripts/build.py
-```
-
-The build checks installed inputs against [release-lock.json](config/release-lock.json). If Steam has updated a dependency, review the change before refreshing the lock with `py -3 scripts/build.py --accept-dependency-update`.
-
-### Windows launcher
-
-With Node.js 24, npm, and Python 3 installed, run the following from the repository root.
-
-```powershell
-Set-Location launcher-app
-npm ci
-npm run package
-```
-
-Copy `launcher-app/release/PREDATE.exe` to the repository root for the CMD shortcuts. During launcher development, run `npm run dev` from `launcher-app/`.
-
-## Project structure
-
-| Path | Contents |
-| --- | --- |
-| [`source/Predate/`](source/Predate/) | DayZ mod scripts, configurations, and in-game UI assets. |
-| [`source/mission/`](source/mission/) | Chernarus mission setup and configuration. |
-| [`source/validation/`](source/validation/) | Native DayZ validation scenarios and game-data exports. |
-| [`launcher-app/`](launcher-app/) | Electron launcher, React UI, and Windows packaging scripts. |
-| [`scripts/`](scripts/) | Build tools, launcher shortcuts, local server controls, and Python session handling. |
-| [`config/`](config/) | Release lock and local JSON settings. |
-| [`flash/`](flash/) | PREDATE branding and source artwork. |
-| [`tests/`](tests/) | Python unit tests and native DayZ integration checks. |
-
-## Testing
-
-Run the Python unit tests from the repository root and build the launcher with its installed dependencies.
-
-```powershell
-py -3 -m unittest discover -s tests -v
-Set-Location launcher-app
-npm run build
-```
-
-The native integration checks require a provisioned DayZ installation and use dedicated development or test worlds.
