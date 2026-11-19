@@ -59,7 +59,8 @@ class PredateHunterRuntimeTests
 
     void CheckDisplacement(float now, vector botPosition)
     {
-        PredateSignalTrack track = Session.m_WorldState.BotSignal;
+        PredateSignalTrack track = Session.m_WorldState.HuntReceiver.Find("player-01");
+        if (!track) return;
         PredateHunterState hunter = Session.m_WorldState.Hunter;
         if (!HiddenDisplaced && now - StartedAt >= 70)
         {
@@ -149,7 +150,7 @@ class PredateHunterRuntimeTests
         PreviousSampleAt = StartedAt;
         PredateSignalService.Select(session, true);
         PredateSignalService.Tick(session, player, 0);
-        PredateHunterService.Tick(session);
+        PredateHuntRuntime.Tick(session, player, player.GetIdentity().GetId());
         Check(session.m_WorldState.Hunter.Mode == "observe" || session.m_WorldState.Hunter.Mode == "evade", "initial pulse requests a lateral observation route");
         Check(bot.GetGroup().GetWaypoints().Count() == 2, "native group receives a terrain-scored route and its goal");
         Check(!bot.PredateTacticalPriority(StartedAt), "initial movement has no visual tactical contact");
@@ -179,7 +180,7 @@ class PredateHunterRuntimeTests
             PauseSimulation = now;
             PausePosition = position;
             PauseRevision = state.GoalRevision;
-            PauseNextPulse = Session.m_WorldState.BotSignal.NextPulseAt;
+            PauseNextPulse = Session.m_WorldState.HuntReceiver.NextPulseAt;
             float wall = GetGame().GetTickTime();
             PauseWallTime = wall;
             PredateServerPauseDriver.Poll.Insert(PollPause);
@@ -255,7 +256,7 @@ class PredateHunterRuntimeTests
     {
         Check(Session.m_Paused && Session.m_WorldState.SimulationSeconds == PauseSimulation, "gameplay pause holds the hunter simulation clock");
         Check(Session.m_HuntBot.GetPosition() == PausePosition && Session.m_HuntBot.GetIsSimulationDisabled(), "gameplay pause holds actual bot locomotion");
-        Check(Session.m_WorldState.Hunter.GoalRevision == PauseRevision && Session.m_WorldState.BotSignal.NextPulseAt == PauseNextPulse, "gameplay pause holds route decisions and scheduled pulses");
+        Check(Session.m_WorldState.Hunter.GoalRevision == PauseRevision && Session.m_WorldState.HuntReceiver.NextPulseAt == PauseNextPulse, "gameplay pause holds route decisions and scheduled pulses");
         Session.SetPaused(false);
         GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(UpdateProbe, 1000, false);
     }

@@ -112,7 +112,8 @@ class PredateDeployment
             if (state.Contacts[index].PlayerId == playerId) state.Contacts.Remove(index);
         session.m_MemoryRestored = false;
         PredateSignalService.PlayerRedeployed(session);
-        RetireOldContact(state.Hunter, state.Observations, session.m_HuntBot, playerId, state.SimulationSeconds, true);
+        RetireOldContact(state.Hunter, state.Observations, session.m_HuntBot, playerId, state.SimulationSeconds, state.HuntReceiver.TargetId == "player-01");
+        state.HuntReceiver.Retire("player-01");
         if (session.m_PeerRoster) session.m_PeerRoster.RetirePlayerContact(playerId, state.SimulationSeconds);
 
         player.m_PredateStagedForDeployment = false;

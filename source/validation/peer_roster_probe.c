@@ -27,8 +27,8 @@ class PredatePeerTrialRow
         row.Id = peer.Operator.Id;
         row.Key = peer.Operator.StorageKey;
         row.Life = peer.Operator.LifeState;
-        row.Target = peer.Receiver.SubjectId;
-        row.NextPulse = peer.Receiver.NextPulseAt;
+        row.Target = peer.HuntReceiver.TargetId;
+        row.NextPulse = peer.HuntReceiver.NextPulseAt;
         row.ObservationCount = peer.Memory.Entries.Count();
         row.RouteMode = peer.Hunter.Mode;
         row.RouteEvidence = peer.Hunter.EvidenceKey;
@@ -95,9 +95,8 @@ class PredatePeerValidationMission : MissionServer
         sound.Estimate = area;
         sound.Radius = 20;
         binding.State.Memory.Add(sound, now);
-        binding.State.Receiver.SetSelected(true, now, 60);
-        binding.State.Receiver.NextPulseAt = now;
-        binding.State.Receiver.Consume(now, 60 + serial, null);
+        binding.State.HuntReceiver.OwnerId = binding.State.Operator.Id;
+        binding.State.HuntReceiver.NextPulseAt = now + 60 + serial;
     }
 
     void Seed(PredatePeerBinding binding, float health, float blood, int magazineCount, int clockOffset)
@@ -156,8 +155,8 @@ class PredatePeerValidationMission : MissionServer
         else report.Check(!lynx.Actor && lynx.State.Operator.LifeState == "defeated", "defeated rival remains absent after cold start");
         report.Check(lynx.State.Memory != rook.State.Memory && lynx.State.PendingSounds != rook.State.PendingSounds, "separate private memory and pending sound lists");
         report.Check(lynx.State.Memory.Entries.Count() == 1 && rook.State.Memory.Entries.Count() == 1 && lynx.State.Memory.Entries[0].EventKey != rook.State.Memory.Entries[0].EventKey, "each peer keeps only its own retained test evidence");
-        report.Check(lynx.State.Receiver != rook.State.Receiver && lynx.State.Receiver.SubjectId == "rook-01" && rook.State.Receiver.SubjectId == "lynx-01", "independent selected targets");
-        report.Check(lynx.State.Receiver.NextPulseAt == 71 && rook.State.Receiver.NextPulseAt == 83, "independent pulse schedules");
+        report.Check(lynx.State.HuntReceiver != rook.State.HuntReceiver && lynx.State.HuntReceiver.TargetId == "" && rook.State.HuntReceiver.TargetId == "", "independent receivers have no authored targets");
+        report.Check(lynx.State.HuntReceiver.NextPulseAt == 71 && rook.State.HuntReceiver.NextPulseAt == 83, "independent pulse schedules");
 
         foreach (PredatePeerBinding peer : m_Peers.m_Bindings)
             report.Actors.Insert(PredatePeerTrialRow.Capture(peer));
@@ -253,15 +252,15 @@ class PredatePeerActiveMission : MissionServer
     void CheckReceiver(PredatePeerBinding binding, float now)
     {
         PredatePeerState peer = binding.State;
-        PredateObservation sample = peer.Receiver.LastSample;
+        PredateSignalTrack track = peer.HuntReceiver.Find(peer.HuntReceiver.TargetId);
+        PredateObservation sample;
+        if (track) sample = track.LastSample;
         string id = peer.Operator.Id;
-        m_Result.Check(sample && sample.ObserverId == id && sample.SubjectId == peer.Receiver.SubjectId && sample.SubjectId != "player-01", "privately samples an independent rival for " + id);
+        m_Result.Check(sample && sample.ObserverId == id && sample.SubjectId == peer.HuntReceiver.TargetId, "privately samples an independent rival for " + id);
         m_Result.Check(sample && sample.HasBearing && !sample.HasPosition && sample.Estimate == vector.Zero && PredateHunterBrain.Distance(sample.Origin, peer.Start) <= 2, "bearing retains its own historical origin without target coordinates for " + id);
-        m_Result.Check(peer.Receiver.History.Count() == 1 && peer.Memory.Latest(peer.Receiver.SubjectId, PredateObservationSource.SIGNAL, now) != null, "private memory records earned bearing for " + id);
-        string expectedMode = "observe";
-        if (id == "rook-01") expectedMode = "evade";
-        m_Result.Check(sample && peer.Hunter.HasGoal && peer.Hunter.EvidenceKey == sample.EventKey && peer.Hunter.Mode == expectedMode && binding.Actor.m_PredateRouteActive, "staggered evidence produces a distinct native route for " + id);
-        m_Result.Check(peer.Receiver.NextPulseAt > m_StartedAt + 10, "pulse schedule retained for " + id);
+        m_Result.Check(track && track.History.Count() == 1 && sample && sample.DistanceBand > 0 && sample.PulseDistance == 0, "private memory records earned bearing for " + id);
+        m_Result.Check(sample && peer.Hunter.HasGoal && peer.Hunter.EvidenceKey == sample.EventKey && (peer.Hunter.Mode == "observe" || peer.Hunter.Mode == "evade") && binding.Actor.m_PredateRouteActive, "private evidence produces a native route for " + id);
+        m_Result.Check(peer.HuntReceiver.NextPulseAt > m_StartedAt + 10, "pulse schedule retained for " + id);
     }
 
     void PollPeerPause(float elapsed)
@@ -322,60 +321,62 @@ class PredatePeerRetargetMission : MissionServer
     ref PredatePeerTrialReport m_Result = new PredatePeerTrialReport;
     int m_Phase;
     float m_NextSlot;
-    int m_NextSerial;
-    string m_LynxEvidence;
+    string m_PlayerSample;
 
     override void OnUpdate(float timeslice)
     {
         super.OnUpdate(timeslice);
-        if (m_Phase == 5 || !m_PredateSession.m_ActorsActive || !m_PredateSession.m_PeerRoster) return;
+        if (m_Phase == 3 || !m_PredateSession.m_ActorsActive || !m_PredateSession.m_PeerRoster) return;
         PredatePeerBinding rook = m_PredateSession.m_PeerRoster.Find("rook-01");
         PredatePeerBinding lynx = m_PredateSession.m_PeerRoster.Find("lynx-01");
-        PredateSignalTrack track = rook.State.Receiver;
-        PredateObservation sample = track.LastSample;
+        PredateHuntReceiver receiver = rook.State.HuntReceiver;
         float now = m_PredateSession.m_WorldState.SimulationSeconds;
-        if (m_Phase == 0 && sample && sample.SubjectId == "lynx-01")
+        if (m_Phase == 0)
         {
-            m_LynxEvidence = sample.EventKey;
-            m_Result.Check(rook.Actor.PlayerIsEnemy(lynx.Actor), "initial receiver lock is on an independent opponent");
-            m_NextSlot = track.NextPulseAt;
-            m_NextSerial = track.NextSampleSerial;
-            lynx.Actor.SetHealth("", "Health", 0);
-            m_Phase = 1;
+            array<Man> players = {};
+            GetGame().GetPlayers(players);
+            foreach (Man man : players)
+            {
+                PlayerBase player = PlayerBase.Cast(man);
+                if (!player || !player.GetIdentity()) continue;
+                rook.Actor.SetPosition(m_PredateSession.PredateGround("4500 0 6500"));
+                lynx.Actor.SetPosition(m_PredateSession.PredateGround("4500 0 6800"));
+                player.SetPosition(m_PredateSession.PredateGround("4500 0 7150"));
+                m_PredateSession.m_HuntBot.SetPosition(m_PredateSession.PredateGround("4500 0 7600"));
+                receiver.NextPulseAt = now;
+                m_Phase = 1;
+                return;
+            }
         }
-        else if (m_Phase == 1 && track.SubjectId == "raven-01")
+        else if (m_Phase == 1 && receiver.NextPulseAt > now)
         {
-            m_Result.Check(lynx.State.Operator.LifeState == "defeated", "Lynx stays defeated");
-            m_Result.Check(track.NextPulseAt == m_NextSlot && track.NextSampleSerial == m_NextSerial && !sample, "switch to Raven preserves the pending pulse slot");
-            m_Result.Check(track.History.Count() == 0 && rook.State.Memory.Latest("lynx-01", PredateObservationSource.SIGNAL, now) != null, "old bearings remain private memory and leave the active receiver");
+            PredateSignalTrack human = receiver.Find("player-01");
+            PredateSignalTrack peer = receiver.Find("lynx-01");
+            m_Result.Check(human && human.LastSample && peer && peer.LastSample, "both player and Operator appear on this receiver");
+            m_Result.Check(receiver.TargetId == "lynx-01", "nearer Operator wins the first decision");
+            m_Result.Check(human && human.LastSample && human.LastSample.DistanceBand == 3, "human pulse has the expected band");
+            m_Result.Check(peer && peer.LastSample && peer.LastSample.DistanceBand == 2, "Operator pulse has the expected band");
+            m_Result.Check(human && human.LastSample && !human.LastSample.HasPosition && human.LastSample.PulseDistance == 0, "no private position or exact range in the pulse");
+            if (human && human.LastSample) m_PlayerSample = human.LastSample.EventKey;
+            m_NextSlot = receiver.NextPulseAt;
+            lynx.Actor.SetHealth("", "Health", 0);
             m_Phase = 2;
         }
-        else if (m_Phase == 2 && sample && sample.SubjectId == "raven-01")
+        else if (m_Phase == 2 && lynx.State.Operator.LifeState == "defeated" && !receiver.Find("lynx-01"))
         {
-            m_Result.Check(sample.EventKey != m_LynxEvidence && sample.HasBearing && !sample.HasPosition, "new bearing is earned for Raven on a distinct event key");
-            m_Result.Check(m_PredateSession.m_WorldState.BotInterceptionUntil > now, "Raven receives the interception warning");
-            m_NextSlot = track.NextPulseAt;
-            m_NextSerial = track.NextSampleSerial;
-            m_PredateSession.m_HuntBot.SetHealth("", "Health", 0);
-            m_Phase = 3;
-        }
-        else if (m_Phase == 3 && track.SubjectId == "player-01")
-        {
-            m_Result.Check(m_PredateSession.m_HuntProgress.Defeated && track.History.Count() == 0, "player becomes available after the other rivals are defeated");
-            m_Result.Check(track.NextPulseAt == m_NextSlot && track.NextSampleSerial == m_NextSerial && !sample, "switch to the player does not bypass the cooldown");
-            m_Phase = 4;
-        }
-        else if (m_Phase == 4 && sample && sample.SubjectId == "player-01")
-        {
-            m_Result.Check(sample.HasBearing && !sample.HasPosition && rook.State.Receiver.History.Count() == 1, "new player bearing reveals no live coordinates");
-            m_Result.Check(m_PredateSession.m_WorldState.PlayerInterceptionUntil >= now + 29, "player receives the earned interception warning");
+            PredateSignalTrack retained = receiver.Find("player-01");
+            m_Result.Check(receiver.TargetId == "player-01", "closest remaining legitimate contact is selected");
+            m_Result.Check(receiver.NextPulseAt == m_NextSlot, "switch preserves the receiver schedule");
+            m_Result.Check(retained && retained.LastSample && retained.LastSample.EventKey == m_PlayerSample, "switch uses an existing reading");
+            m_Result.Check(receiver.Valid(now, "rook-01"), "private receiver still validates");
             m_Result.Actors.Insert(PredatePeerTrialRow.Capture(rook));
             m_Result.SimulationSeconds = now;
             m_PredateSession.PredateSave();
             m_Result.Error = m_PredateSession.m_HuntError;
+            m_Result.Check(m_Result.Error == "", "switch and receiver can be saved");
             string error;
             JsonFileLoader<PredatePeerTrialReport>.SaveFile("$profile:PeerRetarget.json", m_Result, error);
-            m_Phase = 5;
+            m_Phase = 3;
         }
     }
 }
@@ -422,7 +423,7 @@ class PredatePeerEncounterMission : MissionServer
         m_Result.Check(lynxSawRook || rookSawLynx, "a rival was acquired by the native visual sensor");
         m_Result.Check(fired > 0, "one or both independent rivals fired after acquiring contact");
         m_Result.Check(health < 200, "the encounter produces native damage");
-        m_Result.Check(!lynx.State.Receiver.LastSample && !rook.State.Receiver.LastSample, "the encounter stayed within the bearing cutoff");
+        m_Result.Check(!lynx.State.HuntReceiver.Find("rook-01") && !rook.State.HuntReceiver.Find("lynx-01"), "the encounter stayed within the bearing cutoff");
         PredatePeerTrialRow lynxResult = PredatePeerTrialRow.Capture(lynx);
         PredatePeerTrialRow rookResult = PredatePeerTrialRow.Capture(rook);
         lynxResult.ObservedRival = lynxSawRook;

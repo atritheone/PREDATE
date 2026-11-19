@@ -24,7 +24,6 @@ class PredateSignalService
             if (hasLegacyData)
                 return PredatePersistence.Fail(s, "Signal data has no schema");
             state.PlayerSignal = Track("player-01", "raven-01");
-            state.BotSignal = Track("raven-01", "player-01");
             state.PlayerActivity = new PredateSignatureActivity;
             state.BotActivity = new PredateSignatureActivity;
             // Retain the legacy cooldown, but never fabricate an old sample origin.
@@ -34,13 +33,15 @@ class PredateSignalService
             s.m_HuntProgress.HasPulseOrigin = false;
             state.SignalSchema = 1;
         }
-        if (state.SignalSchema != 1 || !state.PlayerSignal || !state.BotSignal || !state.PlayerActivity || !state.BotActivity)
+        if (state.SignalSchema != 1 || !state.PlayerSignal || !state.PlayerActivity || !state.BotActivity)
             return PredatePersistence.Fail(s, "Unsupported signal state");
-        if (state.PlayerSignal.OwnerId != "player-01" || state.PlayerSignal.SubjectId != "raven-01" || state.BotSignal.OwnerId != "raven-01" || state.BotSignal.SubjectId != "player-01")
+        if (state.PlayerSignal.OwnerId != "player-01" || state.PlayerSignal.SubjectId != "raven-01")
             return PredatePersistence.Fail(s, "Invalid signal ownership");
         state.PlayerSignal.NormalizeLoaded();
-        state.BotSignal.NormalizeLoaded();
-        if (!state.PlayerSignal.Validate(now) || !state.BotSignal.Validate(now)) return PredatePersistence.Fail(s, "Invalid signal schedule/history");
+        state.BotSignal = null;
+        if (!state.PlayerSignal.Validate(now)) return PredatePersistence.Fail(s, "Invalid signal schedule/history");
+        if (!state.HuntReceiver) state.HuntReceiver = new PredateHuntReceiver;
+        if (!state.HuntReceiver.Valid(now, s.m_HuntProgress.Operator.Id)) return PredatePersistence.Fail(s, "Invalid private hunt receiver");
         state.PlayerSignal.UseBearingSectors(now);
         SyncReceiverProgress(s);
         if (!ValidEnergy(state.PlayerActivity.Energy) || !ValidEnergy(state.BotActivity.Energy)) return PredatePersistence.Fail(s, "Invalid signature activity");
@@ -129,7 +130,7 @@ class PredateSignalService
         if (now < track.NextPulseAt) return false;
         track.BroadcastTime = now;
         track.NextPulseAt = now + PredateBearingPulse.INTERVAL;
-        PredateObservation reading = PredateSignalRules.PlayerReading(track, player.GetPosition(), actor.GetPosition(), now, config);
+        PredateObservation reading = PredateSignalRules.ReceiverReading(track, player.GetPosition(), actor.GetPosition(), now, config);
         track.RecordSample(reading);
         return true;
     }
@@ -171,7 +172,7 @@ class PredateSignalService
     static void MarkPlayerHunted(PredateSession s, float now)
     {
         // Renew a single hunt episode across successive interception pulses.
-        float until = now + s.m_HuntConfig.PulseInterval + 30;
+        float until = now + PredateBearingPulse.INTERVAL + 30;
         s.m_WorldState.PlayerInterceptionUntil = Math.Max(s.m_WorldState.PlayerInterceptionUntil, until);
     }
 
@@ -205,34 +206,15 @@ class PredateSignalService
         }
         SyncReceiverProgress(s);
         if (!s.m_HuntConfig.EnableSharedSignals) return;
-        float interval = s.m_HuntConfig.PulseInterval;
         player.m_PredateSignatureRegistered = true;
         Capture(s);
         if (OperatingEngine(player)) state.PlayerActivity.RecordEngineUse(seconds);
         if (OperatingEngine(s.m_HuntBot)) state.BotActivity.RecordEngineUse(seconds);
         state.PlayerActivity.Advance(seconds);
         state.BotActivity.Advance(seconds);
-        if (s.m_HuntBot && s.m_HuntBot.IsAlive() && !s.m_HuntProgress.Defeated)
-        {
-            s.m_HuntBot.m_PredateSignatureRegistered = true;
-            state.BotSignal.SetSelected(true, now, interval);
-            vector humanPosition = player.GetPosition();
-            vector botPosition = s.m_HuntBot.GetPosition();
-            if (state.BotSignal.Due(now))
-            {
-                PredateObservation botSample = PredateSignalRules.Sample(state.BotSignal, botPosition, humanPosition, now, s.m_HuntConfig, state.PlayerActivity.Energy, Math.RandomFloat(-1, 1));
-                state.BotSignal.Consume(now, interval, botSample);
-                if (botSample)
-                {
-                    state.Observations.Add(botSample, now);
-                    MarkPlayerHunted(s, now);
-                }
-            }
-        }
-        else
+        if (!s.PredateTargetAvailable())
         {
             state.PlayerSignal.SetPlayerTracking(false);
-            state.BotSignal.SetSelected(false, now, interval);
             s.m_HuntProgress.HasPulse = false;
         }
     }
@@ -241,7 +223,7 @@ class PredateSignalService
     {
         s.m_WorldState.Hunter = new PredateHunterState;
         s.m_WorldState.PlayerSignal = Track("player-01", "raven-01");
-        s.m_WorldState.BotSignal = Track("raven-01", "player-01");
+        s.m_WorldState.HuntReceiver = new PredateHuntReceiver;
         s.m_WorldState.BotActivity = new PredateSignatureActivity;
         s.m_WorldState.PlayerInterceptionUntil = 0;
         s.m_WorldState.BotInterceptionUntil = 0;
@@ -255,9 +237,6 @@ class PredateSignalService
         state.PlayerActivity = new PredateSignatureActivity;
         state.PlayerInterceptionUntil = 0;
         state.BotInterceptionUntil = 0;
-        // Existing AI pulse schedule and serial continue across player lives.
-        state.BotSignal.LastSample = null;
-        state.BotSignal.History.Clear();
         s.m_HuntProgress.Selected = false;
         s.m_HuntProgress.HasPulse = false;
         s.m_HuntProgress.HasPulseOrigin = false;

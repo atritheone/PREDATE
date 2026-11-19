@@ -9,21 +9,21 @@ class PredatePeerState
     float Shock;
     ref PredateObservationMemory Memory = new PredateObservationMemory;
     ref array<ref PredateObservation> PendingSounds = new array<ref PredateObservation>;
-    ref PredateSignalTrack Receiver = new PredateSignalTrack;
+    ref PredateSignalTrack Receiver; // Legacy save field
     ref PredateSignalTrack PlayerReceiver = new PredateSignalTrack;
     ref PredateSignatureActivity SignatureActivity = new PredateSignatureActivity;
     ref PredateHunterState Hunter = new PredateHunterState;
+    ref PredateHuntReceiver HuntReceiver = new PredateHuntReceiver;
     float InterceptedUntil;
 
     bool Validate(float now)
     {
-        if (!Operator || !Memory || !PendingSounds || !Receiver || !PredateInformationMath.FiniteVector(Start)) return false;
+        if (!Operator || !Memory || !PendingSounds || !PredateInformationMath.FiniteVector(Start)) return false;
         if (Operator.LifeState != "alive" && Operator.LifeState != "defeated" && Operator.LifeState != "unspawned") return false;
         if (Operator.Deployment < 1 || !PredateInformationMath.Finite(Operator.RespawnAt) || Operator.RespawnAt < 0) return false;
         if (!Operator.Supplies || !Operator.Supplies.Valid(now)) return false;
-        if (Memory.OwnerId != Operator.Id || Receiver.OwnerId != Operator.Id) return false;
-        if (!Memory.Validate(now) || !Receiver.Validate(now) || PendingSounds.Count() > 8) return false;
-        if (Receiver.SubjectId != "player-01" && PredateProtocol.OperatorBit(Receiver.SubjectId) == 0) return false;
+        if (Memory.OwnerId != Operator.Id || !Memory.Validate(now) || PendingSounds.Count() > 8) return false;
+        if (!HuntReceiver || !HuntReceiver.Valid(now, Operator.Id)) return false;
         if (!PlayerReceiver || PlayerReceiver.OwnerId != "player-01" || PlayerReceiver.SubjectId != Operator.Id || !PlayerReceiver.Validate(now)) return false;
         if (!Hunter || !Hunter.Validate(now, Operator.Id) || !SignatureActivity || !PredateInformationMath.Finite(SignatureActivity.Energy) || SignatureActivity.Energy < 0 || SignatureActivity.Energy > 1) return false;
         if (!PredateInformationMath.Finite(InterceptedUntil) || InterceptedUntil < 0) return false;

@@ -18,9 +18,9 @@ class PredateSignalTests
         PredateSignalTrack ai = PredateSignalService.Track("raven-01", "player-01");
         PredateSignalTrack sliding = PredateSignalService.Track("player-01", "lynx-01");
         sliding.UseBearingSectors(1);
-        PredateObservation firstPulse = PredateSignalRules.PlayerReading(sliding, "0 0 0", "0 300 500", 1, config);
+        PredateObservation firstPulse = PredateSignalRules.ReceiverReading(sliding, "0 0 0", "0 300 500", 1, config);
         sliding.RecordSample(firstPulse);
-        PredateObservation nextPulse = PredateSignalRules.PlayerReading(sliding, "0 0 0", "0 300 500", 91, config);
+        PredateObservation nextPulse = PredateSignalRules.ReceiverReading(sliding, "0 0 0", "0 300 500", 91, config);
         Check(firstPulse && nextPulse && firstPulse.Bearing != nextPulse.Bearing && PredateBearingPulse.Contains(firstPulse.Bearing, 0) && PredateBearingPulse.Contains(nextPulse.Bearing, 0), "successive bearings vary for a stationary target while covering north");
         Check(sliding.LastSample && Math.AbsFloat(sliding.LastSample.PulseDistance - 500) < 0.05 && sliding.History[0].PulseDistance == sliding.LastSample.PulseDistance, "horizontal range is frozen with the sampled bearing");
         Check(PredateBearingPulse.Overlap(355, 6) && PredateBearingPulse.Overlap(6, 355) && !PredateBearingPulse.Overlap(355, 10), "partial overlaps wrap through north");
@@ -125,7 +125,48 @@ class PredateSignalTests
         JsonFileLoader<PredateSignalTrack>.LoadFile("$profile:EmptySignalRoundTrip.json", restored, error);
         restored.NormalizeLoaded();
         Check(!restored.LastSample && restored.Validate(790), "native empty-reference representation reloads as no sample");
+        CheckPrivateHunt();
         Print("[PredateSignalTest] COMPLETE: checks=" + Checks + "; failures=" + Failures);
+    }
+
+    void CheckPrivateHunt()
+    {
+        PredateConfig config = new PredateConfig;
+        PredateHuntReceiver receiver = new PredateHuntReceiver;
+        receiver.OwnerId = "raven-01";
+        PredateHunterState hunter = new PredateHunterState;
+        hunter.OwnerId = receiver.OwnerId;
+        PredateObservationMemory memory = new PredateObservationMemory;
+        memory.OwnerId = receiver.OwnerId;
+        PredateSignalTrack near = PredateSignalService.Track(receiver.OwnerId, "lynx-01");
+        PredateSignalTrack far = PredateSignalService.Track(receiver.OwnerId, "player-01");
+        near.RecordSample(PredateSignalRules.ReceiverReading(near, vector.Zero, "0 0 400", 10, config));
+        far.RecordSample(PredateSignalRules.ReceiverReading(far, vector.Zero, "0 0 1800", 10, config));
+        receiver.Tracks.Insert(near);
+        receiver.Tracks.Insert(far);
+        PredateHuntSelection.Update(receiver, hunter, memory, vector.Zero, "fixture-player", 10, false);
+        Check(receiver.TargetId == "lynx-01", "same receiver prefers a nearer AI over a farther human");
+        Check(!PredateSignalRules.ReceiverReading(near, vector.Zero, "0 0 199", 10, config) && !PredateSignalRules.ReceiverReading(far, vector.Zero, "0 0 5001", 10, config), "private receiver uses the player cutoff and outer range");
+        near.RecordSample(PredateSignalRules.ReceiverReading(near, vector.Zero, "0 0 400", 100, config));
+        far.RecordSample(PredateSignalRules.ReceiverReading(far, vector.Zero, "0 0 1800", 100, config));
+        PredateHuntSelection.Update(receiver, hunter, memory, vector.Zero, "fixture-player", 100, false);
+        Check(receiver.TargetId == "lynx-01" && receiver.Replanned, "one stalled window tries a new approach");
+        PredateHuntSelection.Update(receiver, hunter, memory, vector.Zero, "fixture-player", 190, false);
+        Check(receiver.TargetId == "player-01" && receiver.DeferredId == "lynx-01", "two stalled windows choose the closest alternative");
+        PredateHuntSelection.Update(receiver, hunter, memory, vector.Zero, "fixture-player", 191, false);
+        Check(receiver.TargetId == "player-01", "cooldown prevents an immediate return to the stalled target");
+        Check(receiver.Valid(191, "raven-01") && !receiver.Valid(191, "rook-01"), "private hunt persistence validates ownership");
+        receiver.Retire("player-01");
+        PredateObservation oldContact = new PredateObservation;
+        oldContact.Source = PredateObservationSource.VISUAL;
+        oldContact.SubjectId = "fixture-player";
+        oldContact.ObservedAt = 191;
+        oldContact.ExpiresAt = 311;
+        oldContact.HasPosition = true;
+        oldContact.Estimate = "0 0 15";
+        memory.Entries.Insert(oldContact);
+        PredateHuntSelection.Update(receiver, hunter, memory, vector.Zero, "fixture-player", 192, false, 191);
+        Check(receiver.TargetId != "player-01", "prior-life sight cannot select a fresh deployment");
     }
 
     void RunService(PredateSession session, PlayerBase player)
@@ -145,20 +186,28 @@ class PredateSignalTests
         PredateSignalService.Select(session, true);
         PredateSignalService.Tick(session, player, 0);
         PredateWorldState state = session.m_WorldState;
-        Check(state.PlayerSignal.LastSample && state.BotSignal.LastSample, "live actors receive reciprocal scheduled pulses");
-        Check(state.PlayerSignal.LastSample.Origin == humanPosition && state.BotSignal.LastSample.Origin == botPosition, "live service captures each recipient origin");
-        Check(state.Observations.Latest("player-01", PredateObservationSource.SIGNAL, now) != null, "AI receives its own private signal evidence");
-        Check(state.PlayerInterceptionUntil == now + session.m_HuntConfig.PulseInterval + 30 && state.BotInterceptionUntil == now + 30, "successive enemy pulses renew one player hunt episode without changing the bot warning");
-        int serial = state.BotSignal.NextSampleSerial;
+        state.Hunter.OwnerId = "raven-01";
+        PredateHuntRuntime.Prepare(state.HuntReceiver, state.Hunter, "raven-01", now);
+        PredateHuntParticipant observer = new PredateHuntParticipant("raven-01", bot, state.HuntReceiver);
+        array<ref PredateHuntParticipant> participants = {new PredateHuntParticipant("player-01", player), observer};
+        PredateHuntRuntime.Scan(observer, participants, session.m_HuntConfig, now);
+        PredateSignalTrack privateTrack = state.HuntReceiver.Find("player-01");
+        Check(state.PlayerSignal.LastSample && privateTrack && privateTrack.LastSample, "live actors receive reciprocal scheduled pulses");
+        Check(state.PlayerSignal.LastSample.Origin == humanPosition && privateTrack.LastSample.Origin == botPosition, "live service captures each recipient origin");
+        Check(privateTrack.LastSample.DistanceBand == 2 && privateTrack.LastSample.PulseDistance == 0, "AI receives the player-visible distance band");
+        PredateSignalService.MarkPlayerHunted(session, now);
+        Check(state.PlayerInterceptionUntil == now + PredateBearingPulse.INTERVAL + 30 && state.BotInterceptionUntil == now + 30, "interceptions retain the shared pulse cadence");
+        int serial = privateTrack.NextSampleSerial;
         vector displaced = botPosition + "400 0 0";
         bot.SetPosition(displaced);
         PredateSignalService.Tick(session, player, 0);
-        Check(state.BotSignal.NextSampleSerial == serial && state.BotSignal.LastSample.Origin == botPosition, "ordinary ticks cannot refresh historical origin");
+        PredateHuntRuntime.Scan(observer, participants, session.m_HuntConfig, now);
+        Check(privateTrack.NextSampleSerial == serial && privateTrack.LastSample.Origin == botPosition, "ordinary ticks cannot refresh historical origin");
         Check(PredateBearingPulse.Contains(state.PlayerSignal.LastSample.Bearing, 0) && state.PlayerSignal.LastSample.MapRadius == 0 && Math.AbsFloat(state.PlayerSignal.LastSample.PulseDistance - 400) < 0.05, "player pulse keeps its sampled bearing and horizontal distance without target position");
         Check(state.PlayerSignal.BroadcastTime == state.PlayerSignal.LastSample.ObservedAt, "map and compass read one pulse");
         Check(Math.AbsFloat(state.PlayerSignal.NextPulseAt - state.PlayerSignal.BroadcastTime - 90) < 0.005, "both displays wait 90 seconds for the next pulse");
-        Check(!PredateSignalRules.PlayerReading(state.PlayerSignal, "0 0 0", "0 0 5001", now, session.m_HuntConfig), "a rival outside five kilometres does not broadcast a sector");
-        PredateObservation boundary = PredateSignalRules.PlayerReading(state.PlayerSignal, "0 0 0", "0 300 5000", now, session.m_HuntConfig);
+        Check(!PredateSignalRules.ReceiverReading(state.PlayerSignal, "0 0 0", "0 0 5001", now, session.m_HuntConfig), "a rival outside five kilometres does not broadcast a sector");
+        PredateObservation boundary = PredateSignalRules.ReceiverReading(state.PlayerSignal, "0 0 0", "0 300 5000", now, session.m_HuntConfig);
         Check(boundary && Math.AbsFloat(boundary.PulseDistance - 5000) < 0.05 && PredateBearingPulse.Contains(boundary.Bearing, 0), "horizontal five kilometre boundary is included");
         PredateSignalService.Select(session, false);
         PredateSignalService.Select(session, true);
@@ -227,14 +276,14 @@ class PredateSignalTests
         grenade.SetPosition(blastPosition);
         int before = player.m_PredatePendingExplosions;
         int botBefore = bot.m_PredatePendingExplosions;
-        int serial = session.m_WorldState.BotSignal.NextSampleSerial;
+        float serial = session.m_WorldState.HuntReceiver.NextPulseAt;
         grenade.ActivateImmediate();
         Check(player.m_PredatePendingExplosions == before + 1 && bot.m_PredatePendingExplosions == botBefore, "actual blast credits its latest known holder exactly once");
         PredateSignalService.Capture(session);
         float energy = session.m_WorldState.PlayerActivity.Energy;
         Check(energy >= 0.5 && player.m_PredatePendingExplosions == 0, "save capture consumes the confirmed blast");
         PredateSignalService.Capture(session);
-        Check(session.m_WorldState.PlayerActivity.Energy == energy && session.m_WorldState.BotSignal.NextSampleSerial == serial, "repeated captures neither duplicate a blast nor grant a fresh pulse");
+        Check(session.m_WorldState.PlayerActivity.Energy == energy && session.m_WorldState.HuntReceiver.NextPulseAt == serial, "repeated captures neither duplicate a blast nor grant a fresh pulse");
         Grenade_Base unknown = Grenade_Base.Cast(GetGame().CreateObjectEx("M67Grenade", blastPosition + "10 0 0", ECE_CREATEPHYSICS | ECE_KEEPHEIGHT));
         Check(unknown != null, "unattributed native blast fixture exists");
         if (!unknown) { FinishService(session); return; }
@@ -272,9 +321,9 @@ class PredateSignalTests
         PredateSignalService.Tick(session, player, 0);
         Check(session.m_WorldState.PlayerActivity.Energy == before, "zero simulation time adds no driver engine activity");
         session.m_WorldState.PlayerActivity.Energy = 0;
-        int serial = session.m_WorldState.BotSignal.NextSampleSerial;
+        float serial = session.m_WorldState.HuntReceiver.NextPulseAt;
         PredateSignalService.Tick(session, player, 5);
-        Check(Math.AbsFloat(session.m_WorldState.PlayerActivity.Energy - 0.075) < 0.0001 && session.m_WorldState.BotSignal.NextSampleSerial == serial, "actual driver activity grows with simulation time without an extra pulse");
+        Check(Math.AbsFloat(session.m_WorldState.PlayerActivity.Energy - 0.075) < 0.0001 && session.m_WorldState.HuntReceiver.NextPulseAt == serial, "actual driver activity grows with simulation time without an extra pulse");
         HumanCommandVehicle command = player.GetCommand_Vehicle();
         if (!command) { Check(false, "driver command remains active"); FinishService(session); return; }
         command.SwitchSeat(1, car.GetSeatAnimationType(1));

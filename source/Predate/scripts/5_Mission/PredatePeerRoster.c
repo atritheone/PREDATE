@@ -27,7 +27,7 @@ class PredatePeerRoster
         return key;
     }
 
-    static PredatePeerState MakePeer(int slot, string target, vector start, float firstPulse)
+    static PredatePeerState MakePeer(int slot, vector start)
     {
         PredatePeerState peer = new PredatePeerState;
         string id = PredateProtocol.OperatorAt(slot);
@@ -36,8 +36,6 @@ class PredatePeerRoster
         peer.Operator.StorageKey = StorageKey(slot);
         peer.Start = start;
         peer.Memory.OwnerId = id;
-        peer.Receiver = PredateSignalService.Track(id, target);
-        peer.Receiver.SetSelected(true, firstPulse, 1);
         peer.PlayerReceiver = PredateSignalService.Track("player-01", id);
         peer.Hunter.OwnerId = id;
         return peer;
@@ -81,15 +79,7 @@ class PredatePeerRoster
                     site = insertion;
                 }
                 if (count <= 6) occupied.Insert(site);
-                string target = PredateProtocol.OperatorAt(slot + 1);
-                if (slot == count - 1) target = PredateProtocol.OperatorAt(1);
-                float stagger = 3;
-                if (count > 6)
-                {
-                    target = RegionalTarget(slot - 1, sites);
-                    stagger = 0.45;
-                }
-                m_State.Peers.Insert(MakePeer(slot, target, site, now + 2 + (slot - 1) * stagger));
+                m_State.Peers.Insert(MakePeer(slot, site));
             }
         }
         if (!m_State || m_State.Schema < 1 || m_State.Schema > 2 || !m_State.Peers || m_State.Peers.Count() != count - 1)
@@ -103,7 +93,8 @@ class PredatePeerRoster
         for (int index = 0; index < m_State.Peers.Count(); index++)
         {
             PredatePeerState peer = m_State.Peers[index];
-            if (peer && peer.Receiver) peer.Receiver.NormalizeLoaded();
+            if (peer && !peer.HuntReceiver) peer.HuntReceiver = new PredateHuntReceiver;
+            if (peer) peer.Receiver = null;
             if (peer && peer.Operator && m_State.Schema == 1)
                 peer.PlayerReceiver = PredateSignalService.Track("player-01", peer.Operator.Id);
             if (peer && peer.PlayerReceiver) peer.PlayerReceiver.NormalizeLoaded();
@@ -135,21 +126,6 @@ class PredatePeerRoster
             m_Bindings.Insert(binding);
         }
         return true;
-    }
-
-    static string RegionalTarget(int origin, array<vector> sites)
-    {
-        int best = -1;
-        float distance = 40000;
-        for (int index = 0; index < sites.Count(); index++)
-        {
-            if (index == origin) continue;
-            float candidate = PredateHunterBrain.Distance(sites[origin], sites[index]);
-            if (candidate >= distance) continue;
-            distance = candidate;
-            best = index;
-        }
-        return PredateProtocol.OperatorAt(best + 1);
     }
 
     bool MatchesSlot(int index, PredatePeerState peer)
@@ -346,7 +322,7 @@ class PredatePeerRoster
             record.EquipmentRevision = 0;
             record.RifleKit = "";
             record.Supplies = new PredateSupplyPlan;
-            PredatePeerState fresh = MakePeer(index + 1, previous.Receiver.SubjectId, site, now + 2);
+            PredatePeerState fresh = MakePeer(index + 1, site);
             fresh.Operator = record;
             binding.State = fresh;
             m_State.Peers[index] = fresh;
@@ -400,50 +376,11 @@ class PredatePeerRoster
     {
         foreach (PredatePeerBinding peer : m_Bindings)
         {
-            PredateSignalTrack track = peer.State.Receiver;
-            bool tracksPreviousLife = track.SubjectId == "player-01";
+            bool tracksPreviousLife = peer.State.HuntReceiver.TargetId == "player-01";
             PredateDeployment.RetireOldContact(peer.State.Hunter, peer.State.Memory, peer.Actor, playerId, now, tracksPreviousLife);
-            if (tracksPreviousLife)
-            {
-                track.LastSample = null;
-                track.History.Clear();
-            }
+            peer.State.HuntReceiver.Retire("player-01");
             peer.State.PlayerReceiver.SetPlayerTracking(false);
         }
-    }
-
-    PlayerBase ResolveSubject(PredateSession session, PlayerBase player, string id, out float energy)
-    {
-        if (id == "raven-01")
-        {
-            energy = session.m_WorldState.BotActivity.Energy;
-            return session.m_HuntBot;
-        }
-        if (id == "player-01")
-        {
-            energy = session.m_WorldState.PlayerActivity.Energy;
-            return player;
-        }
-        PredatePeerBinding peer = Find(id);
-        if (peer)
-        {
-            energy = peer.State.SignatureActivity.Energy;
-            return peer.Actor;
-        }
-        return null;
-    }
-
-    string FallbackSubject(PredateSession session, PredatePeerState observer, PlayerBase player)
-    {
-        // Choose among remaining signatures without testing their positions.
-        foreach (PredatePeerBinding rival : m_Bindings)
-        {
-            if (rival.State == observer || !rival.Actor || !rival.Actor.IsAlive()) continue;
-            return rival.State.Operator.Id;
-        }
-        if (session.PredateTargetAvailable()) return "raven-01";
-        if (player && player.IsAlive()) return "player-01";
-        return "";
     }
 
     void MarkInterception(PredateSession session, string subject, float now)
@@ -466,7 +403,6 @@ class PredatePeerRoster
         if (!UpdateBindings(session, active, error)) return false;
         if (!active || !player || now <= m_LastTick) return true;
         if (!RespawnDefeated(session, player, now, error)) return false;
-        string playerId = player.GetIdentity().GetId();
         float elapsed = now - m_LastTick;
         m_LastTick = now;
 
@@ -478,53 +414,6 @@ class PredatePeerRoster
             tracked.State.SignatureActivity.Advance(elapsed);
             tracked.Actor.PredateAdvanceInformation(now);
             tracked.Actor.PredateUpdateMedicine(now);
-        }
-        foreach (PredatePeerBinding receiverOwner : m_Bindings)
-        {
-            if (!receiverOwner.Actor) continue;
-            PredatePeerState peer = receiverOwner.State;
-            PredateSignalTrack receiver = peer.Receiver;
-            float energy;
-            PlayerBase target = ResolveSubject(session, player, receiver.SubjectId, energy);
-            float interval = session.m_HuntConfig.PulseInterval;
-            if (!target || !target.IsAlive())
-            {
-                receiver.LastSample = null;
-                if (peer.Hunter.HasGoal && peer.Hunter.EvidenceKey.IndexOf("signal-") == 0)
-                    PredateHunterBrain.Hold(peer.Hunter, "hold", "Selected Operator is unavailable");
-                string replacement = FallbackSubject(session, peer, player);
-                if (replacement != "")
-                {
-                    receiver.SubjectId = replacement;
-                    receiver.History.Clear();
-                    target = ResolveSubject(session, player, replacement, energy);
-                }
-            }
-            bool available = target && target.IsAlive();
-            receiver.SetSelected(available, now, interval);
-            if (available && receiver.Due(now))
-            {
-                PredateObservation sample = PredateSignalRules.Sample(receiver, receiverOwner.Actor.GetPosition(), target.GetPosition(), now, session.m_HuntConfig, energy, Math.RandomFloat(-1, 1));
-                receiver.Consume(now, interval, sample);
-                if (sample)
-                {
-                    peer.Memory.Add(sample, now);
-                    MarkInterception(session, receiver.SubjectId, now);
-                }
-            }
-        }
-        foreach (PredatePeerBinding observer : m_Bindings)
-        {
-            if (!observer.Actor) continue;
-            PredatePeerState thinking = observer.State;
-            bool combat = observer.Actor.PredateTacticalPriority(now);
-            bool recover = observer.Actor.PredateOwnActionPriority();
-            PredateHunterBrain.Step(thinking.Hunter, observer.Actor.GetPosition(), now, thinking.Memory, thinking.Receiver, combat, recover, now < thinking.InterceptedUntil, session.m_WorldState.PlayerLastDeathAt, playerId);
-            if (combat || recover)
-            {
-                if (observer.Actor.m_PredateAppliedGoal != -1) observer.Actor.PredateReleaseRoute();
-            }
-            else observer.Actor.PredateApplyRoute(thinking.Hunter);
         }
         return true;
     }

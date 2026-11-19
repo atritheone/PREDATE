@@ -11,6 +11,8 @@ modded class eAIBase
     float m_PredateSeenSince = -1;
     float m_PredateLastVisualAt = -1;
     float m_PredateNextPerceptionAt;
+    int m_PredateNextVisibleChoice;
+    eAITarget m_PredateNearestVisible;
     ref array<ref PredateObservation> m_PredatePendingSounds = new array<ref PredateObservation>;
 
     void PredateBindInformation(bool enabled, string owner, PredateObservationMemory memory, array<ref PredateObservation> pending, float now)
@@ -161,6 +163,63 @@ modded class eAIBase
         }
         m_PredateSensorDepth--;
         return visible;
+    }
+
+    override void eAI_PrioritizeTargets()
+    {
+        super.eAI_PrioritizeTargets();
+        if (!m_PredateKnowledgeEnabled || IsUnconscious()) return;
+        eAITarget original = GetTarget();
+        if (!original || (!original.IsPlayer() && original.IsAcuteDanger())) return;
+        int now = GetGame().GetTime();
+        if (now >= m_PredateNextVisibleChoice)
+        {
+            m_PredateNextVisibleChoice = now + 500;
+            m_PredateNearestVisible = null;
+            float closest = m_eAI_ThreatDistanceLimit;
+            vector eyes = GetBonePositionWS(GetBoneIndexByName("Head"));
+            foreach (eAITarget candidate : m_eAI_Targets)
+            {
+                PlayerBase person = PlayerBase.Cast(candidate.GetEntity());
+                if (!candidate.IsPlayer() || !person || !person.IsAlive() || !PlayerIsEnemy(person)) continue;
+                vector body = person.GetBonePositionWS(person.GetBoneIndexByName("Neck"));
+                float distance = vector.Distance(eyes, body);
+                if (distance >= closest || !PredateCanSeeContact(candidate, person, eyes, body, distance)) continue;
+                closest = distance;
+                m_PredateNearestVisible = candidate;
+            }
+        }
+        if (!m_PredateNearestVisible || m_PredateNearestVisible == original) return;
+        int index = m_eAI_Targets.Find(m_PredateNearestVisible);
+        if (index <= 0) return;
+        m_eAI_Targets[index] = original;
+        m_eAI_Targets[0] = m_PredateNearestVisible;
+        if (m_eAI_NoiseTarget == index) m_eAI_NoiseTarget = 0;
+        else if (original.IsNoise()) m_eAI_NoiseTarget = index;
+        m_eAI_TargetChanged = true;
+        m_eAI_SyncCurrentTarget = true;
+    }
+
+    bool PredateCanSeeContact(eAITarget candidate, PlayerBase person, vector eyes, vector body, float distance)
+    {
+        if (person.Expansion_HasAdminToolInvisibility()) return false;
+        vector sight = body - eyes;
+        float angle = PredateMath.RelativeBearing(PredateMath.CameraHeading(sight), PredateMath.CameraHeading(GetLookDirection()));
+        if (Math.AbsFloat(angle) > eAI_CalculateFOVHalfAngleH(distance)) return false;
+        m_PredateSensorDepth++;
+        float visibleDistance = eAI_GetVisibilityDistance(distance, candidate);
+        m_PredateSensorDepth--;
+        if (visibleDistance < distance) return false;
+        vector position, normal;
+        int component;
+        set<Object> hits = new set<Object>;
+        if (!DayZPhysics.RaycastRV(eyes, body + sight.Normalized() * 0.4, position, normal, component, hits, null, this, false, false, ObjIntersectView, 0)) return false;
+        foreach (Object hit : hits)
+        {
+            EntityAI entity = EntityAI.Cast(hit);
+            return entity && entity.GetHierarchyRoot() == person;
+        }
+        return false;
     }
 
     override void eAI_OnNoiseEvent(EntityAI source, vector position, float lifetime, eAINoiseParams params, float strengthMultiplier)

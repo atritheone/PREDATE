@@ -236,7 +236,7 @@ class PredateSignalRules
         return delta.LengthSq() < radius * radius;
     }
 
-    static PredateObservation PlayerReading(PredateSignalTrack track, vector origin, vector targetTruth, float now, PredateConfig config)
+    static PredateObservation ReceiverReading(PredateSignalTrack track, vector origin, vector targetTruth, float now, PredateConfig config)
     {
         if (!PredateInformationMath.FiniteVector(origin) || !PredateInformationMath.FiniteVector(targetTruth)) return null;
         vector difference = targetTruth - origin;
@@ -247,7 +247,9 @@ class PredateSignalRules
         if (!observation) return null;
         observation.Bearing = PredateBearingPulse.SampleStart(PredateMath.CameraHeading(difference), track.LastSample);
         observation.BearingError = PredateBearingPulse.DEGREES / 2.0;
-        observation.PulseDistance = Math.Min(PredateBearingPulse.REACH, Math.Sqrt(distanceSquared));
+        float distance = Math.Min(PredateBearingPulse.REACH, Math.Sqrt(distanceSquared));
+        if (track.OwnerId == "player-01") observation.PulseDistance = distance;
+        else observation.DistanceBand = Math.Ceil(distance / PredateBearingPulse.BAND_METRES);
         observation.MapCenter = vector.Zero;
         observation.MapRadius = 0;
         return observation;
@@ -270,7 +272,7 @@ class PredateSignalRules
         int jitter = Math.Round(Math.Clamp(randomUnit, -1, 1) * error);
         int bearing = (center + jitter + 360) % 360;
         PredateObservation observation = new PredateObservation;
-        observation.EventKey = "signal-" + track.OwnerId + "-" + track.NextSampleSerial;
+        observation.EventKey = "signal-" + track.OwnerId + "-" + track.SubjectId + "-" + track.NextSampleSerial;
         observation.ObserverId = track.OwnerId;
         observation.SubjectId = track.SubjectId;
         observation.Source = PredateObservationSource.SIGNAL;

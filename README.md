@@ -18,7 +18,7 @@
 
 ## About the game
 
-Pick an insertion point, choose your starting kit, and enter Chernarus alongside a roster of AI Operators. Your receiver gives you intermittent bearing estimates. Move between pulses to narrow the search, then rely on sight and sound as you close in. Enemy Operators work from their own observations and signals, so the player can become the target while tracking someone else.
+Pick an insertion point, choose your starting kit, and enter Chernarus alongside a roster of AI Operators. Move between pulses to narrow the search, then rely on sight and sound as you close in. Every Operator has a private receiver with the same pulse rules. AI Operators pursue the closest contact they can infer from their own readings and observations, and move on when a hunt stalls.
 
 The operation persists between sessions. Surviving Operators carry their injuries and remaining ammunition into the next encounter, and you can redeploy into the same world after death.
 

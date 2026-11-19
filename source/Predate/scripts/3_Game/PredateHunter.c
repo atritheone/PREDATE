@@ -65,7 +65,7 @@ class PredateHunterBrain
         state.RouteFailures = 0;
     }
 
-    static PredateObservation LatestContact(PredateObservationMemory memory, float now, float retiredLifeAt = -1, string retiredSubject = "")
+    static PredateObservation LatestContact(PredateObservationMemory memory, float now, float retiredLifeAt = -1, string retiredSubject = "", string selectedSubject = "")
     {
         PredateObservation best;
         foreach (PredateObservation observation : memory.Entries)
@@ -73,6 +73,7 @@ class PredateHunterBrain
             if (observation.Expired(now) || !observation.HasPosition) continue;
             if (observation.Source == PredateObservationSource.SIGNAL) continue;
             if (observation.Source == PredateObservationSource.VISUAL && observation.ObservedAt <= retiredLifeAt && (retiredSubject == "" || observation.SubjectId == retiredSubject)) continue;
+            if (selectedSubject != "" && observation.SubjectId != "" && observation.SubjectId != selectedSubject) continue;
             if (!best || observation.ObservedAt > best.ObservedAt) best = observation;
         }
         if (!best) return null;
@@ -87,8 +88,14 @@ class PredateHunterBrain
         {
             PredateObservation previous = track.History[i];
             if (previous.Expired(now)) continue;
-            if (!PredateInformationMath.IntersectBearings(previous, latest, 2500, center)) continue;
-            float separation = Math.AbsFloat(Math.Sin((previous.Bearing - latest.Bearing) * Math.DEG2RAD));
+            PredateObservation previousRay = previous.Copy();
+            PredateObservation latestRay = latest.Copy();
+            if (previousRay.DistanceBand > 0) previousRay.Bearing = PredateMath.WrapHeading(previousRay.Bearing + previousRay.BearingError);
+            if (latestRay.DistanceBand > 0) latestRay.Bearing = PredateMath.WrapHeading(latestRay.Bearing + latestRay.BearingError);
+            if (!PredateInformationMath.IntersectBearings(previousRay, latestRay, 5000, center)) continue;
+            if (latest.DistanceBand > 0 && Distance(center, PredateHuntSelection.SectorCenter(latest)) > PredateHuntSelection.SectorRadius(latest, now)) continue;
+            if (previous.DistanceBand > 0 && Distance(center, PredateHuntSelection.SectorCenter(previous)) > PredateHuntSelection.SectorRadius(previous, now)) continue;
+            float separation = Math.AbsFloat(Math.Sin((previousRay.Bearing - latestRay.Bearing) * Math.DEG2RAD));
             float distance = Distance(center, latest.Origin);
             float angular = distance * (previous.BearingError + latest.BearingError) * Math.DEG2RAD / Math.Max(0.0872, separation);
             radius = Math.Max(25, angular + (now - previous.ObservedAt) * 1.5);
@@ -101,19 +108,21 @@ class PredateHunterBrain
     {
         float distance = Distance(signal.Origin, state.SearchCenter);
         float heading = PredateMath.Bearing(signal.Origin, state.SearchCenter);
-        float difference = Math.AbsFloat(PredateMath.RelativeBearing(heading, signal.Bearing));
+        float bearing = signal.Bearing;
+        if (signal.DistanceBand > 0) bearing += PredateBearingPulse.DEGREES / 2.0;
+        float difference = Math.AbsFloat(PredateMath.RelativeBearing(heading, bearing));
         float allowance = Math.Atan2(state.SearchRadiusAt(now), Math.Max(1, distance)) * Math.RAD2DEG;
         return difference <= allowance + signal.BearingError;
     }
 
-    static void Step(PredateHunterState state, vector ownPosition, float now, PredateObservationMemory memory, PredateSignalTrack track, bool combat, bool recover, bool beingTracked = false, float retiredLifeAt = -1, string retiredSubject = "")
+    static void Step(PredateHunterState state, vector ownPosition, float now, PredateObservationMemory memory, PredateSignalTrack track, bool combat, bool recover, bool beingTracked = false, float retiredLifeAt = -1, string retiredSubject = "", string selectedSubject = "", bool replan = false)
     {
-        if (!state || !memory || !track || memory.OwnerId != state.OwnerId || track.OwnerId != state.OwnerId) return;
+        if (!state || !memory || memory.OwnerId != state.OwnerId || (track && track.OwnerId != state.OwnerId)) return;
         if (recover) { Hold(state, "recover", "Own medical or action priority"); return; }
         if (combat) { Hold(state, "combat", "Native tactical control after a lawful contact"); return; }
         if (now < state.NextDecisionAt) return;
         state.NextDecisionAt = now + 1;
-        PredateObservation contact = LatestContact(memory, now, retiredLifeAt, retiredSubject);
+        PredateObservation contact = LatestContact(memory, now, retiredLifeAt, retiredSubject, selectedSubject);
         if (contact && contact.EventKey != state.LastContactKey)
         {
             state.LastContactKey = contact.EventKey;
@@ -125,7 +134,8 @@ class PredateHunterBrain
             Goal(state, ownPosition, contact.Estimate, now, "investigate", "Investigate an observed area; attribution remains unchanged", contact.EventKey);
             return;
         }
-        PredateObservation signal = track.LastSample;
+        PredateObservation signal;
+        if (track) signal = track.LastSample;
         if (signal && !signal.Expired(now) && signal.EventKey != state.LastSignalKey)
         {
             state.LastSignalKey = signal.EventKey;
@@ -156,6 +166,21 @@ class PredateHunterBrain
                 }
                 state.SearchUntil = signal.ExpiresAt;
                 vector forward = PredateInformationMath.BearingDirection(signal.Bearing);
+                if (signal.DistanceBand > 0)
+                {
+                    vector estimate = PredateHuntSelection.SectorCenter(signal);
+                    vector towardsSector = estimate - ownPosition;
+                    towardsSector[1] = 0;
+                    if (towardsSector.LengthSq() > 1) forward = towardsSector.Normalized();
+                    float travel = Math.Clamp((towardsSector.Length() - 100) * 0.55, 35, 300);
+                    vector flank = Vector(forward[2], 0, -forward[0]);
+                    if (replan) flank = -flank;
+                    vector flankGoal = ownPosition + forward * travel + flank * Math.Clamp(travel * 0.45, 35, 85);
+                    if (beingTracked) flankGoal = ownPosition + forward * Math.Min(travel, 35) + flank * 100;
+                    if (beingTracked) Goal(state, ownPosition, flankGoal, now, "evade", "Change approach after an interception warning", signal.EventKey);
+                    else Goal(state, ownPosition, flankGoal, now, "observe", "Close distance from a different bearing", signal.EventKey);
+                    return;
+                }
                 vector lateral = Vector(forward[2], 0, -forward[0]);
                 vector observationPosition = ownPosition + lateral * 80 + forward * 60;
                 if (beingTracked)

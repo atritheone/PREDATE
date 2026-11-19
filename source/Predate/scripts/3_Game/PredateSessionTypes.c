@@ -91,6 +91,7 @@ class PredateWorldState
     int SignalSchema;
     int HunterSchema;
     ref PredateHunterState Hunter;
+    ref PredateHuntReceiver HuntReceiver = new PredateHuntReceiver;
     ref PredateSignalTrack PlayerSignal;
     ref PredateSignalTrack BotSignal;
     ref PredateSignatureActivity PlayerActivity;

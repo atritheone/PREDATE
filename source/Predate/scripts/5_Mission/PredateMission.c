@@ -503,7 +503,6 @@ class PredateSession
             if (m_HuntBot) m_HuntBot.PredateAdvanceInformation(m_WorldState.SimulationSeconds);
             if (m_HuntBot) m_HuntBot.PredateUpdateMedicine(m_WorldState.SimulationSeconds);
             PredateFootprintService.Tick(this, activeParticipant);
-            PredateHunterService.Tick(this, activePlayerId);
         }
         if (activePlayer != m_ActorsActive)
         {
@@ -527,7 +526,11 @@ class PredateSession
             PredatePersistence.Fail(this, registryError);
             return;
         }
-        if (activePlayer) PredateSupplyService.Tick(this, activeParticipant);
+        if (activePlayer)
+        {
+            PredateHuntRuntime.Tick(this, activeParticipant, activePlayerId);
+            PredateSupplyService.Tick(this, activeParticipant);
+        }
         m_HuntStateTimer += seconds;
         if (m_HuntStateTimer >= 1.25) m_HuntStateTimer = 0;
         m_HuntSaveTimer += seconds;
