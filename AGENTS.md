@@ -56,4 +56,4 @@ Normal play requires Steam to be signed in online. If Steam needs user interacti
 
 - Preserve existing saves, backups, and local preferences in `world/`, `worlds/`, `backups/`, and `config/*.local.json`. If upgrading an older checkout, save and quit with the existing launcher before moving the root `settings.local.json`, `launcher-settings.local.json`, and `active-release.local.json` into `config/`. Check for destination conflicts before moving files. If the previous session supervisor remains running, verify its process identity and confirm the session is suspended with no active session or queued requests before retiring it. The rebuilt launcher starts the new supervisor when needed.
 - Keep local worlds, credentials, signing keys, staged dependencies, and generated packages out of Git. Follow `.gitignore` and keep `predate.txt` eligible for version control.
-- For source changes, run `py -3 -m unittest discover -s tests -v` from the root and `npm.cmd run build` from `launcher-app/` as applicable. Use dedicated development or test worlds for native DayZ validation.
+- Run `npm.cmd run build` from `launcher-app/` for launcher changes.

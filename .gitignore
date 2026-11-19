@@ -5,6 +5,7 @@
 /mods/
 /legacy/
 /work/
+/tests/
 /private-signing/
 /build/
 /settings.local.json
