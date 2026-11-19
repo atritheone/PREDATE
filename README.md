@@ -18,16 +18,16 @@
 
 ## About the game
 
-Pick an insertion point, choose your starting kit, and enter Chernarus alongside a roster of AI rivals. Your receiver gives you intermittent bearing estimates. Move between pulses to narrow the search, then rely on sight and sound as you close in. Rival operators work from their own observations and signals, so the player can become the target while tracking someone else.
+Pick an insertion point, choose your starting kit, and enter Chernarus alongside a roster of AI Operators. Your receiver gives you intermittent bearing estimates. Move between pulses to narrow the search, then rely on sight and sound as you close in. Enemy Operators work from their own observations and signals, so the player can become the target while tracking someone else.
 
-The operation persists between sessions. Surviving operators carry their injuries and remaining ammunition into the next encounter, and you can redeploy into the same world after death. PREDATE keeps DayZ's movement, stamina, and gunplay while disabling infected, hunger, thirst, and the world loot economy.
+The operation persists between sessions. Surviving Operators carry their injuries and remaining ammunition into the next encounter, and you can redeploy into the same world after death.
 
 ## Highlights
 
-- First-person hunts across the full Chernarus map with a configurable roster of up to 30 AI rivals.
-- Scheduled bearing pulses on the operation map and compass, with interception warnings when a rival is tracking you.
+- First-person hunts across the full Chernarus map with a configurable roster of up to 30 AI enemies.
+- Scheduled bearing pulses on the operation map and compass, with interception warnings when an enemy is tracking you.
 - Custom insertion points, loadouts, time of day, and respawn settings for each operation.
-- Persistent saves, redeployment, and backup restoration through the Windows launcher.
+- Persistent saves, redeployment, and backup restoration through the launcher.
 
 ## How an operation works
 
