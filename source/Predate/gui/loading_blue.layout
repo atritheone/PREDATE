@@ -1,0 +1,39 @@
+FrameWidgetClass PredateProgress {
+ inheritalpha 0
+ ignorepointer 1
+ position 0 0.66
+ size 600 3
+ halign center_ref
+ hexactpos 0
+ vexactpos 0
+ hexactsize 1
+ vexactsize 1
+ {
+  ProgressBarWidgetClass PredateLoadedPhase {
+   visible 0
+   ignorepointer 1
+   position 0 0
+   size 0.5 1
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 0
+   style PredateLoadingBlue
+   current 100
+   vertical 0
+  }
+  ProgressBarWidgetClass PredateLoadingBar {
+   inheritalpha 0
+   ignorepointer 1
+   position 0 0
+   size 1 1
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 0
+   style PredateLoadingBlue
+   current 0
+   vertical 0
+  }
+ }
+}

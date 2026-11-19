@@ -1,0 +1,18 @@
+ImageSetClass {
+ Name "PredatePause"
+ RefSize 2048 512
+ Textures {
+  ImageSetTextureClass {
+   mpix 0
+   path "Predate/gui/pause_wordmark_ca.paa"
+  }
+ }
+ Images {
+  ImageSetDefClass Wordmark {
+   Name "Wordmark"
+   Pos 0 0
+   Size 1965 400
+   Flags 0
+  }
+ }
+}

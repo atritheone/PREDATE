@@ -1,0 +1,86 @@
+{
+  "Schema": 1,
+  "Kits": [
+    {
+      "Id": "m4a1",
+      "Name": "M4A1",
+      "Description": "5.56 mm rifle with ACOG optic, six spare magazines and medical supplies.",
+      "FirearmClass": "M4A1",
+      "MagazineClass": "Mag_STANAG_30Rnd",
+      "SpareMagazines": 6,
+      "SuppressorClass": "M4_Suppressor",
+      "Attachments": [
+        "M4_RISHndgrd",
+        "M4_CQBBttstck",
+        "ACOGOptic"
+      ]
+    },
+    {
+      "Id": "ak74",
+      "Name": "AK-74",
+      "Description": "5.45 mm rifle with PSO-1 optic, six spare magazines and medical supplies.",
+      "FirearmClass": "AK74",
+      "MagazineClass": "Mag_AK74_30Rnd",
+      "SpareMagazines": 6,
+      "SuppressorClass": "AK_Suppressor",
+      "Attachments": [
+        "AK74_Hndgrd",
+        "AK74_WoodBttstck",
+        "PSO1Optic"
+      ]
+    }
+  ],
+  "OperatorKits": [
+    {
+      "Id": "akm",
+      "Name": "AKM",
+      "Description": "Assault rifle",
+      "FirearmClass": "AKM",
+      "MagazineClass": "Mag_AKM_30Rnd",
+      "SpareMagazines": 5,
+      "SuppressorClass": "AK_Suppressor",
+      "Attachments": [
+        "AK74_Hndgrd",
+        "AK74_WoodBttstck",
+        "PSO1Optic"
+      ]
+    },
+    {
+      "Id": "fal",
+      "Name": "FAL",
+      "Description": "Battle rifle",
+      "FirearmClass": "FAL",
+      "MagazineClass": "Mag_FAL_20Rnd",
+      "SpareMagazines": 5,
+      "SuppressorClass": "ImprovisedSuppressor",
+      "Attachments": [
+        "Fal_OeBttstck",
+        "ACOGOptic"
+      ]
+    },
+    {
+      "Id": "m14",
+      "Name": "DMR",
+      "Description": "Battle rifle",
+      "FirearmClass": "M14",
+      "MagazineClass": "Mag_M14_20Rnd",
+      "SpareMagazines": 5,
+      "SuppressorClass": "ImprovisedSuppressor",
+      "Attachments": [
+        "ACOGOptic_6x"
+      ]
+    },
+    {
+      "Id": "sv98",
+      "Name": "SV-98",
+      "Description": "Sniper rifle",
+      "FirearmClass": "SV98",
+      "MagazineClass": "Mag_SV98_10Rnd",
+      "SpareMagazines": 5,
+      "SuppressorClass": "ImprovisedSuppressor",
+      "Attachments": [
+        "ACOGOptic_6x"
+      ]
+    }
+  ]
+}

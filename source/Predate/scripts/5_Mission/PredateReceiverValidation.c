@@ -1,0 +1,192 @@
+// Explicit disposable-client fixture; never enabled by ordinary startup.
+class PredateReceiverValidationResult
+{
+    int Schema = 1;
+    int Checks;
+    int Failures;
+    vector PulseOrigin;
+    float BearingError;
+    bool Intercepted;
+    int PulseStart;
+    bool PauseBrandVerified;
+
+    void Check(bool passed)
+    {
+        Checks++;
+        if (!passed) Failures++;
+    }
+}
+
+class PredateReceiverValidation
+{
+    static bool Fits(TextWidget widget)
+    {
+        if (!widget) return false;
+        int width, height;
+        float availableWidth, availableHeight;
+        widget.GetTextSize(width, height);
+        widget.GetScreenSize(availableWidth, availableHeight);
+        bool fits = width > 0 && height > 0 && width <= availableWidth + 1 && height <= availableHeight + 1;
+        if (!fits) Print("[Predate] Text fit: " + widget.GetName() + "; text=" + width + "x" + height + "; box=" + availableWidth + "x" + availableHeight);
+        return fits;
+    }
+
+    static void Run(MissionGameplay mission, PlayerBase player, PredateState state)
+    {
+        PredateReceiverValidationResult result = new PredateReceiverValidationResult;
+        result.PulseOrigin = state.PulseOrigin;
+        ActionToggleNVG switchNVG = new ActionToggleNVG;
+        result.Check(GetUApi().GetInputByName("UAPredateToggleNVG") && switchNVG.GetInputType() == PredateNVGInput);
+        result.BearingError = state.BearingError;
+        result.Intercepted = state.Intercepted;
+        result.Check(GetGame().GetWorld().GetThirdPersonViewMode() == ThirdPersonMode.DISABLED);
+        player.SetIsInThirdPerson(true);
+        result.Check(player.CameraHandler(0) == DayZPlayerCameras.DAYZCAMERA_1ST && !player.IsInThirdPerson());
+        result.Check(state.HasPulseOrigin && state.PulseOrigin[0] == 4500 && state.PulseOrigin[2] == 6500 && state.BearingError > 0 && state.Intercepted);
+        result.Check(Fits(mission.m_PredateHudText) && mission.m_PredateReceiverContents.Contains("Raven") && mission.m_PredateReceiverContents.Contains("Next"));
+        PredateHuntFeed feed = mission.m_PredateHuntFeed;
+        result.Check(HuntWarningVisible(feed));
+        player.m_PredateKillNotices = PredateProtocol.OperatorBit("raven-01");
+        feed.Update(player, state, 0);
+        result.Check(feed.m_Notices[0].Text == "Raven is KIA." && Fits(feed.m_Rows[0]) && feed.m_Rows[0].GetColor() == PredateHuntFeed.ELIMINATION && HuntWarningVisible(feed));
+        feed.Post("Tracking Lynx.");
+        feed.Update(player, state, 0);
+        result.Check(feed.m_Rows[0].GetColor() == 0xFFFFFFFF);
+        PredateState death = new PredateState;
+        death.NeedsRedeploy = true;
+        feed.Update(player, death, 0);
+        int noticeCount = feed.m_Notices.Count();
+        feed.Update(player, death, 0);
+        result.Check(feed.m_Notices[0].Text == "You are KIA." && feed.m_Rows[0].GetColor() == PredateHuntFeed.DEATH && feed.m_Notices.Count() == noticeCount);
+        feed.Update(player, state, 7);
+        result.Check(!feed.m_Rows[0].IsVisible());
+        PredateTrackerMenu menu = PredateTrackerMenu.Cast(GetGame().GetUIManager().EnterScriptedMenu(PredateProtocol.MENU, null));
+        result.Check(menu != null);
+        if (menu)
+        {
+            result.Check(mission.IsInputExcludeActive("aiming"));
+            result.Check(!GetGame().GetInput().HasGameFocus(INPUT_DEVICE_MOUSE));
+            menu.Update(0);
+            result.Check(menu.m_Map && menu.m_MapCanvas && menu.m_MapOverlay && menu.m_Map.IsVisible());
+            result.Check(state.Pulses.Count() == 1);
+            if (menu.m_MapOverlay && state.Pulses.Count() == 1)
+            {
+                PredateBearingPulse pulse = state.Pulses[0];
+                result.PulseStart = pulse.Start;
+                result.Check(pulse.Start == 0 && pulse.Start == state.Bearing);
+                result.Check(state.NextPulse > 0 && state.NextPulse <= 90);
+                result.Check(menu.m_MapOverlay.m_Bearings.Count() == 24);
+                result.Check(menu.m_MapOverlay.m_Bearings[0].IsVisible() && Fits(menu.m_MapOverlay.m_Bearings[0]));
+                menu.m_Map.SetScale(0.33);
+                Widget centerPlayer = menu.GetLayoutRoot().FindAnyWidget("CenterPlayer");
+                menu.OnClick(centerPlayer, 0, 0, 0);
+                bool centeredPlayer = PredateSignalRules.WithinFinalApproach(menu.m_Map.GetMapPos(), player.GetPosition(), 1);
+                if (!centeredPlayer) Print("[PredateMapTest] could not center player");
+                result.Check(centeredPlayer);
+                float width, height;
+                menu.m_MapCanvas.GetScreenSize(width, height);
+                array<float> zooms = {0.085, 0.33, 0.68};
+                foreach (float zoom : zooms)
+                {
+                    menu.m_Map.SetScale(zoom);
+                    menu.m_Map.SetMapPos(player.GetPosition());
+                    bool projectionReady = menu.m_MapOverlay.UpdateProjection();
+                    vector arrow = menu.m_MapOverlay.LocalPoint(player.GetPosition());
+                    // The native map clamps panning when the viewport reaches a world edge.
+                    // The blue marker should still land on the player at any zoom.
+                    PredateMapOverlay overlay = menu.m_MapOverlay;
+                    vector relative = arrow - overlay.m_NativeOrigin;
+                    vector nativePoint = Vector(relative[0] / overlay.m_NativeScaleX, relative[1] / overlay.m_NativeScaleY, 0);
+                    vector underArrow = menu.m_Map.ScreenToMap(nativePoint);
+                    bool pointsToPlayer = PredateSignalRules.WithinFinalApproach(player.GetPosition(), underArrow, 25);
+                    if (!pointsToPlayer) Print("[PredateMapTest] arrow " + arrow + " is over " + underArrow + " at zoom " + zoom);
+                    result.Check(projectionReady && pointsToPlayer && arrow[0] >= 0 && arrow[0] <= width && arrow[1] >= 0 && arrow[1] <= height);
+                }
+                string town;
+                GetGame().ConfigGetText("CfgWorlds ChernarusPlus Names Settlement_Chernogorsk name", town);
+                array<float> townPosition = {};
+                GetGame().ConfigGetFloatArray("CfgWorlds ChernarusPlus Names Settlement_Chernogorsk position", townPosition);
+                Print("[PredateMapTest] Chernogorsk name=" + town + "; position elements=" + townPosition.Count());
+                result.Check(town == "Chernogorsk" && townPosition.Count() == 2 && townPosition[0] > 6700);
+            }
+            result.Check(Fits(menu.m_Origin));
+            result.Check(Fits(menu.m_Bearing));
+            result.Check(!menu.GetLayoutRoot().FindAnyWidget("InterceptionWarning"));
+            bool historyMatches;
+            if (state.History.Count() == 1)
+            {
+                PredateReceiverSample entry = state.History[0];
+                historyMatches = entry.Origin == state.PulseOrigin && entry.Bearing == state.Bearing && entry.Error == state.BearingError && entry.Age >= 0;
+            }
+            result.Check(historyMatches);
+            result.Check(Fits(menu.m_HistoryRows[0]) && menu.m_HistoryRows[0].IsVisible() && !menu.m_HistoryRows[1].IsVisible());
+            state.HasPulse = false;
+            result.Check(PredateReceiverText.LostContact(state));
+            state.CloseApproach = true;
+            menu.ShowHistory(state);
+            result.Check(!menu.m_HistoryTitle.IsVisible() && !menu.m_HistoryRows[0].IsVisible());
+            result.Check(!PredateReceiverText.LostContact(state));
+            state.CloseApproach = false;
+            state.Locked = false;
+            menu.ShowHistory(state);
+            result.Check(!menu.m_HistoryTitle.IsVisible() && !menu.m_HistoryRows[0].IsVisible());
+            state.Locked = true;
+            state.HasPulse = true;
+            string buttonText;
+            menu.m_Select.GetText(buttonText);
+            result.Check(buttonText == "Clear target lock");
+            menu.OnClick(menu.m_Deploy, 0, 0, 0);
+            menu.Update(0);
+            result.Check(!menu.m_ConfirmReplacement && !menu.m_ConfirmDeploy.IsVisible());
+            state.CanDeploy = true;
+            menu.OnClick(menu.m_Deploy, 0, 0, 0);
+            menu.Update(0);
+            result.Check(menu.m_ConfirmReplacement && menu.m_ConfirmDeploy.IsVisible() && Fits(menu.m_Timing));
+            menu.OnClick(menu.m_Deploy, 0, 0, 0);
+            menu.Update(0);
+            result.Check(!menu.m_ConfirmReplacement && !menu.m_ConfirmDeploy.IsVisible());
+            state.CanDeploy = false;
+            menu.Close();
+        }
+        GetGame().GetCallQueue(CALL_CATEGORY_GUI).CallLater(Finish, 100, false, result, mission);
+    }
+
+    static void Finish(PredateReceiverValidationResult result, MissionGameplay mission)
+    {
+        result.Check(!mission.IsInputExcludeActive("aiming"));
+        result.Check(!GetGame().GetUIManager().GetMenu());
+        mission.Pause();
+        InGameMenu pause = InGameMenu.Cast(GetGame().GetUIManager().GetMenu());
+        result.PauseBrandVerified = PauseBrandVisible(pause);
+        result.Check(result.PauseBrandVerified);
+        PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
+        if (agent) agent.RequestResume();
+        string error;
+        JsonFileLoader<PredateReceiverValidationResult>.SaveFile("$profile:ReceiverValidation.json", result, error);
+        Print("[PredateReceiverTest] COMPLETE: checks=" + result.Checks + "; failures=" + result.Failures);
+    }
+
+    static bool HuntWarningVisible(PredateHuntFeed feed)
+    {
+        for (int row = 0; row < feed.m_Notices.Count(); row++)
+        {
+            TextWidget label = feed.m_Rows[row];
+            if (feed.m_Notices[row].Text == "You are being hunted." && Fits(label) && label.IsVisible() && label.GetColor() == PredateHuntFeed.HUNTED)
+                return true;
+        }
+        return false;
+    }
+
+    static bool PauseBrandVisible(InGameMenu pause)
+    {
+        if (!pause || !pause.m_PredatePauseBrand || !pause.m_PredatePauseWordmarkLoaded || !Fits(pause.m_PredatePauseSlayer)) return false;
+        ImageWidget wordmark = pause.m_PredatePauseWordmark;
+        if (!wordmark || !wordmark.IsVisible() || !pause.m_PredatePauseSlayer.IsVisible()) return false;
+        float width, height, logoX, logoY, slayerX, slayerY, frameWidth, frameHeight;
+        wordmark.GetScreenSize(width, height);
+        wordmark.GetScreenPos(logoX, logoY);
+        pause.m_PredatePauseSlayer.GetScreenPos(slayerX, slayerY);
+        pause.m_PredatePauseBrand.GetScreenSize(frameWidth, frameHeight);
+        return height > 0 && Math.AbsFloat(width / height - 1965.0 / 400.0) < 0.08 && Math.AbsFloat(logoX - slayerX) < 1 && logoY < frameHeight * 0.1 && slayerY > frameHeight * 0.85;
+    }
+}

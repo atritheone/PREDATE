@@ -1,0 +1,4195 @@
+FrameWidgetClass PredateHud {
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { FrameWidgetClass Compass {
+ position 0.36 0.018
+ size 0.28 0.06
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass CompassBackdrop {
+ position 0 0
+ size 1 0.77
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.02 0.03 0.04 0.40
+style UIDefaultPanel
+ {  }
+}
+TextWidgetClass Heading {
+ position 0.35 0
+ size 0.3 0.25
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.92 0.95 0.96 1
+text "N  000 deg"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+FrameWidgetClass CompassTape {
+ position 0 0.29
+ size 1 0.43
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+clipchildren 1
+ { FrameWidgetClass CompassScroll {
+ position -0.5 0
+ size 4 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { FrameWidgetClass Tick0 {
+ position -0.01 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel0 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "S"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark0 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick1 {
+ position -0.003055555555555556 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark1 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick2 {
+ position 0.003888888888888888 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark2 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick3 {
+ position 0.010833333333333332 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel3 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "195"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark3 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick4 {
+ position 0.017777777777777774 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark4 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick5 {
+ position 0.024722222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark5 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick6 {
+ position 0.03166666666666666 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel6 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "210"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark6 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick7 {
+ position 0.03861111111111111 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark7 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick8 {
+ position 0.04555555555555555 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark8 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick9 {
+ position 0.0525 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel9 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "SW"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark9 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick10 {
+ position 0.059444444444444446 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark10 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick11 {
+ position 0.0663888888888889 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark11 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick12 {
+ position 0.07333333333333333 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel12 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "240"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark12 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick13 {
+ position 0.08027777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark13 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick14 {
+ position 0.08722222222222223 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark14 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick15 {
+ position 0.09416666666666668 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel15 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "255"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark15 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick16 {
+ position 0.10111111111111111 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark16 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick17 {
+ position 0.10805555555555556 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark17 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick18 {
+ position 0.115 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel18 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "W"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark18 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick19 {
+ position 0.12194444444444445 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark19 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick20 {
+ position 0.1288888888888889 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark20 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick21 {
+ position 0.13583333333333333 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel21 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "285"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark21 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick22 {
+ position 0.14277777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark22 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick23 {
+ position 0.1497222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark23 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick24 {
+ position 0.15666666666666665 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel24 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "300"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark24 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick25 {
+ position 0.1636111111111111 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark25 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick26 {
+ position 0.17055555555555554 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark26 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick27 {
+ position 0.1775 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel27 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "NW"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark27 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick28 {
+ position 0.18444444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark28 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick29 {
+ position 0.1913888888888889 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark29 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick30 {
+ position 0.19833333333333333 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel30 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "330"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark30 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick31 {
+ position 0.20527777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark31 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick32 {
+ position 0.2122222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark32 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick33 {
+ position 0.21916666666666665 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel33 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "345"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark33 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick34 {
+ position 0.2261111111111111 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark34 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick35 {
+ position 0.23305555555555554 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark35 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick36 {
+ position 0.24 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel36 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "N"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark36 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick37 {
+ position 0.2469444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark37 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick38 {
+ position 0.2538888888888889 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark38 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick39 {
+ position 0.2608333333333333 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel39 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "015"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark39 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick40 {
+ position 0.2677777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark40 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick41 {
+ position 0.2747222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark41 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick42 {
+ position 0.2816666666666667 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel42 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "030"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark42 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick43 {
+ position 0.2886111111111111 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark43 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick44 {
+ position 0.29555555555555557 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark44 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick45 {
+ position 0.3025 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel45 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "NE"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark45 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick46 {
+ position 0.3094444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark46 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick47 {
+ position 0.3163888888888889 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark47 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick48 {
+ position 0.3233333333333333 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel48 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "060"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark48 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick49 {
+ position 0.3302777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark49 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick50 {
+ position 0.3372222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark50 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick51 {
+ position 0.3441666666666667 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel51 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "075"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark51 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick52 {
+ position 0.3511111111111111 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark52 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick53 {
+ position 0.35805555555555557 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark53 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick54 {
+ position 0.365 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel54 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "E"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark54 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick55 {
+ position 0.3719444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark55 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick56 {
+ position 0.3788888888888889 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark56 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick57 {
+ position 0.3858333333333333 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel57 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "105"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark57 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick58 {
+ position 0.3927777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark58 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick59 {
+ position 0.3997222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark59 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick60 {
+ position 0.4066666666666667 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel60 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "120"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark60 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick61 {
+ position 0.4136111111111111 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark61 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick62 {
+ position 0.42055555555555557 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark62 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick63 {
+ position 0.4275 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel63 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "SE"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark63 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick64 {
+ position 0.4344444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark64 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick65 {
+ position 0.4413888888888889 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark65 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick66 {
+ position 0.4483333333333333 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel66 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "150"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark66 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick67 {
+ position 0.4552777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark67 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick68 {
+ position 0.4622222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark68 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick69 {
+ position 0.4691666666666667 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel69 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "165"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark69 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick70 {
+ position 0.4761111111111111 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark70 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick71 {
+ position 0.48305555555555557 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark71 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick72 {
+ position 0.49 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel72 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "S"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark72 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick73 {
+ position 0.4969444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark73 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick74 {
+ position 0.5038888888888888 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark74 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick75 {
+ position 0.5108333333333334 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel75 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "195"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark75 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick76 {
+ position 0.5177777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark76 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick77 {
+ position 0.5247222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark77 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick78 {
+ position 0.5316666666666666 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel78 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "210"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark78 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick79 {
+ position 0.5386111111111112 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark79 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick80 {
+ position 0.5455555555555556 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark80 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick81 {
+ position 0.5525 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel81 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "SW"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark81 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick82 {
+ position 0.5594444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark82 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick83 {
+ position 0.5663888888888888 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark83 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick84 {
+ position 0.5733333333333334 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel84 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "240"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark84 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick85 {
+ position 0.5802777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark85 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick86 {
+ position 0.5872222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark86 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick87 {
+ position 0.5941666666666666 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel87 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "255"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark87 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick88 {
+ position 0.6011111111111112 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark88 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick89 {
+ position 0.6080555555555556 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark89 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick90 {
+ position 0.615 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel90 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "W"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark90 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick91 {
+ position 0.6219444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark91 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick92 {
+ position 0.6288888888888888 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark92 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick93 {
+ position 0.6358333333333334 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel93 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "285"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark93 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick94 {
+ position 0.6427777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark94 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick95 {
+ position 0.6497222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark95 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick96 {
+ position 0.6566666666666666 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel96 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "300"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark96 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick97 {
+ position 0.6636111111111112 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark97 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick98 {
+ position 0.6705555555555556 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark98 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick99 {
+ position 0.6775 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel99 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "NW"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark99 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick100 {
+ position 0.6844444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark100 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick101 {
+ position 0.6913888888888888 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark101 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick102 {
+ position 0.6983333333333334 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel102 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "330"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark102 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick103 {
+ position 0.7052777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark103 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick104 {
+ position 0.7122222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark104 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick105 {
+ position 0.7191666666666666 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel105 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "345"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark105 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick106 {
+ position 0.7261111111111112 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark106 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick107 {
+ position 0.7330555555555556 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark107 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick108 {
+ position 0.74 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel108 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "N"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark108 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick109 {
+ position 0.7469444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark109 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick110 {
+ position 0.7538888888888888 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark110 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick111 {
+ position 0.7608333333333334 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel111 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "015"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark111 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick112 {
+ position 0.7677777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark112 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick113 {
+ position 0.7747222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark113 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick114 {
+ position 0.7816666666666666 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel114 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "030"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark114 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick115 {
+ position 0.7886111111111112 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark115 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick116 {
+ position 0.7955555555555556 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark116 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick117 {
+ position 0.8025 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel117 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "NE"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark117 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick118 {
+ position 0.8094444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark118 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick119 {
+ position 0.8163888888888888 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark119 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick120 {
+ position 0.8233333333333334 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel120 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "060"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark120 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick121 {
+ position 0.8302777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark121 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick122 {
+ position 0.8372222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark122 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick123 {
+ position 0.8441666666666666 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel123 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "075"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark123 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick124 {
+ position 0.8511111111111112 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark124 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick125 {
+ position 0.8580555555555556 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark125 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick126 {
+ position 0.865 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel126 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "E"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark126 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick127 {
+ position 0.8719444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark127 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick128 {
+ position 0.8788888888888888 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark128 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick129 {
+ position 0.8858333333333334 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel129 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "105"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark129 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick130 {
+ position 0.8927777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark130 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick131 {
+ position 0.8997222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark131 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick132 {
+ position 0.9066666666666666 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel132 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "120"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark132 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick133 {
+ position 0.9136111111111112 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark133 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick134 {
+ position 0.9205555555555556 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark134 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick135 {
+ position 0.9275 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel135 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.90 0.81 1
+text "SE"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark135 {
+ position 0.48 0.74
+ size 0.04 0.26
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick136 {
+ position 0.9344444444444444 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark136 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick137 {
+ position 0.9413888888888888 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark137 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick138 {
+ position 0.9483333333333334 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel138 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "150"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark138 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick139 {
+ position 0.9552777777777778 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark139 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick140 {
+ position 0.9622222222222222 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark140 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick141 {
+ position 0.9691666666666666 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass CompassLabel141 {
+ position 0 0.15
+ size 1 0.55
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.76 0.80 0.83 1
+text "165"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+PanelWidgetClass Mark141 {
+ position 0.48 0.84
+ size 0.04 0.16
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick142 {
+ position 0.9761111111111112 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark142 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+FrameWidgetClass Tick143 {
+ position 0.9830555555555556 0
+ size 0.02 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { PanelWidgetClass Mark143 {
+ position 0.48 0.92
+ size 0.04 0.08
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.70 0.76 0.79 0.85
+style UIDefaultPanel
+ {  }
+}
+ }
+}
+ }
+}
+PanelWidgetClass PulseSector {
+ position 0 0.04
+ size 0.0833 0.09
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+color 1 0.70 0.33 1
+style rover_sim_colorable
+ {  }
+}
+TextWidgetClass PulseMarker {
+ position 0.47 0.05
+ size 0.06 0.28
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 1 0.70 0.33 1
+text "v"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+ }
+}
+PanelWidgetClass HeadingNotch {
+ position 0.4985 0.71
+ size 0.003 0.065
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.92 0.95 0.96 1
+style UIDefaultPanel
+ {  }
+}
+TextWidgetClass Receiver {
+ position 0 0.77
+ size 1 0.23
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.77 0.83 0.85 1
+text "Map  M"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 11
+"text valign" center
+"text halign" center
+ {  }
+}
+ }
+}
+TextWidgetClass FootprintClue {
+ position 0.35 0.77
+ size 0.3 0.03
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+"text halign" center
+color 0.77 0.83 0.85 1
+text ""
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 14
+"text valign" center
+ {  }
+}
+ImageWidgetClass FootprintMark {
+ position 0 0
+ size 0.01 0.01
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+mode blend
+ {  }
+}
+ }
+}

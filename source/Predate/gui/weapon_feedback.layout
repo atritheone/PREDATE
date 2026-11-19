@@ -1,0 +1,56 @@
+FrameWidgetClass PredateWeaponFeedback {
+ ignorepointer 1
+ position 0.025 0.86
+ size 0.25 0.12
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ {
+  TextWidgetClass PredateModeFeedback {
+   ignorepointer 1
+   position 0 0
+   size 1 0.3
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 0
+   color 1 1 1 1
+   font "gui/fonts/etelkatextpro22"
+   "exact text" 1
+   "exact text size" 16
+   "text halign" left
+   "text valign" center
+  }
+  TextWidgetClass PredateZeroingFeedback {
+   ignorepointer 1
+   position 0 0.3
+   size 1 0.3
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 0
+   color 1 1 1 1
+   font "gui/fonts/etelkatextpro22"
+   "exact text" 1
+   "exact text size" 16
+   "text halign" left
+   "text valign" center
+  }
+  TextWidgetClass PredateMagazineFeedback {
+   ignorepointer 1
+   position 0 0.6
+   size 1 0.3
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 0
+   color 1 1 1 1
+   font "gui/fonts/etelkatextpro22"
+   "exact text" 1
+   "exact text size" 16
+   "text halign" left
+   "text valign" center
+  }
+ }
+}

@@ -1,0 +1,246 @@
+class PredateProtocol
+{
+    static const int VERSION = 14;
+    static const int MAX_OPERATORS = 30;
+    static const int ALL_OPERATORS = 1073741823;
+    static const int MAX_BEARING_HISTORY = 4;
+    static const int REQUEST = 918601;
+    static const int STATE = 918602;
+    static const int MENU = 918603;
+    static const int SESSION_REQUEST = 918604;
+    static const int SESSION_ACK = 918605;
+    static ref array<string> s_OperatorIds = {
+        "raven-01", "lynx-01", "rook-01", "viper-01", "kestrel-01", "jackal-01",
+        "fox-01", "wolf-01", "osprey-01", "marten-01", "hawk-01", "badger-01",
+        "kite-01", "otter-01", "sable-01", "heron-01", "falcon-01", "adder-01",
+        "eagle-01", "pike-01", "sparrow-01", "stoat-01", "shrike-01", "boar-01",
+        "magpie-01", "owl-01", "ferret-01", "salmon-01", "wren-01", "weasel-01"
+    };
+
+    static bool AcceptRequest(int version, string operatorId, int request)
+    {
+        if (version != VERSION) return false;
+        if (request == 1 || request == 2) return OperatorBit(operatorId) != 0;
+        if (operatorId != "raven-01") return false;
+        return request >= 1 && request <= 5;
+    }
+
+    static int OperatorBit(string id)
+    {
+        int slot = s_OperatorIds.Find(id);
+        if (slot < 0) return 0;
+        return 1 << slot;
+    }
+
+    static string OperatorAt(int slot)
+    {
+        if (slot < 0 || slot >= MAX_OPERATORS) return "";
+        return s_OperatorIds[slot];
+    }
+
+    static string SignatureFor(string id)
+    {
+        if (OperatorBit(id) == 0) return "";
+        id.ToUpper();
+        return id;
+    }
+
+    static string DisplayName(string id)
+    {
+        if (OperatorBit(id) == 0) return "";
+        string first = id.Substring(0, 1);
+        first.ToUpper();
+        return first + id.Substring(1, id.Length() - 4);
+    }
+}
+
+class PredateReceiverSample
+{
+    int Bearing;
+    float Error;
+    float Age;
+    vector Origin;
+}
+
+class PredateState
+{
+    string OperatorId = "raven-01";
+    bool Development;
+    bool CanDeploy;
+    string Signature = "RAVEN-01";
+    bool Available;
+    bool Locked;
+    bool HasPulse;
+    bool CloseApproach;
+    int Bearing;
+    float Age;
+    float NextPulse;
+    bool HasPulseOrigin;
+    vector PulseOrigin;
+    float BearingError;
+    bool Intercepted;
+    int ConfirmedKills;
+    bool SuppliesRefreshed;
+    bool NeedsRedeploy;
+    int EndedLife;
+    int EndedLifeSeconds;
+    int EndedLifeBearings;
+    bool OperatorDefeated;
+    bool DeploymentSpawnRejected;
+    int AvailableOperators = -1;
+    int FootprintClue;
+    vector FootprintGround;
+    int FootprintHeading;
+    ref array<ref PredateReceiverSample> History = new array<ref PredateReceiverSample>;
+    ref array<ref PredateBearingPulse> Pulses = new array<ref PredateBearingPulse>;
+    string Message = "Establishing receiver link...";
+
+    bool CanShowHistory() { return Available && Locked && !CloseApproach; }
+}
+
+class PredateConfig
+{
+    int SchemaVersion;
+    int StartHour = -1;
+    int StartMinute;
+    float PulseInterval = 60;
+    float BearingErrorDegrees = 3;
+    float FinalApproachRadius = 200;
+    float BotAccuracyMin = 0.80;
+    float BotAccuracyMax = 0.95;
+    int CombatTuningRevision;
+    string PlayerLoadout = "m4a1";
+    bool HasCustomInventory;
+    ref array<ref PredateInventoryNode> PlayerInventory = new array<ref PredateInventoryNode>;
+    float ThreatDistance = 600;
+    int OpponentCount = 1;
+    vector PlayerStart = "4500 0 6500";
+    bool ExplicitPlayerStart;
+    vector BotStart = "4780 0 6710";
+    vector LynxStart = "4220 0 6880";
+    vector RookStart = "5060 0 6060";
+    float PatrolSize = 40;
+    bool RunSelfTests = true;
+    bool EnableFairInformation;
+    bool EnableSharedSignals;
+    bool EnableStrategicHunter;
+    bool EnableFootprints;
+    bool EnableOperatorRespawns;
+    float OperatorRespawnDelay = 120;
+}
+
+class PredateInventoryNode
+{
+    string ClassName;
+    int Parent = -1;
+    string Placement;
+    string Slot;
+    int Row = -1;
+    int Column = -1;
+    bool Flipped;
+    float Amount = -1;
+}
+
+// Logical identity is independent of the engine's transient group/entity IDs.
+class PredateOperatorRecord
+{
+    string Id = "raven-01";
+    string Signature = "RAVEN-01";
+    string StorageKey = "PredateRaven01";
+    string LifeState = "unspawned";
+    int Deployment = 1;
+    float RespawnAt;
+    int EquipmentRevision;
+    string RifleKit;
+    ref PredateSupplyPlan Supplies = new PredateSupplyPlan;
+
+    bool RespawnDue(float now, float delay)
+    {
+        if (LifeState != "defeated") return false;
+        if (RespawnAt <= 0) RespawnAt = now + delay;
+        return now >= RespawnAt;
+    }
+}
+
+class PredateProgress
+{
+    int SchemaVersion;
+    ref PredateOperatorRecord Operator = new PredateOperatorRecord;
+    bool Selected;
+    bool Defeated;
+    bool BotCreated;
+    bool HasPulse;
+    int LastBearing;
+    float PulseAge;
+    float PulseRemaining;
+    bool HasPulseOrigin;
+    vector PulseOrigin;
+    float LastBearingError;
+    vector MapCenter;
+    float MapRadius;
+    int BotPlacementRevision;
+    int PlayerPlacementRevision;
+}
+
+class PredateMath
+{
+    static float WrapHeading(float degrees)
+    {
+        while (degrees < 0) degrees += 360;
+        while (degrees >= 360) degrees -= 360;
+        return degrees;
+    }
+
+    static float RelativeBearing(float bearing, float heading)
+    {
+        float delta = WrapHeading(bearing) - WrapHeading(heading);
+        while (delta < -180) delta += 360;
+        while (delta >= 180) delta -= 360;
+        return delta;
+    }
+
+    static float CameraHeading(vector direction)
+    {
+        return WrapHeading(Math.Atan2(direction[0], direction[2]) * Math.RAD2DEG);
+    }
+
+    static string CompassPoint(float heading)
+    {
+        int sector = Math.Round(WrapHeading(heading) / 45.0);
+        sector = sector % 8;
+        switch (sector)
+        {
+            case 0: return "N";
+            case 1: return "NE";
+            case 2: return "E";
+            case 3: return "SE";
+            case 4: return "S";
+            case 5: return "SW";
+            case 6: return "W";
+            case 7: return "NW";
+        }
+        return "N";
+    }
+
+    static int Bearing(vector from, vector to)
+    {
+        vector delta = to - from;
+        float degrees = Math.Atan2(delta[0], delta[2]) * Math.RAD2DEG;
+        if (degrees < 0) degrees += 360;
+        int rounded = Math.Round(degrees);
+        return rounded % 360;
+    }
+
+    static string BearingText(int bearing)
+    {
+        return BearingDigits(bearing) + " deg";
+    }
+
+    static string BearingDigits(int bearing)
+    {
+        string result = bearing.ToString();
+        if (bearing < 10) result = "00" + result;
+        else if (bearing < 100) result = "0" + result;
+        return result;
+    }
+}

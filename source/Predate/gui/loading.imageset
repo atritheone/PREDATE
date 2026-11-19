@@ -1,0 +1,18 @@
+ImageSetClass {
+ Name "PredateLoading"
+ RefSize 16 16
+ Textures {
+  ImageSetTextureClass {
+   mpix 0
+   path "Predate/gui/loading_blue_co.paa"
+  }
+ }
+ Images {
+  ImageSetDefClass BlueFill {
+   Name "BlueFill"
+   Pos 0 0
+   Size 16 16
+   Flags 0
+  }
+ }
+}

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<modded_inputs>
+  <inputs>
+    <actions>
+      <input name="UAPredateWeaponLight" loc="Toggle weapon light"/>
+      <input name="UAPredateToggleNVG" loc="Toggle night vision"/>
+    </actions>
+    <sorting name="predate" loc="PREDATE">
+      <input name="UAPredateWeaponLight"/>
+      <input name="UAPredateToggleNVG"/>
+    </sorting>
+  </inputs>
+  <preset>
+    <input name="UAPredateWeaponLight"><btn name="kU"/></input>
+    <input name="UAPredateToggleNVG"><btn name="kN"/></input>
+  </preset>
+</modded_inputs>

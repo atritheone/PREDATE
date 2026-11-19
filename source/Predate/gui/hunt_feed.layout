@@ -1,0 +1,136 @@
+FrameWidgetClass PredateHuntFeed {
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+priority 900
+ { FrameWidgetClass HuntFeed {
+ position 0.675 0.035
+ size 0.3 0.21
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ { TextWidgetClass HuntNotice0 {
+ position 0 0.0
+ size 1 0.16666666666666666
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+"text halign" right
+color 1 1 1 1
+text ""
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 16
+"text valign" center
+ {  }
+}
+TextWidgetClass HuntNotice1 {
+ position 0 0.16666666666666666
+ size 1 0.16666666666666666
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+"text halign" right
+color 1 1 1 1
+text ""
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 16
+"text valign" center
+ {  }
+}
+TextWidgetClass HuntNotice2 {
+ position 0 0.3333333333333333
+ size 1 0.16666666666666666
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+"text halign" right
+color 1 1 1 1
+text ""
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 16
+"text valign" center
+ {  }
+}
+TextWidgetClass HuntNotice3 {
+ position 0 0.5
+ size 1 0.16666666666666666
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+"text halign" right
+color 1 1 1 1
+text ""
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 16
+"text valign" center
+ {  }
+}
+TextWidgetClass HuntNotice4 {
+ position 0 0.6666666666666666
+ size 1 0.16666666666666666
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+"text halign" right
+color 1 1 1 1
+text ""
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 16
+"text valign" center
+ {  }
+}
+TextWidgetClass HuntNotice5 {
+ position 0 0.8333333333333334
+ size 1 0.16666666666666666
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+"text halign" right
+color 1 1 1 1
+text ""
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 16
+"text valign" center
+ {  }
+}
+ }
+}
+ }
+}

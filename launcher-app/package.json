@@ -1,0 +1,67 @@
+{
+  "name": "predate-launcher",
+  "version": "0.3.0",
+  "description": "PREDATE singleplayer launcher",
+  "author": "PREDATE contributors",
+  "private": true,
+  "type": "commonjs",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src scripts electron.vite.config.ts tsconfig.json package.json .prettierrc.json",
+    "format:check": "prettier --check src scripts electron.vite.config.ts tsconfig.json package.json .prettierrc.json",
+    "build": "npm run typecheck && electron-vite build",
+    "backend": "node scripts/build-backend.mjs",
+    "package": "npm run backend && npm run build && electron-builder --win portable --x64"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "electron": "45.3.3",
+    "electron-builder": "26.18.0",
+    "electron-vite": "6.0.0",
+    "prettier": "3.6.2",
+    "typescript": "7.0.2",
+    "vite": "8.3.8"
+  },
+  "build": {
+    "appId": "com.predate.launcher",
+    "productName": "PREDATE",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "resources/icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "PREDATEBackend.exe",
+          "project.json"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "resources/icon.ico",
+      "signExecutable": false
+    },
+    "portable": {
+      "artifactName": "PREDATE.exe"
+    },
+    "npmRebuild": false
+  }
+}

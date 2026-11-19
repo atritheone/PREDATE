@@ -1,0 +1,42 @@
+FrameWidgetClass PredatePauseBrand {
+ ignorepointer 1
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ priority 110
+ {
+  ImageWidgetClass PredatePauseWordmark {
+   ignorepointer 1
+   position 0.03 0.045
+   size 0.22 0.08
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 0
+   mode blend
+   "src alpha" 1
+   "clamp mode" clamp
+   "stretch mode" stretch_w_h
+   filter 1
+  }
+  TextWidgetClass PredatePauseSlayer {
+   ignorepointer 1
+   position 0.03 0.91
+   size 0.20 0.055
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 0
+   scaled 0
+   color 0.89 0.94 0.96 1
+   font "gui/fonts/sdf_MetronBook24"
+   "exact text" 1
+   "exact text size" 20
+   "text valign" center
+   text "slayer"
+  }
+ }
+}

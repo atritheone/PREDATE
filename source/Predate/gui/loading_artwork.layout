@@ -1,0 +1,37 @@
+FrameWidgetClass PredateArtwork {
+ ignorepointer 1
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ priority -1000
+ {
+  PanelWidgetClass ArtworkMatte {
+   ignorepointer 1
+   position 0 0
+   size 1 1
+   color 0.008 0.027 0.09 1
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 0
+   style rover_sim_colorable
+  }
+  ImageWidgetClass ArcadeImage {
+   ignorepointer 1
+   position 0 0
+   size 1 1
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 0
+   mode blend
+   "src alpha" 0
+   "clamp mode" clamp
+   "stretch mode" stretch_w_h
+   filter 1
+  }
+ }
+}

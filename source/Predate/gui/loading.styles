@@ -1,0 +1,12 @@
+<WidgetStyles>
+ <Widget Name="ProgressBarWidget">
+  <Style Name="PredateLoadingBlue" Font="" ImageSet="PredateLoading" Color="4294967295">
+   <State Name="Normal">
+    <Item Name="BarCenter" Image="BlueFill"/>
+   </State>
+   <State Name="Disabled">
+    <Item Name="BarCenter" Image="BlueFill"/>
+   </State>
+  </Style>
+ </Widget>
+</WidgetStyles>

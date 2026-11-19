@@ -1,0 +1,7 @@
+
+
+## todo
+
+add low ready.
+
+add carry weight, stamina effect.
