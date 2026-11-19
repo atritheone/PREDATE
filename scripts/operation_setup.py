@@ -68,7 +68,9 @@ def inventory(entries):
         elif (row, col, flipped) == (-1, -1, False):
             if placement == "hands" and not host and not slot:
                 location = (parent, "hands")
-            elif placement == "magazine" and host and not slot and item_class in host["magazines"]:
+            elif placement == "magazine" and host and not slot and any(
+                item_class.lower() == magazine.lower() for magazine in host["magazines"]
+            ):
                 location = (parent, "magazine")
             elif placement == "attachment":
                 allowed = {name.lower() for name in host["accepts"]} if host else PLAYER_SLOTS

@@ -9,7 +9,6 @@ import { InventoryEditor } from './InventoryEditor'
 import { SpawnEditor, validSpawn } from './SpawnEditor'
 import {
   completeLegacyInventory,
-  hasDefaultComponents,
   inventoryEntries,
   starterInventory,
   type Inventory,
@@ -24,6 +23,11 @@ const timePresets = [
   ['Night', '00:00'],
 ] as const
 const defaultTime = '12:00'
+const rifleGroups = [
+  ['Assault rifle', 'Assault Rifles'],
+  ['Battle rifle', 'Battle Rifles'],
+  ['Sniper rifle', 'Sniper Rifles'],
+] as const
 
 export interface OperationDraft {
   name: string
@@ -118,7 +122,6 @@ export function OperationSetup({
   const submit = (): void => {
     if (!valid || busy) return
     const [startHour, startMinute] = draft.time.split(':').map(Number)
-    const entries = inventoryEntries(loadout)
     void create({
       action: 'new',
       name: draft.name,
@@ -130,9 +133,7 @@ export function OperationSetup({
         startMinute,
         enemyRespawns: draft.enemyRespawns,
         respawnDelay: draft.enemyRespawns ? delay : 120,
-        ...(draft.inventory !== null || hasDefaultComponents(entries)
-          ? { inventory: entries }
-          : {}),
+        inventory: inventoryEntries(loadout),
       },
     })
   }
@@ -252,11 +253,27 @@ export function OperationSetup({
                   else change({ kit: id, inventory: null })
                 }}
               >
-                {overview.loadouts.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
+                {rifleGroups.map(([category, label]) => {
+                  const kits = overview.loadouts.filter((item) => item.description === category)
+                  return kits.length ? (
+                    <optgroup key={category} label={label}>
+                      {kits.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ) : null
+                })}
+                {overview.loadouts
+                  .filter(
+                    (item) => !rifleGroups.some(([category]) => category === item.description),
+                  )
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
                 {draft.inventory !== null && <option value="custom">Custom</option>}
                 <option value="empty">Empty inventory</option>
               </select>

@@ -32,6 +32,7 @@ export interface Placement {
 
 export type Inventory = Record<string, InventoryItem>
 
+const playerSpareMagazines = 6
 const requiredParts: Record<string, string> = {
   batteryd: 'Battery9V',
   carbattery: 'CarBattery',
@@ -45,10 +46,6 @@ const railHandguards: Record<string, string> = {
   weaponhandguardm4: 'M4_RISHndgrd',
   weaponhandguardak: 'AK_RailHndgrd',
   weaponhandguardmp5: 'MP5_RailHndgrd',
-}
-
-export function hasDefaultComponents(entries: InventoryEntry[]): boolean {
-  return entries.some(({ ClassName, Slot }) => requiredParts[Slot.toLowerCase()] === ClassName)
 }
 
 function lightRailSlot(item: InventoryItem): string | undefined {
@@ -174,6 +171,7 @@ export const equipment = [
 
 export const gear: Gear[] = catalog
 export const gearById = new Map(gear.map((item) => [item.id, item]))
+const gearByConfigName = new Map(gear.map((item) => [item.id.toLowerCase(), item]))
 const slotOptions = new Map<string, Gear[]>()
 for (const item of gear) {
   for (const slot of item.slots) {
@@ -215,7 +213,7 @@ export function compatibleGear(slot: string, host?: Gear): Gear[] {
   if (slot === '@magazine') {
     return (
       host?.magazines.flatMap((id) => {
-        const item = gearById.get(id)
+        const item = gearById.get(id) ?? gearByConfigName.get(id.toLowerCase())
         return item ? [item] : []
       }) ?? []
     )
@@ -280,7 +278,7 @@ export function placeInCargo(
 }
 
 export function starterInventory(id: string): Inventory {
-  const preset = presets.Kits.find((kit) => kit.Id === id)
+  const preset = [...presets.Kits, ...presets.OperatorKits].find((kit) => kit.Id === id)
   if (!preset) return {}
   const root: Inventory = {}
   for (const [slot, item] of Object.entries({
@@ -296,19 +294,16 @@ export function starterInventory(id: string): Inventory {
     root[slot] = newItem(item)
   }
   const weapon = gearById.get(preset.FirearmClass)
-  for (const part of preset.Attachments) {
+  for (const part of [...preset.Attachments, preset.SuppressorClass]) {
     const slot = weapon?.accepts.find((option) =>
       compatibleGear(option, weapon).some((item) => item.id === part),
     )
     if (slot) root.Hands.attachments[slot] = newItem(part)
   }
-  if (preset.Id === 'm4a1') {
-    root.Hands.attachments.weaponMuzzleM4 = newItem('M4_Suppressor')
-    root.Headgear.attachments.NVG = newItem('NVGoggles')
-  }
+  root.Headgear.attachments.NVG = newItem('NVGoggles')
   root.Hands.attachments['@magazine'] = newItem(preset.MagazineClass)
   const spares = [
-    ...Array<string>(preset.SpareMagazines).fill(preset.MagazineClass),
+    ...Array<string>(playerSpareMagazines).fill(preset.MagazineClass),
     ...Array<string>(4).fill('BandageDressing'),
     'Morphine',
     'Epinephrine',
@@ -316,10 +311,12 @@ export function starterInventory(id: string): Inventory {
     'ChernarusMap',
   ]
   for (const id of spares) {
+    const item = newItem(id)
+    if (id === preset.MagazineClass) item.amount = gearById.get(id)?.capacity
     for (const slot of ['Body', 'Legs', 'Back']) {
       const container = root[slot]
       const host = gearById.get(container.id)
-      const placement = host && placeInCargo(host, container.cargo, newItem(id))
+      const placement = host && placeInCargo(host, container.cargo, item)
       if (placement) {
         container.cargo.push(placement)
         break

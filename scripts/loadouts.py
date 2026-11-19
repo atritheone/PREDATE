@@ -11,8 +11,12 @@ def catalog():
     data = json.loads(path.read_text(encoding='utf-8'))
     if data.get('Schema') != 1 or not isinstance(data.get('Kits'), list) or not 1 <= len(data['Kits']) <= 16:
         raise ValueError('Unsupported starting-kit catalog')
+    operator_kits = data.get('OperatorKits', [])
+    if not isinstance(operator_kits, list) or len(operator_kits) > 16:
+        raise ValueError('Unsupported operator kit catalog')
+    kits = data['Kits'] + operator_kits
     ids = set()
-    for kit in data['Kits']:
+    for kit in kits:
         if not isinstance(kit, dict) or any(not isinstance(kit.get(field), str) or not kit[field] for field in ('Id','Name','Description','FirearmClass','MagazineClass')):
             raise ValueError('Invalid starting-kit definition')
         if kit['Id'] in ids or not isinstance(kit.get('SpareMagazines'), int) or not 0 <= kit['SpareMagazines'] <= 12:
@@ -20,7 +24,7 @@ def catalog():
         if not isinstance(kit.get('Attachments'), list) or any(not isinstance(item, str) or not item for item in kit['Attachments']):
             raise ValueError('Invalid starting-kit attachments')
         ids.add(kit['Id'])
-    return data['Kits']
+    return kits
 
 
 def get(identifier):

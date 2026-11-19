@@ -4,7 +4,7 @@
     {
       "Id": "m4a1",
       "Name": "M4A1",
-      "Description": "5.56 mm rifle with ACOG optic, six spare magazines and medical supplies.",
+      "Description": "Assault rifle",
       "FirearmClass": "M4A1",
       "MagazineClass": "Mag_STANAG_30Rnd",
       "SpareMagazines": 6,
@@ -18,7 +18,7 @@
     {
       "Id": "ak74",
       "Name": "AK-74",
-      "Description": "5.45 mm rifle with PSO-1 optic, six spare magazines and medical supplies.",
+      "Description": "Assault rifle",
       "FirearmClass": "AK74",
       "MagazineClass": "Mag_AK74_30Rnd",
       "SpareMagazines": 6,
@@ -28,6 +28,66 @@
         "AK74_WoodBttstck",
         "PSO1Optic"
       ]
+    },
+    {
+      "Id": "aug",
+      "Name": "AUG A3",
+      "Description": "Assault rifle",
+      "FirearmClass": "Aug",
+      "MagazineClass": "Mag_Aug_30Rnd",
+      "SpareMagazines": 6,
+      "SuppressorClass": "M4_Suppressor",
+      "Attachments": ["ACOGOptic"]
+    },
+    {
+      "Id": "m16a2",
+      "Name": "M16A2",
+      "Description": "Assault rifle",
+      "FirearmClass": "M16A2",
+      "MagazineClass": "Mag_STANAG_30Rnd",
+      "SpareMagazines": 6,
+      "SuppressorClass": "M4_Suppressor",
+      "Attachments": []
+    },
+    {
+      "Id": "scar-l",
+      "Name": "SCAR-L",
+      "Description": "Assault rifle",
+      "FirearmClass": "SCARL",
+      "MagazineClass": "Mag_STANAG_30Rnd",
+      "SpareMagazines": 6,
+      "SuppressorClass": "M4_Suppressor",
+      "Attachments": ["SCAR_StockBttstck", "ACOGOptic"]
+    },
+    {
+      "Id": "scar-h",
+      "Name": "SCAR-H",
+      "Description": "Battle rifle",
+      "FirearmClass": "SCARH",
+      "MagazineClass": "Mag_SCARH_20Rnd",
+      "SpareMagazines": 6,
+      "SuppressorClass": "ImprovisedSuppressor",
+      "Attachments": ["SCAR_StockBttstck", "ACOGOptic_6x"]
+    },
+    {
+      "Id": "svd",
+      "Name": "SVD",
+      "Description": "Sniper rifle",
+      "FirearmClass": "SVD",
+      "MagazineClass": "Mag_SVD_10Rnd",
+      "SpareMagazines": 6,
+      "SuppressorClass": "AK_Suppressor",
+      "Attachments": ["PSO1Optic"]
+    },
+    {
+      "Id": "pioneer",
+      "Name": "Pioneer",
+      "Description": "Sniper rifle",
+      "FirearmClass": "Scout",
+      "MagazineClass": "Mag_Scout_5Rnd",
+      "SpareMagazines": 6,
+      "SuppressorClass": "M4_Suppressor",
+      "Attachments": ["ACOGOptic_6x"]
     }
   ],
   "OperatorKits": [
@@ -60,7 +120,7 @@
     },
     {
       "Id": "m14",
-      "Name": "DMR",
+      "Name": "M14 DMR",
       "Description": "Battle rifle",
       "FirearmClass": "M14",
       "MagazineClass": "Mag_M14_20Rnd",
