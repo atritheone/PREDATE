@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import sys
 
+import loadouts
+
 MAX_INVENTORY_ITEMS = 256
 MAX_INVENTORY_DEPTH = 12
 PLAYER_SLOTS = {
@@ -20,7 +22,8 @@ def inventory_catalog():
         path = Path(sys._MEIPASS) / "predate-data/operation-catalog.json"
     else:
         path = Path(__file__).resolve().parents[1] / "launcher-app/resources/operation-catalog.json"
-    return {item["id"]: item for item in json.loads(path.read_text(encoding="utf-8"))}
+    base = json.loads(path.read_text(encoding="utf-8"))
+    return {item["id"]: item for item in base + loadouts.modern_data()["Catalog"]}
 
 
 def inventory(entries):
@@ -91,7 +94,7 @@ def inventory(entries):
 
 
 def config(selection):
-    if not isinstance(selection, dict) or not RULE_KEYS <= selection.keys() <= RULE_KEYS | {"inventory"}:
+    if not isinstance(selection, dict) or not RULE_KEYS <= selection.keys() <= RULE_KEYS | {"inventory", "playerOutfit", "operatorOutfit"}:
         raise ValueError("Invalid new operation settings")
     hour, minute = selection["startHour"], selection["startMinute"]
     if type(hour) is not int or type(minute) is not int or not (0 <= hour <= 23 and 0 <= minute <= 59):
@@ -107,6 +110,18 @@ def config(selection):
         "EnableOperatorRespawns": respawns,
         "OperatorRespawnDelay": delay,
     }
+    if "playerOutfit" in selection or "operatorOutfit" in selection:
+        outfits = {outfit["Id"] for outfit in loadouts.definitions()["Outfits"]}
+        for key, stored_name, allowed in (
+            ("playerOutfit", "PlayerOutfit", outfits),
+            ("operatorOutfit", "OperatorOutfit", outfits | {"varied"}),
+        ):
+            if key not in selection:
+                continue
+            outfit = selection[key]
+            if not isinstance(outfit, str) or outfit not in allowed:
+                raise ValueError("Select a valid clothing preset")
+            rules[stored_name] = outfit
     if "inventory" in selection:
         rules["HasCustomInventory"] = True
         rules["PlayerInventory"] = inventory(selection["inventory"])

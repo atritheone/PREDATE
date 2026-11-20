@@ -96,18 +96,18 @@ function MapView({
         <div className="map-zoom">
           <button
             type="button"
-            aria-label="Zoom out"
+            aria-label="Zoom Out"
             disabled={view.zoom === 1}
             onClick={() => setZoom(view.zoom / 2)}
           >
             −
           </button>
-          <button type="button" aria-label="Reset map zoom" onClick={() => setZoom(1)}>
+          <button type="button" aria-label="Reset Map Zoom" onClick={() => setZoom(1)}>
             {view.zoom}×
           </button>
           <button
             type="button"
-            aria-label="Zoom in"
+            aria-label="Zoom In"
             disabled={view.zoom === maxZoom}
             onClick={() => setZoom(view.zoom * 2)}
           >
@@ -205,14 +205,14 @@ export function SpawnEditor({
   const east = selected ? String(selected.x) : x
   const north = selected ? String(selected.z) : z
   return (
-    <section className="spawn-workspace" aria-label="Spawn setup">
+    <section className="spawn-workspace" aria-label="Spawn Setup">
       <MapView
         point={point}
         select={(next) => change('custom', coordinate(next.x), coordinate(next.z))}
       />
       <div className="spawn-controls stack">
         <label className="field">
-          Spawn location
+          Spawn Location
           <select
             id="spawn-location"
             value={preset}
@@ -222,15 +222,15 @@ export function SpawnEditor({
               else change(event.target.value, next ? String(next.x) : x, next ? String(next.z) : z)
             }}
           >
-            {randomRegion && <option value="regional">Random region across Chernarus</option>}
-            <optgroup label="Classic spawns">
+            <optgroup label="Classic Spawns">
               {presets.map((item) => (
                 <option value={item.id} key={item.id}>
                   {item.name}
                 </option>
               ))}
             </optgroup>
-            <option value="custom">Custom coordinates</option>
+            {randomRegion && <option value="regional">Random Region Across Chernarus</option>}
+            <option value="custom">Custom Coordinates</option>
           </select>
         </label>
         <div className="coordinate-fields">

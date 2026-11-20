@@ -16,6 +16,7 @@ import mod_presets
 import loadouts
 import spawn_points
 import presentation
+import workshop_lasers
 from contextlib import closing
 
 from app_runtime import ROOT
@@ -72,6 +73,7 @@ def verify_operation_mods(profile):
     info = metadata(profile)
     validate_mods(info['extra_mods'])
     verified = mod_presets.verify(info['extra_mods'], info.get('mod_lock'))
+    workshop_lasers.verify_pair(verified)
     if 'mod_lock' not in info:
         info['mod_lock'] = verified
         atomic_json(world_path(profile)/'operation.json', info)
@@ -106,7 +108,7 @@ def metadata(profile):
     if saved is not None:
         if saved.get("schema") != SCHEMA: raise ValueError("Unsupported operation metadata")
         return saved
-    return {"schema": SCHEMA, "id": profile, "name": "Original operation" if profile == "main" else profile,
+    return {"schema": SCHEMA, "id": profile, "name": "Original Hunt" if profile == "main" else profile,
             "created": None, "extra_mods": [], "kind": "operation" if profile == "main" else "validation"}
 
 
@@ -132,19 +134,34 @@ def validate_opponent_count(value):
 
 
 def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, player_loadout='m4a1',
-                     opponent_count=1, footprints=False, spawn=None, setup=None):
+                     opponent_count=1, footprints=False, spawn=None, setup=None, require_modern_gear=False):
     import operation_setup
     import world
     name = name.strip()
     if not name or len(name) > 80: raise ValueError("Use an operation name of 1–80 characters")
     validate_opponent_count(opponent_count)
     if not isinstance(footprints, bool): raise ValueError("Footprint clues must be true or false")
-    if hunt_defaults: loadouts.get(player_loadout)
+    kit = loadouts.get(player_loadout) if hunt_defaults else None
     player_start = spawn_points.config(spawn) if spawn is not None else {}
     rules = operation_setup.config(setup) if setup is not None else {}
+    if kit and kit.get("PlayerPreset") and not rules.get("HasCustomInventory"):
+        raise ValueError("Workshop starting kits require a loadout from New Operation")
     mods = preferences()["extra_mods"] if extra_mods is None else extra_mods
     validate_mods(mods)
+    custom_classes = {item["ClassName"] for item in rules.get("PlayerInventory", [])}
+    uses_workshop_gear = any(item["id"] in custom_classes for item in loadouts.modern_data()["Catalog"])
+    kit_requirements = loadouts.modern_data()["Equipment"] if require_modern_gear or uses_workshop_gear else kit
+    if kit_requirements:
+        configured = {Path(value).resolve() for value in mods}
+        requirements = {"Name": kit["Name"] if kit else "Starting inventory", **kit_requirements}
+        packs = loadouts.workshop_paths(requirements, mods)
+        mods = [*mods, *(str(pack) for pack in packs if pack.resolve() not in configured)]
+    if hunt_defaults:
+        configured = {Path(value).resolve() for value in mods}
+        pair = workshop_lasers.ready_pair(ROOT, loadouts.WORKSHOP)
+        mods = [*mods, *(str(pack) for pack in pair if pack.resolve() not in configured)]
     mod_lock = mod_presets.capture(mods)
+    workshop_lasers.verify_pair(mod_lock)
     profile = profile or new_id()
     target = world_path(profile)
     if target.exists(): raise ValueError("That operation already exists; its saved data was retained")
@@ -157,6 +174,7 @@ def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, pl
             'EnableSharedSignals': True,
             'EnableStrategicHunter': True,
             'PlayerLoadout': player_loadout,
+            'RequireModernGear': require_modern_gear,
             'OpponentCount': opponent_count,
             'EnableFootprints': footprints,
             'EnableOperatorRespawns': True,

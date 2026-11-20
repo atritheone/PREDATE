@@ -3,15 +3,18 @@
   <inputs>
     <actions>
       <input name="UAPredateWeaponLight" loc="Toggle weapon light"/>
+      <input name="UAPredateWeaponLightMode" loc="Cycle weapon light mode"/>
       <input name="UAPredateToggleNVG" loc="Toggle night vision"/>
     </actions>
     <sorting name="predate" loc="PREDATE">
       <input name="UAPredateWeaponLight"/>
+      <input name="UAPredateWeaponLightMode"/>
       <input name="UAPredateToggleNVG"/>
     </sorting>
   </inputs>
   <preset>
     <input name="UAPredateWeaponLight"><btn name="kU"/></input>
+    <input name="UAPredateWeaponLightMode"><btn name="kK"/></input>
     <input name="UAPredateToggleNVG"><btn name="kN"/></input>
   </preset>
 </modded_inputs>

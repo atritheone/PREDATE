@@ -11,6 +11,8 @@ modded class IngameHud
     int m_PredateFeedbackWarmup;
     int m_PredateModeUntil;
     int m_PredateZeroingUntil;
+    PlayerBase m_PredateFeedbackPlayer;
+    int m_PredateShownModuleMessage;
     float m_PredateModeAlpha;
     float m_PredateZeroingAlpha;
     float m_PredateMagazineAlpha;
@@ -44,6 +46,11 @@ modded class IngameHud
         super.Update(timeslice);
         if (!m_PredateWeaponFeedback || !m_PredateModeFeedback || !m_PredateZeroingFeedback || !m_PredateMagazineFeedback) return;
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+        if (player != m_PredateFeedbackPlayer)
+        {
+            m_PredateFeedbackPlayer = player;
+            m_PredateShownModuleMessage = 0;
+        }
         Weapon_Base weapon;
         if (player) weapon = Weapon_Base.Cast(player.GetHumanInventory().GetEntityInHands());
         if (!player || !weapon)
@@ -83,6 +90,16 @@ modded class IngameHud
         m_PredateFeedbackMode = mode;
         m_PredateFeedbackMuzzle = muzzle;
         m_PredateFeedbackZeroing = zeroing;
+        if (player.m_PredateModuleMessageRevision != m_PredateShownModuleMessage)
+        {
+            m_PredateShownModuleMessage = player.m_PredateModuleMessageRevision;
+            int expires = player.m_PredateModuleMessageTime + 3000;
+            if (now < expires)
+            {
+                m_PredateModeFeedback.SetText(player.m_PredateModuleMessage);
+                m_PredateModeUntil = expires;
+            }
+        }
         m_PredateModeAlpha = PredateFeedbackFade(m_PredateModeAlpha, now < m_PredateModeUntil, timeslice);
         m_PredateZeroingAlpha = PredateFeedbackFade(m_PredateZeroingAlpha, now < m_PredateZeroingUntil, timeslice);
         bool magazineMessage = weapon == player.m_PredateMagazineMessageWeapon && now < player.m_PredateMagazineMessageUntil;

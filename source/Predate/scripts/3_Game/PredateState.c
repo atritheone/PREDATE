@@ -9,6 +9,7 @@ class PredateProtocol
     static const int MENU = 918603;
     static const int SESSION_REQUEST = 918604;
     static const int SESSION_ACK = 918605;
+    static const int WEAPON_MODULE_LOG = 918606;
     static ref array<string> s_OperatorIds = {
         "raven-01", "lynx-01", "rook-01", "viper-01", "kestrel-01", "jackal-01",
         "fox-01", "wolf-01", "osprey-01", "marten-01", "hawk-01", "badger-01",
@@ -115,6 +116,9 @@ class PredateConfig
     float BotAccuracyMax = 0.95;
     int CombatTuningRevision;
     string PlayerLoadout = "m4a1";
+    bool RequireModernGear;
+    string PlayerOutfit;
+    string OperatorOutfit = "varied";
     bool HasCustomInventory;
     ref array<ref PredateInventoryNode> PlayerInventory = new array<ref PredateInventoryNode>;
     float ThreatDistance = 600;

@@ -229,7 +229,7 @@ class PredateSupplyService
             player.Save();
         }
         PredateOperatorRecord record = session.m_HuntProgress.Operator;
-        bool raven = Advance(session, session.m_HuntBot, record.Supplies, PredateOperatorService.RivalKit(record), now, now);
+        bool raven = Advance(session, session.m_HuntBot, record.Supplies, PredateOperatorService.RivalKit(session, record), now, now);
         bool peers;
         if (session.m_PeerRoster) peers = session.m_PeerRoster.RefreshSupplies(session, now);
         if (refreshed || raven || peers) session.PredateSave();

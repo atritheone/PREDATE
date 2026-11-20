@@ -79,7 +79,7 @@ class PredateCustomInventory
         if (node.Placement == "hands") return player.GetHumanInventory().CreateInHands(node.ClassName);
         GameInventory inventory = parent.GetInventory();
         if (!inventory) return null;
-        if (node.Placement == "attachment") return inventory.CreateAttachmentEx(node.ClassName, SlotId(node.Slot));
+        if (node.Placement == "attachment") return inventory.CreateAttachmentEx(PredateLoadoutCatalog.IssuedAttachment(node.ClassName), SlotId(node.Slot));
         if (node.Placement == "magazine")
         {
             Weapon_Base weapon = Weapon_Base.Cast(parent);

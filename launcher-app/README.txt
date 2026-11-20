@@ -19,10 +19,10 @@ root to update the executable used by the existing CMD shortcuts.
 The packaged launcher requires no separately installed Python or Node runtime.
 DayZ, Steam, the server, mod files and saved worlds remain in the PREDATE project.
 
-New Operation puts Game, Spawn, and Loadout side by side in the expanded window.
+New Hunt puts Game, Spawn, and Loadout side by side in the expanded window.
 Create and Play applies the selected clock, enemies, respawns, spawn location,
 and starting inventory to a new world. Save Draft stores the
-setup on this PC for later. Random region is the default spawn choice.
+setup on this PC for later. PREDATE Starting Area is the default spawn choice.
 
 The Chernarus relief and item catalogue come from the installed game. To
 regenerate them, run source/validation/operation_catalog.c as init.c in a
@@ -33,7 +33,7 @@ Architecture:
   src/shared       Typed API and data contracts
   src/preload      Narrow interface exposed to the renderer
   src/main         App lifecycle, project discovery, backend process and IPC
-  src/renderer     Continue, New Operation, Settings and Backups
+  src/renderer     Continue, New Hunt, Settings and Backups
   scripts          Reproducible backend and app-icon build
   ../scripts/backend_entry.py  JSON bridge and packaged helper entry points
   ../scripts/session.py        Session lifecycle supervision

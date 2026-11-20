@@ -1,0 +1,189 @@
+{
+  "Equipment": {
+    "NightVisionClass": "FOG_GPNVG_Tan",
+    "ModuleClass": "PredateWeaponModule",
+    "SpareMagazines": 6,
+    "WorkshopItems": [
+      "2931560672",
+      "3092251597"
+    ]
+  },
+  "Kits": [
+    {
+      "Id": "hk417",
+      "Name": "HK417",
+      "Description": "Battle rifle",
+      "FirearmClass": "BC_HK417_Tan",
+      "MagazineClass": "BC_HK417_Magazine",
+      "SuppressorClass": "BC_KAC_PRS_Universal_Suppressor_Tan",
+      "Attachments": [
+        "M4_CQBBttstck",
+        "ACOGOptic_6x"
+      ]
+    },
+    {
+      "Id": "hk416d",
+      "Name": "HK416D",
+      "Description": "Assault rifle",
+      "FirearmClass": "BC_HK416D_Black",
+      "MagazineClass": "Mag_STANAG_30Rnd",
+      "SuppressorClass": "BC_JK_Armament_155_GOAT_556_Suppressor_Black",
+      "Attachments": [
+        "M4_CQBBttstck_Black",
+        "ACOGOptic"
+      ]
+    },
+    {
+      "Id": "buca-m4a1",
+      "Name": "M4A1",
+      "Description": "Assault rifle",
+      "FirearmClass": "BC_M4A1_Tan",
+      "MagazineClass": "Mag_STANAG_30Rnd",
+      "SuppressorClass": "BC_JK_Armament_155_GOAT_556_Suppressor_Tan",
+      "Attachments": [
+        "M4_RISHndgrd",
+        "M4_CQBBttstck",
+        "ACOGOptic"
+      ]
+    },
+    {
+      "Id": "g36k",
+      "Name": "G36K",
+      "Description": "Assault rifle",
+      "FirearmClass": "BC_HKG36K_Black",
+      "MagazineClass": "Mag_STANAG_30Rnd",
+      "SuppressorClass": "BC_JK_Armament_155_GOAT_556_Suppressor_Black",
+      "Attachments": [
+        "BC_Bttstck_G36_KV_Buttstock_Black",
+        "ACOGOptic"
+      ]
+    },
+    {
+      "Id": "mdr",
+      "Name": "MDR",
+      "Description": "Assault rifle",
+      "FirearmClass": "BC_MDR_Tan",
+      "MagazineClass": "Mag_STANAG_30Rnd",
+      "SuppressorClass": "BC_JK_Armament_155_GOAT_556_Suppressor_Tan",
+      "Attachments": [
+        "ACOGOptic"
+      ]
+    },
+    {
+      "Id": "ak47-tactical",
+      "Name": "AK-47 Tactical",
+      "Description": "Assault rifle",
+      "FirearmClass": "BC_AK47T_Black",
+      "MagazineClass": "Mag_AKM_30Rnd",
+      "SuppressorClass": "BC_PBS4_Suppressor_Black",
+      "Attachments": [
+        "M4_CQBBttstck_Black",
+        "ACOGOptic"
+      ]
+    },
+    {
+      "Id": "buca-scar-h",
+      "Name": "SCAR-H",
+      "Description": "Battle rifle",
+      "FirearmClass": "BC_SCARH_Black",
+      "MagazineClass": "BC_SCARH_Magazine",
+      "SuppressorClass": "BC_KAC_PRS_Universal_Suppressor_Black",
+      "Attachments": [
+        "ACOGOptic_6x"
+      ]
+    },
+    {
+      "Id": "sa58",
+      "Name": "SA-58",
+      "Description": "Battle rifle",
+      "FirearmClass": "BC_SA58_Black",
+      "MagazineClass": "Mag_FAL_20Rnd",
+      "SuppressorClass": "BC_KAC_PRS_Universal_Suppressor_Black",
+      "Attachments": [
+        "Fal_FoldingBttstck",
+        "BC_Hndgrd_SA58_Black",
+        "ACOGOptic_6x"
+      ]
+    },
+    {
+      "Id": "g28",
+      "Name": "G28",
+      "Description": "Battle rifle",
+      "FirearmClass": "BC_HKG28_Tan",
+      "MagazineClass": "BC_HKG28_Magazine",
+      "SuppressorClass": "BC_KAC_PRS_Universal_Suppressor_Tan",
+      "Attachments": [
+        "M4_CQBBttstck",
+        "ACOGOptic_6x"
+      ]
+    },
+    {
+      "Id": "cz-tsr",
+      "Name": "CZ TSR",
+      "Description": "Sniper rifle",
+      "FirearmClass": "BC_CZTSR_Black",
+      "MagazineClass": "BC_CZTSR_Magazine",
+      "SuppressorClass": "BC_338_Suppressor",
+      "Attachments": [
+        "HuntingOptic"
+      ]
+    },
+    {
+      "Id": "m110",
+      "Name": "M110",
+      "Description": "Sniper rifle",
+      "FirearmClass": "BC_M110_Tan",
+      "MagazineClass": "BC_M110_Magazine",
+      "SuppressorClass": "BC_KAC_PRS_Universal_Suppressor_Tan",
+      "Attachments": [
+        "HuntingOptic"
+      ]
+    },
+    {
+      "Id": "rsass",
+      "Name": "R11 RSASS",
+      "Description": "Sniper rifle",
+      "FirearmClass": "BC_RSASS_Black",
+      "MagazineClass": "BC_PMAG_SR25_RSASS_Magazine",
+      "SuppressorClass": "BC_KAC_PRS_Universal_Suppressor_Black",
+      "Attachments": [
+        "M4_CQBBttstck_Black",
+        "HuntingOptic"
+      ]
+    }
+  ],
+  "Catalog": [
+    {"id":"BC_HKG28_Magazine","name":"20Rd .308 HK-G28 Magazine","kind":"magazine","width":1,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":20,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
+    {"id":"BC_HK417_Magazine","name":"20rd HK-417 Magazine","kind":"magazine","width":1,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":20,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
+    {"id":"BC_PMAG_SR25_RSASS_Magazine","name":"20Rd KAC SR-25 Magazine","kind":"magazine","width":1,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":20,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
+    {"id":"BC_M110_Magazine","name":"20rd M110 Magazine","kind":"magazine","width":1,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":20,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
+    {"id":"BC_SCARH_Magazine","name":"20rd SCAR-H Magazine","kind":"magazine","width":1,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":20,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
+    {"id":"BC_30RndFalMagazine","name":"30Rnd FAL .308 Magazine","kind":"magazine","width":1,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":30,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
+    {"id":"BC_STANAG_100Rnd_Magazine","name":"5.56x45 SureFire MAG5-100 STANAG 100-round magazine","kind":"magazine","width":2,"height":5,"cargoWidth":0,"cargoHeight":0,"capacity":100,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
+    {"id":"BC_50Rd308_Magazine","name":"50Rd .308 Magazine","kind":"magazine","width":2,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":50,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
+    {"id":"BC_CZTSR_Magazine","name":"8rd CZ-TSR Magazine","kind":"magazine","width":1,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":8,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
+    {"id":"BC_AK47T_Black","name":"AK-47 Tactical | Black","kind":"weapon","width":8,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponButtstockM4","weaponOptics","BC_ForeGrips","BC_Bipods","weaponFlashlight","weaponMuzzleAK","weaponWrap"],"magazines":["Mag_AKM_30Rnd","Mag_AKM_Palm30Rnd","Mag_AKM_Palm30Rnd_Black","Mag_AKM_Palm30Rnd_Green","Mag_AKM_Drum75Rnd","Mag_AKM_Drum75Rnd_Green","Mag_AKM_Drum75Rnd_Black","Mag_AKM_Drum_TEST"]},
+    {"id":"BC_338_Suppressor","name":"Black Hawk .338 Suppressor","kind":"item","width":3,"height":1,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["BC_338_Suppressor"],"accepts":[],"magazines":[]},
+    {"id":"BC_CZTSR_Black","name":"CZ-TSR | Black","kind":"weapon","width":10,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponOpticsHunting","weaponOptics","BC_ForeGrips","BC_Bipods","BC_PistolGrips","weaponFlashlight","BC_338_Suppressor","weaponWrap"],"magazines":["BC_CZTSR_Magazine"]},
+    {"id":"FOG_Helmet_FAST_SF_Tan","name":"Fast SF Helmet","kind":"item","width":4,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Headgear"],"accepts":["NVG","FOG_HMTL","SF_Comtacs","FOG_ear_cover","SF_Cover","FOG_small_patch","SF_BattPack"],"magazines":[]},
+    {"id":"BC_Bttstck_G36_KV_Buttstock_Black","name":"HK G36 KV adjustable stock","kind":"item","width":3,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["BC_HKG36_Buttstock"],"accepts":[],"magazines":[]},
+    {"id":"BC_HK416D_Black","name":"HK-416D | Black","kind":"weapon","width":8,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponButtstockM4","weaponOptics","weaponOpticsHunting","BC_ForeGrips","BC_Bipods","BC_PistolGrips","weaponFlashlight","weaponMuzzleM4","weaponWrap"],"magazines":["BC_STANAG_100Rnd_Magazine","Mag_STANAG_30Rnd","Mag_STANAGCoupled_30Rnd","Mag_STANAG_60Rnd","Mag_CMAG_10Rnd","Mag_CMAG_20Rnd","Mag_CMAG_30Rnd","Mag_CMAG_40Rnd","Mag_CMAG_10Rnd_Green","Mag_CMAG_20Rnd_Green","Mag_CMAG_30Rnd_Green","Mag_CMAG_40Rnd_Green","Mag_CMAG_10Rnd_Black","Mag_CMAG_20Rnd_Black","Mag_CMAG_30Rnd_Black","Mag_CMAG_40Rnd_Black"]},
+    {"id":"BC_HK417_Tan","name":"HK-417 | Tan","kind":"weapon","width":8,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponOpticsHunting","weaponOptics","BC_ForeGrips","BC_Bipods","weaponFlashlight","weaponMuzzleM4","BC_PistolGrips","weaponButtstockM4","weaponWrap"],"magazines":["BC_HK417_Magazine","BC_M110_Magazine","Mag_FAL_20Rnd","BC_50Rd308_Magazine","BC_30RndFalMagazine"]},
+    {"id":"BC_HKG28_Tan","name":"HK-G28 | Tan","kind":"weapon","width":10,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponButtstockM4","weaponOpticsHunting","weaponOptics","BC_ForeGrips","BC_Bipods","weaponMuzzleM4","BC_PistolGrips","weaponFlashlight","weaponWrap"],"magazines":["BC_PMAG_SR25_RSASS_Magazine","BC_HKG28_Magazine","BC_HK417_Magazine","Mag_FAL_20Rnd","BC_50Rd308_Magazine","BC_30RndFalMagazine"]},
+    {"id":"BC_HKG36K_Black","name":"HK-G36K | Black","kind":"weapon","width":8,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponButtstockM4","BC_HKG36_Buttstock","weaponOpticsHunting","weaponOptics","BC_ForeGrips","BC_Bipods","weaponFlashlight","weaponMuzzleM4","weaponWrap"],"magazines":["BC_STANAG_100Rnd_Magazine","Mag_STANAG_30Rnd","Mag_STANAGCoupled_30Rnd","Mag_STANAG_60Rnd","Mag_CMAG_10Rnd","Mag_CMAG_20Rnd","Mag_CMAG_30Rnd","Mag_CMAG_40Rnd","Mag_CMAG_10Rnd_Green","Mag_CMAG_20Rnd_Green","Mag_CMAG_30Rnd_Green","Mag_CMAG_40Rnd_Green","Mag_CMAG_10Rnd_Black","Mag_CMAG_20Rnd_Black","Mag_CMAG_30Rnd_Black","Mag_CMAG_40Rnd_Black"]},
+    {"id":"BC_JK_Armament_155_GOAT_556_Suppressor_Black","name":"JK Armament 155 GOAT 556 Suppressor","kind":"item","width":3,"height":1,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["weaponMuzzleM4"],"accepts":[],"magazines":[]},
+    {"id":"BC_JK_Armament_155_GOAT_556_Suppressor_Tan","name":"JK Armament 155 GOAT 556 Suppressor","kind":"item","width":3,"height":1,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["weaponMuzzleM4"],"accepts":[],"magazines":[]},
+    {"id":"BC_KAC_PRS_Universal_Suppressor_Black","name":"KAC PRS/QDC Suppressor","kind":"item","width":3,"height":1,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["suppressorImpro","weaponMuzzleM4"],"accepts":[],"magazines":[]},
+    {"id":"BC_KAC_PRS_Universal_Suppressor_Tan","name":"KAC PRS/QDC Suppressor","kind":"item","width":3,"height":1,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["suppressorImpro","weaponMuzzleM4"],"accepts":[],"magazines":[]},
+    {"id":"FOG_GPNVG_Tan","name":"L3Harris GPNVG18","kind":"item","width":2,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["NVG"],"accepts":["BatteryD","FOG_TarsierSlot"],"magazines":[]},
+    {"id":"FOG_GPNVG_Black","name":"L3Harris GPNVG-18 (Black)","kind":"item","width":2,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["NVG"],"accepts":["BatteryD","FOG_TarsierSlot"],"magazines":[]},
+    {"id":"BC_M110_Tan","name":"M110 SASS | Tan","kind":"weapon","width":10,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponOpticsHunting","weaponOptics","BC_ForeGrips","BC_Bipods","weaponMuzzleM4","BC_PistolGrips","weaponFlashlight","weaponWrap"],"magazines":["BC_M110_Magazine","Mag_FAL_20Rnd","BC_50Rd308_Magazine","BC_30RndFalMagazine"]},
+    {"id":"BC_M4A1_Tan","name":"M4A1 | Tan","kind":"weapon","width":8,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponButtstockM4","weaponOptics","BC_ForeGrips","BC_Bipods","BC_PistolGrips","weaponFlashlight","WeaponHandguardM4","weaponMuzzleM4","weaponBayonet","weaponWrap"],"magazines":["BC_STANAG_100Rnd_Magazine","Mag_STANAG_30Rnd","Mag_STANAGCoupled_30Rnd","Mag_STANAG_60Rnd","Mag_CMAG_10Rnd","Mag_CMAG_20Rnd","Mag_CMAG_30Rnd","Mag_CMAG_40Rnd","Mag_CMAG_10Rnd_Green","Mag_CMAG_20Rnd_Green","Mag_CMAG_30Rnd_Green","Mag_CMAG_40Rnd_Green","Mag_CMAG_10Rnd_Black","Mag_CMAG_20Rnd_Black","Mag_CMAG_30Rnd_Black","Mag_CMAG_40Rnd_Black"]},
+    {"id":"BC_MDR_Tan","name":"MDR | Tan","kind":"weapon","width":8,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponOptics","BC_ForeGrips","BC_Bipods","weaponFlashlight","weaponMuzzleM4","weaponWrap"],"magazines":["Mag_STANAG_30Rnd","Mag_STANAGCoupled_30Rnd","Mag_STANAG_60Rnd","Mag_CMAG_10Rnd","Mag_CMAG_20Rnd","Mag_CMAG_30Rnd","Mag_CMAG_40Rnd","Mag_CMAG_10Rnd_Green","Mag_CMAG_20Rnd_Green","Mag_CMAG_30Rnd_Green","Mag_CMAG_40Rnd_Green","Mag_CMAG_10Rnd_Black","Mag_CMAG_20Rnd_Black","Mag_CMAG_30Rnd_Black","Mag_CMAG_40Rnd_Black"]},
+    {"id":"BC_PBS4_Suppressor_Black","name":"PBS-4 Suppressor","kind":"item","width":3,"height":1,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["weaponMuzzleAK"],"accepts":[],"magazines":[]},
+    {"id":"BC_RSASS_Black","name":"R11 RSASS | Black","kind":"weapon","width":10,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponButtstockM4","weaponOpticsHunting","weaponOptics","BC_ForeGrips","BC_Bipods","weaponMuzzleM4","BC_PistolGrips","weaponFlashlight","weaponWrap"],"magazines":["BC_PMAG_SR25_RSASS_Magazine","BC_M110_Magazine","Mag_FAL_20Rnd","BC_50Rd308_Magazine","BC_30RndFalMagazine"]},
+    {"id":"BC_Hndgrd_SA58_Black","name":"SA-58 Handguard","kind":"item","width":3,"height":1,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["BC_SA58_Handguard"],"accepts":[],"magazines":[]},
+    {"id":"BC_SA58_Black","name":"SA-58 | Black","kind":"weapon","width":8,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponButtstockFal","BC_SA58_Handguard","weaponOpticsHunting","weaponOptics","BC_ForeGrips","BC_Bipods","BC_PistolGrips","weaponFlashlight","weaponMuzzleM4","weaponWrap"],"magazines":["BC_HK417_Magazine","BC_M110_Magazine","Mag_FAL_20Rnd","BC_50Rd308_Magazine","BC_30RndFalMagazine"]},
+    {"id":"BC_SCARH_Black","name":"SCAR-H | Black","kind":"weapon","width":8,"height":3,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Shoulder","Melee","Shoulder17","Shoulder18","Shoulder19","Shoulder20"],"accepts":["BC_BucaLogo","weaponOpticsHunting","weaponOptics","BC_ForeGrips","BC_Bipods","BC_PistolGrips","weaponFlashlight","suppressorImpro","weaponWrap"],"magazines":["Mag_FAL_20Rnd","BC_SCARH_Magazine","BC_50Rd308_Magazine"]}
+  ]
+}

@@ -228,7 +228,7 @@ class PredatePeerRoster
         foreach (PredatePeerBinding binding : m_Bindings)
         {
             PredateOperatorRecord record = binding.State.Operator;
-            if (PredateSupplyService.Advance(session, binding.Actor, record.Supplies, PredateOperatorService.RivalKit(record), now, now)) refreshed = true;
+            if (PredateSupplyService.Advance(session, binding.Actor, record.Supplies, PredateOperatorService.RivalKit(session, record), now, now)) refreshed = true;
         }
         return refreshed;
     }

@@ -8,7 +8,10 @@ import {
 import { InventoryEditor } from './InventoryEditor'
 import { SpawnEditor, validSpawn } from './SpawnEditor'
 import {
+  changeOutfit,
+  clothingPresets,
   completeLegacyInventory,
+  defaultPlayerOutfit,
   inventoryEntries,
   starterInventory,
   type Inventory,
@@ -39,6 +42,8 @@ export interface OperationDraft {
   x: string
   z: string
   kit: string
+  playerOutfit: string
+  operatorOutfit: string
   inventory: Inventory | null
 }
 
@@ -48,10 +53,12 @@ const defaults: OperationDraft = {
   opponents: 30,
   enemyRespawns: true,
   respawnDelay: '120',
-  spawn: 'regional',
+  spawn: 'original',
   x: '',
   z: '',
-  kit: 'm4a1',
+  kit: 'hk417',
+  playerOutfit: defaultPlayerOutfit,
+  operatorOutfit: 'varied',
   inventory: null,
 }
 
@@ -66,6 +73,17 @@ export function readOperationDraft(): OperationDraft {
     delete draft.footprints
     if (!componentsReady && draft.inventory)
       draft.inventory = completeLegacyInventory(draft.inventory)
+    if (draft.playerOutfit === undefined && draft.inventory) {
+      const worn = draft.inventory
+      draft.playerOutfit = clothingPresets.find(
+        (outfit) =>
+          worn.Body?.id === outfit.Body &&
+          worn.Legs?.id === outfit.Legs &&
+          worn.Feet?.id === outfit.Feet &&
+          (!outfit.Vest || worn.Vest?.id === outfit.Vest),
+      )?.Id
+      if (draft.playerOutfit === undefined) delete draft.playerOutfit
+    }
     return { ...defaults, ...draft }
   } catch {
     return { ...defaults }
@@ -95,7 +113,22 @@ export function OperationSetup({
     setSaved(false)
   }
   const kit = overview.loadouts.find((item) => item.id === draft.kit) ?? overview.loadouts[0]
-  const loadout = draft.inventory ?? starterInventory(kit?.id ?? '')
+  const playerOutfit = clothingPresets.some(({ Id }) => Id === draft.playerOutfit)
+    ? draft.playerOutfit
+    : defaults.playerOutfit
+  const operatorOutfit = clothingPresets.some(({ Id }) => Id === draft.operatorOutfit)
+    ? draft.operatorOutfit
+    : defaults.operatorOutfit
+  const loadout = draft.inventory ?? starterInventory(kit?.id ?? '', playerOutfit)
+  const selectPlayerOutfit = (outfitId: string): void => {
+    const inventory =
+      draft.inventory && changeOutfit(draft.inventory, outfitId, playerOutfit, kit?.id ?? '')
+    if (draft.inventory && !inventory) {
+      showError('There is no room for your carried gear in this outfit.')
+      return
+    }
+    change({ playerOutfit: outfitId, inventory })
+  }
   const opponentOptions = overview.operationOptions?.opponents ?? OPPONENT_COUNTS.slice(0, 3)
   const opponents = opponentOptions.includes(draft.opponents) ? draft.opponents : opponentOptions[0]
   const randomRegion = overview.operationOptions?.randomRegion === true
@@ -112,7 +145,14 @@ export function OperationSetup({
     try {
       localStorage.setItem(
         setupKey,
-        JSON.stringify({ ...draft, opponents, spawn, componentsReady: true }),
+        JSON.stringify({
+          ...draft,
+          opponents,
+          spawn,
+          playerOutfit,
+          operatorOutfit,
+          componentsReady: true,
+        }),
       )
       setSaved(true)
     } catch {
@@ -133,6 +173,8 @@ export function OperationSetup({
         startMinute,
         enemyRespawns: draft.enemyRespawns,
         respawnDelay: draft.enemyRespawns ? delay : 120,
+        playerOutfit,
+        operatorOutfit,
         inventory: inventoryEntries(loadout),
       },
     })
@@ -153,7 +195,7 @@ export function OperationSetup({
               Game
             </h2>
             <label className="field">
-              Operation name
+              Hunt Name
               <input
                 id="operation-name"
                 maxLength={80}
@@ -162,8 +204,8 @@ export function OperationSetup({
               />
             </label>
             <div className="game-fields">
-              <label className="field">
-                Start time
+              <label className="field start-time-field">
+                Start Time
                 <input
                   type="time"
                   id="start-time"
@@ -172,7 +214,7 @@ export function OperationSetup({
                 />
               </label>
               <label className="field">
-                Enemy count
+                Enemy Count
                 <select
                   id="opponent-count"
                   value={opponents}
@@ -183,13 +225,28 @@ export function OperationSetup({
                 >
                   {opponentOptions.map((count) => (
                     <option key={count} value={count}>
-                      {count} {count === 1 ? 'operator' : 'operators'}
+                      {count} {count === 1 ? 'Operator' : 'Operators'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                AI Equipment
+                <select
+                  id="operator-outfit"
+                  value={operatorOutfit}
+                  onChange={(event) => change({ operatorOutfit: event.target.value })}
+                >
+                  <option value="varied">Default</option>
+                  {clothingPresets.map(({ Id, Name }) => (
+                    <option key={Id} value={Id}>
+                      {Name}
                     </option>
                   ))}
                 </select>
               </label>
             </div>
-            <div className="time-presets" aria-label="Time presets">
+            <div className="time-presets" aria-label="Time Presets">
               {timePresets.map(([label, value]) => (
                 <button
                   type="button"
@@ -203,7 +260,7 @@ export function OperationSetup({
             </div>
             <label className="game-toggle split">
               <span>
-                <strong>Enemy respawns</strong>
+                <strong>Enemy Respawns</strong>
                 <small>Replace defeated operators after a delay.</small>
               </span>
               <input
@@ -214,7 +271,7 @@ export function OperationSetup({
             </label>
             {draft.enemyRespawns && (
               <label className="field respawn-delay">
-                Respawn delay (seconds)
+                Respawn Delay (Seconds)
                 <input
                   type="number"
                   min="1"
@@ -242,43 +299,64 @@ export function OperationSetup({
             <h2 className="setup-heading" id="loadout-heading">
               Loadout
             </h2>
-            <label className="field kit-select">
-              Starting kit
-              <select
-                id="starting-kit"
-                value={draft.inventory === null ? kit?.id : 'custom'}
-                onChange={(event) => {
-                  const id = event.target.value
-                  if (id === 'empty') change({ inventory: {} })
-                  else change({ kit: id, inventory: null })
-                }}
-              >
-                {rifleGroups.map(([category, label]) => {
-                  const kits = overview.loadouts.filter((item) => item.description === category)
-                  return kits.length ? (
-                    <optgroup key={category} label={label}>
-                      {kits.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ) : null
-                })}
-                {overview.loadouts
-                  .filter(
-                    (item) => !rifleGroups.some(([category]) => category === item.description),
-                  )
-                  .map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
+            <div className="kit-select">
+              <label className="field">
+                Starting Kit
+                <select
+                  id="starting-kit"
+                  value={draft.inventory === null ? kit?.id : 'custom'}
+                  onChange={(event) => {
+                    const id = event.target.value
+                    if (id === 'empty') change({ inventory: {} })
+                    else change({ kit: id, inventory: null })
+                  }}
+                >
+                  {rifleGroups.map(([category, label]) => {
+                    const kits = overview.loadouts.filter((item) => item.description === category)
+                    return kits.length ? (
+                      <optgroup key={category} label={label}>
+                        {kits.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null
+                  })}
+                  {overview.loadouts
+                    .filter(
+                      (item) => !rifleGroups.some(([category]) => category === item.description),
+                    )
+                    .map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  {draft.inventory !== null && <option value="custom">Custom</option>}
+                  <option value="empty">Empty Inventory</option>
+                </select>
+              </label>
+              <label className="field">
+                Equipment
+                <select
+                  id="player-outfit"
+                  value={playerOutfit}
+                  onChange={(event) => selectPlayerOutfit(event.target.value)}
+                >
+                  {clothingPresets.map(({ Id, Name }) => (
+                    <option key={Id} value={Id}>
+                      {Name}
                     </option>
                   ))}
-                {draft.inventory !== null && <option value="custom">Custom</option>}
-                <option value="empty">Empty inventory</option>
-              </select>
-            </label>
-            <InventoryEditor inventory={loadout} update={(inventory) => change({ inventory })} />
+                </select>
+              </label>
+            </div>
+            <InventoryEditor
+              inventory={loadout}
+              includeWorkshopGear={kit?.workshop === true}
+              weaponModule={overview.operationOptions?.weaponModule}
+              update={(inventory) => change({ inventory })}
+            />
           </section>
         </div>
       </div>
@@ -289,7 +367,7 @@ export function OperationSetup({
             : !spawnValid
               ? 'Enter valid spawn coordinates.'
               : active && !busy
-                ? 'The current operation will save and close.'
+                ? 'The current hunt will save and close.'
                 : ''}
         </p>
         <div className="setup-actions">

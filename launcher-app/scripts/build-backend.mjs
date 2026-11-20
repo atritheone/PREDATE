@@ -30,6 +30,8 @@ run(python, [
   `${join(root, 'source/Predate/data/loadouts.json')};predate-data`,
   '--add-data',
   `${join(app, 'resources/operation-catalog.json')};predate-data`,
+  '--add-data',
+  `${join(app, 'resources/modern-loadouts.json')};predate-data`,
   '--name',
   'PREDATEBackend',
   '--icon',

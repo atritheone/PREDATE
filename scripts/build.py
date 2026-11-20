@@ -210,6 +210,37 @@ def mission():
     world.setup()
 
 
+def stage_signed_addon(source, staging, authority):
+    pbo = staging / (source.name + ".pbo")
+    signature = pbo.with_name(pbo.name + "." + authority + ".bisign")
+    run([TOOLS/"PboUtils/FileBank.exe", "-property", "prefix=" + source.name, "-dst", staging, source])
+    if not pbo.is_file():
+        raise RuntimeError("FileBank did not create a fresh " + source.name + " package.")
+    run([TOOLS/"DsUtils/DSSignFile.exe", ROOT/"private-signing"/(authority+".biprivatekey"), pbo])
+    if not signature.is_file():
+        raise RuntimeError("DSSignFile did not create the package signature.")
+    return pbo, signature
+
+
+def pack_workshop_laser_companion():
+    import workshop_lasers
+
+    if not (WORKSHOP / workshop_lasers.ITEM_ID / "addons/MutatedLasers.pbo").is_file():
+        return
+    require_closed_runtime()
+    mod = ROOT / "mods" / workshop_lasers.COMPANION_FOLDER
+    addons, keys = mod / "addons", mod / "keys"
+    addons.mkdir(parents=True, exist_ok=True)
+    keys.mkdir(exist_ok=True)
+    with TemporaryDirectory(prefix=".pack-", dir=mod) as temporary:
+        pbo, signature = stage_signed_addon(ROOT / "source/compat/PredateMutatedLasers", Path(temporary), "PredateLocal")
+        require_closed_runtime()
+        os.replace(signature, addons / signature.name)
+        os.replace(pbo, addons / pbo.name)
+    copy_changed(ROOT / "private-signing/PredateLocal.bikey", keys / "PredateLocal.bikey")
+    print("Built and signed the Workshop laser compatibility addon.", flush=True)
+
+
 def pack(candidate=False):
     require_closed_runtime()
     layouts()
@@ -219,6 +250,8 @@ def pack(candidate=False):
     release.write_changed(mod_root/"mod.cpp",'name="PREDATE"; author="PREDATE contributors"; version="0.3.0";')
     manifest = ROOT / "build" / ("candidate-build-manifest.json" if candidate else "build-manifest.json")
     inputs = release.source_fingerprint()
+    modern_loadouts = "launcher-app/resources/modern-loadouts.json"
+    inputs[modern_loadouts] = release.digest(ROOT / modern_loadouts)
     inputs["config/release-lock.json"] = release.digest(release.LOCK)
     for name in ("build.py", "release.py", "world.py"):
         path = f"scripts/{name}"
@@ -239,14 +272,13 @@ def pack(candidate=False):
     # Build the package and signature from scratch before touching the live pair.
     with TemporaryDirectory(prefix=".pack-", dir=mod_root.resolve()) as staging:
         staging = Path(staging)
-        staged_pbo = staging / pbo.name
-        staged_signature = staging / signature.name
-        run([TOOLS/"PboUtils/FileBank.exe", "-property", "prefix=Predate", "-dst", staging, ROOT/"source/Predate"])
-        if not staged_pbo.is_file():
-            raise RuntimeError("FileBank did not create a fresh PREDATE package.")
-        run([TOOLS/"DsUtils/DSSignFile.exe", private/(authority+".biprivatekey"), staged_pbo])
-        if not staged_signature.is_file():
-            raise RuntimeError("DSSignFile did not create the package signature.")
+        source = staging / "Predate"
+        shutil.copytree(ROOT / "source/Predate", source)
+        bundled_loadouts = source / "data/modern-loadouts.json"
+        shutil.copy2(ROOT / modern_loadouts, bundled_loadouts)
+        if release.digest(bundled_loadouts) != inputs[modern_loadouts]:
+            raise RuntimeError("Modern loadouts changed during packaging. Retry the build.")
+        staged_pbo, staged_signature = stage_signed_addon(source, staging, authority)
         require_closed_runtime()
         previous_signature = staging / "previous.bisign"
         if signature.is_file():
@@ -291,4 +323,5 @@ if __name__=='__main__':
         release.verify()
     if not args.candidate: mission()
     pack(candidate=args.candidate)
+    if not args.candidate: pack_workshop_laser_companion()
     print("Build complete. Use scripts/Play PREDATE.cmd.",flush=True)

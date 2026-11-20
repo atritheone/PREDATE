@@ -32,10 +32,19 @@ export interface SessionStatus {
   grace_remaining?: number | null
 }
 
+export interface WeaponModulePreview {
+  className: string
+  name: string
+}
+
 export interface Overview {
-  loadouts: { id: string; name: string; description: string }[]
+  loadouts: { id: string; name: string; description: string; workshop?: boolean }[]
   spawnPoints: { id: string; name: string; x: number; z: number }[]
-  operationOptions?: { opponents: OpponentCount[]; randomRegion: boolean }
+  operationOptions?: {
+    opponents: OpponentCount[]
+    randomRegion: boolean
+    weaponModule?: WeaponModulePreview
+  }
   operations: Operation[]
   preferences: Preferences
   backups: Backup[]
@@ -59,6 +68,8 @@ export interface NewOperationSettings {
   startMinute: number
   enemyRespawns: boolean
   respawnDelay: number
+  playerOutfit?: string
+  operatorOutfit?: string
   inventory?: InventoryEntry[]
 }
 

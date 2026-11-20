@@ -31,6 +31,27 @@ modded class PlayerBase
     bool m_PredateSpawnRejected;
     int m_PredateKillNotices;
     bool m_PredateSupplyNotice;
+    string m_PredateModuleMessage;
+    int m_PredateModuleMessageTime;
+    int m_PredateModuleMessageRevision;
+
+    void PredateWeaponModuleMessage(string message)
+    {
+        if (GetGame().IsMultiplayer() && GetGame().IsServer())
+        {
+            PlayerIdentity identity = GetIdentity();
+            if (!identity) return;
+            ScriptRPC rpc = new ScriptRPC;
+            rpc.Write(message);
+            rpc.Send(this, PredateProtocol.WEAPON_MODULE_LOG, true, identity);
+        }
+        else
+        {
+            m_PredateModuleMessage = message;
+            m_PredateModuleMessageTime = GetGame().GetTime();
+            m_PredateModuleMessageRevision++;
+        }
+    }
 
     override void EEKilled(Object killer)
     {
@@ -92,6 +113,12 @@ modded class PlayerBase
     override void OnRPC(PlayerIdentity sender, int rpc_type, ParamsReadContext ctx)
     {
         super.OnRPC(sender, rpc_type, ctx);
+        if (rpc_type == PredateProtocol.WEAPON_MODULE_LOG && GetGame().IsClient() && this == GetGame().GetPlayer())
+        {
+            string message;
+            if (ctx.Read(message)) PredateWeaponModuleMessage(message);
+            return;
+        }
         if (rpc_type == PredateProtocol.SESSION_REQUEST && GetGame().IsServer())
         {
             if (!sender || !GetIdentity()) return;

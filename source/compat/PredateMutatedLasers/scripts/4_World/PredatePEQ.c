@@ -1,0 +1,191 @@
+modded class MM_LaserSight_Base
+{
+    protected bool m_PredateLaserIR;
+    protected bool m_PredateIRLight;
+#ifndef SERVER
+    protected ScriptedLightBase m_PredateIRSpot;
+    protected bool m_PredateRenderedLaserIR;
+    protected static ref array<MM_LaserSight_Base> s_PredatePEQVisuals = {};
+#endif
+
+    void MM_LaserSight_Base()
+    {
+        RegisterNetSyncVariableBool("m_PredateLaserIR");
+        RegisterNetSyncVariableBool("m_PredateIRLight");
+    }
+
+    static MM_LaserSight_Base PredateOnWeapon(ItemBase item)
+    {
+        if (!Weapon_Base.Cast(item)) return null;
+        return MM_LaserSight_Base.Cast(item.FindAttachmentBySlotName("weaponFlashlight"));
+    }
+
+    void PredateControlPEQ(PlayerBase player, int control)
+    {
+        ComponentEnergyManager energy = GetCompEM();
+        if ((control == 5 && !m_MM_FlashModeSynch || control == 6 && !m_MM_LaserModeSynch || control == 8 && !m_PredateIRLight) && (!energy || !energy.CanWork()))
+        {
+            player.PredateWeaponModuleMessage("Weapon module needs a working battery.");
+            return;
+        }
+
+        string status;
+        bool active;
+        switch (control)
+        {
+            case 5:
+                m_MM_FlashModeSynch = !m_MM_FlashModeSynch;
+                m_MM_FlashStrobeSynch = false;
+                status = "White light";
+                active = m_MM_FlashModeSynch;
+                break;
+            case 6:
+                m_MM_LaserModeSynch = !m_MM_LaserModeSynch;
+                status = PredateLaserModeName();
+                active = m_MM_LaserModeSynch;
+                break;
+            case 7:
+                m_PredateLaserIR = !m_PredateLaserIR;
+                break;
+            case 8:
+                m_PredateIRLight = !m_PredateIRLight;
+                status = "IR illuminator";
+                active = m_PredateIRLight;
+                break;
+        }
+        m_MM_VisibleBeamsEnabledSynch = !m_PredateLaserIR;
+        MM_EnsureEnergyState_Server();
+        if (control == 7)
+        {
+            if (m_PredateLaserIR) player.PredateWeaponModuleMessage("Laser Mode IR");
+            else player.PredateWeaponModuleMessage("Laser Mode Visible");
+            return;
+        }
+        if (active) player.PredateWeaponModuleMessage(status + " on");
+        else player.PredateWeaponModuleMessage(status + " off");
+    }
+
+    protected string PredateLaserModeName()
+    {
+        if (m_PredateLaserIR) return "IR laser";
+        return "Visible laser";
+    }
+
+    void PredateUseOperatorModule(bool ready, bool gogglesActive, bool dark)
+    {
+        bool powered = ready && (!dark || gogglesActive) && GetCompEM().CanWork();
+        bool infraredLight = powered && dark;
+        if (m_MM_LaserModeSynch == powered && m_PredateLaserIR == dark && !m_MM_FlashModeSynch && m_PredateIRLight == infraredLight)
+            return;
+
+        m_PredateLaserIR = dark;
+        m_MM_VisibleBeamsEnabledSynch = !dark;
+        m_MM_LaserModeSynch = powered;
+        m_MM_FlashModeSynch = false;
+        m_MM_FlashStrobeSynch = false;
+        m_PredateIRLight = infraredLight;
+        MM_EnsureEnergyState_Server();
+    }
+
+    override protected void MM_ApplyServerConfig_Server()
+    {
+        super.MM_ApplyServerConfig_Server();
+        if (GetGame().IsServer()) m_MM_VisibleBeamsEnabledSynch = !m_PredateLaserIR;
+    }
+
+    override protected bool MM_ShouldOutputBeActive_Server()
+    {
+        return m_PredateIRLight || super.MM_ShouldOutputBeActive_Server();
+    }
+
+    override bool CheckNVGState()
+    {
+#ifdef SERVER
+        return false;
+#else
+        PPERequester_CameraNV nightVision = PPERequester_CameraNV.Cast(PPERequesterBank.GetRequester(PPERequesterBank.REQ_CAMERANV));
+        return nightVision && nightVision.PredateCanSeeInfrared();
+#endif
+    }
+
+#ifndef SERVER
+    override protected vector MM_GetViewerLaserColor()
+    {
+        if (m_PredateLaserIR) return "0.82 0.94 1";
+        return super.MM_GetViewerLaserColor();
+    }
+
+    override protected string MM_GetDotClassname()
+    {
+        if (m_PredateLaserIR) return "Mutated_Laser_Dot_IceBlue";
+        return super.MM_GetDotClassname();
+    }
+
+    override void OnVariablesSynchronized()
+    {
+        if (m_PredateRenderedLaserIR != m_PredateLaserIR)
+        {
+            MM_DeleteDotModels();
+            MM_DeleteBeam();
+            m_PredateRenderedLaserIR = m_PredateLaserIR;
+        }
+        super.OnVariablesSynchronized();
+        GetGame().GetCallQueue(CALL_CATEGORY_GAMEPLAY).Remove(PredateUpdateIRLight);
+        PredateUpdateIRLight();
+        if (m_PredateIRLight) GetGame().GetCallQueue(CALL_CATEGORY_GAMEPLAY).CallLater(PredateUpdateIRLight, 100, true);
+    }
+
+    override protected void MM_ClientLaserOn()
+    {
+        if (s_PredatePEQVisuals.Find(this) < 0) s_PredatePEQVisuals.Insert(this);
+        super.MM_ClientLaserOn();
+    }
+
+    static void PredateReleasePEQVisuals()
+    {
+        foreach (MM_LaserSight_Base module : s_PredatePEQVisuals)
+        {
+            if (!module) continue;
+            module.MM_CleanupLaserVisuals_Client(true);
+            module.MM_DeleteDotModels();
+        }
+        s_PredatePEQVisuals.Clear();
+    }
+
+    override protected void MM_DeleteDotModel(out EntityAI dotObj)
+    {
+        if (GetGame()) super.MM_DeleteDotModel(dotObj);
+        else dotObj = null;
+    }
+
+    protected void PredateUpdateIRLight()
+    {
+        Man holder = GetHierarchyRootPlayer();
+        Weapon_Base weapon = Weapon_Base.Cast(GetHierarchyParent());
+        bool show = m_PredateIRLight && GetCompEM().IsWorking() && holder && weapon && holder.GetHumanInventory().GetEntityInHands() == weapon && CheckNVGState();
+        if (show && !m_PredateIRSpot)
+        {
+            m_PredateIRSpot = ScriptedLightBase.CreateLight(PredateModuleSpot);
+            if (m_PredateIRSpot) m_PredateIRSpot.AttachOnMemoryPoint(this, "beamStart", "beamEnd");
+        }
+        else if (!show && m_PredateIRSpot)
+        {
+            GetGame().ObjectDelete(m_PredateIRSpot);
+            m_PredateIRSpot = null;
+        }
+    }
+
+    override void EEDelete(EntityAI parent)
+    {
+        int index = s_PredatePEQVisuals.Find(this);
+        if (index >= 0) s_PredatePEQVisuals.Remove(index);
+        if (GetGame())
+        {
+            GetGame().GetCallQueue(CALL_CATEGORY_GAMEPLAY).Remove(PredateUpdateIRLight);
+            if (m_PredateIRSpot) GetGame().ObjectDelete(m_PredateIRSpot);
+            m_PredateIRSpot = null;
+        }
+        super.EEDelete(parent);
+    }
+#endif
+}

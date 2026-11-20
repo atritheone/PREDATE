@@ -334,7 +334,9 @@ def first_person_config(config):
 
 def start(session_id=None, offline=False, progress=None, cancelled=None):
     import release
+    import workshop_lasers
     release.verify()
+    workshop_lasers.verify_launch(MODS)
     setup()
     settings()
     if running():
@@ -476,6 +478,8 @@ def stop(make_backup=True):
 
 
 def launch_client(session_id=None, offline=False, extra_args=None):
+    import workshop_lasers
+    workshop_lasers.verify_launch(MODS)
     # Avoid launching another client over an existing DayZ session.
     processes = subprocess.run(["tasklist", "/FI", "IMAGENAME eq DayZ_x64.exe", "/FO", "CSV", "/NH"],
                                capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)

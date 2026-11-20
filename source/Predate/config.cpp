@@ -2,8 +2,49 @@ class CfgPatches
 {
     class Predate_Prototype
     {
-        units[]={}; weapons[]={}; requiredVersion=0.1;
-        requiredAddons[]={"DZ_Data","DZ_Worlds_Chernarusplus_World","DayZExpansion_AI_Scripts"};
+        units[]={"PredateWeaponModule","PredatePanoramicNVG","PredateOperatorNVG_Black","PredateOperatorNVG_Tan","PredateOperatorHeadstrap_Black","PredateOperatorHeadstrap_Tan"}; weapons[]={}; requiredVersion=0.1;
+        requiredAddons[]={"DZ_Data","DZ_Characters_Glasses","DZ_Weapons_Lights","DZ_Worlds_Chernarusplus_World","DayZExpansion_AI_Scripts"};
+    };
+};
+class CfgVehicles
+{
+    class NVGoggles;
+    class PredatePanoramicNVG: NVGoggles
+    {
+        scope=2;
+        displayName="Panoramic Night Vision Goggles";
+        descriptionShort="White-phosphor panoramic view. Uses a 9V battery.";
+    };
+    class PredateOperatorNVG_Black: PredatePanoramicNVG
+    {
+        scope=1;
+        hiddenSelections[]={"hide"};
+        hiddenSelectionsTextures[]={"#(argb,8,8,3)color(0.09,0.09,0.09,1,co)"};
+    };
+    class PredateOperatorNVG_Tan: PredateOperatorNVG_Black
+    {
+        hiddenSelectionsTextures[]={"#(argb,8,8,3)color(0.49,0.37,0.23,1,co)"};
+    };
+    class NVGHeadstrap;
+    class PredateOperatorHeadstrap_Black: NVGHeadstrap
+    {
+        scope=1;
+        displayName="NVG Headstrap (Black)";
+        hiddenSelections[]={"camoGround","camoMale","camoFemale"};
+        hiddenSelectionsTextures[]={"#(argb,8,8,3)color(0.09,0.09,0.09,1,co)","#(argb,8,8,3)color(0.09,0.09,0.09,1,co)","#(argb,8,8,3)color(0.09,0.09,0.09,1,co)"};
+    };
+    class PredateOperatorHeadstrap_Tan: PredateOperatorHeadstrap_Black
+    {
+        displayName="NVG Headstrap (Tan)";
+        hiddenSelectionsTextures[]={"#(argb,8,8,3)color(0.49,0.37,0.23,1,co)","#(argb,8,8,3)color(0.49,0.37,0.23,1,co)","#(argb,8,8,3)color(0.49,0.37,0.23,1,co)"};
+    };
+    class UniversalLight;
+    class PredateWeaponModule: UniversalLight
+    {
+        scope=2;
+        displayName="Multimode Weapon Light";
+        descriptionShort="White light, visible laser, IR laser and IR illuminator. Uses a 9V battery.";
+        inventorySlot[]={"weaponFlashlight"};
     };
 };
 class CfgWorlds

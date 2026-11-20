@@ -5,19 +5,19 @@ import random
 
 # Specific presets are exact ground points. The native mission validates them.
 PRESETS = {
-    'original': ('PREDATE starting area', 4500, 6500),
+    'original': ('PREDATE Starting Area', 4500, 6500),
     'cherno': ('Chernogorsk', 6063, 1932),
     'elektro': ('Elektrozavodsk', 8748, 2357),
     'kamyshovo': ('Kamyshovo', 11831, 3400),
     'berezino': ('Berezino', 12641, 9451),
     'svetlojarsk': ('Svetlojarsk', 14286, 13009),
-    'southwest': ('Southwest • Zelenogorsk outskirts', 2950, 4800),
-    'west': ('West • Vybor woods', 3200, 9250),
-    'northwest': ('Northwest • Novaya Petrovka outskirts', 3300, 12600),
-    'central': ('Central • Kabanino fields', 6050, 7650),
-    'north': ('North • Severograd outskirts', 7500, 12600),
-    'east': ('East • Gorka ridge', 10300, 9100),
-    'northeast': ('Northeast • Turovo outskirts', 13200, 13300),
+    'southwest': ('Southwest • Zelenogorsk Outskirts', 2950, 4800),
+    'west': ('West • Vybor Woods', 3200, 9250),
+    'northwest': ('Northwest • Novaya Petrovka Outskirts', 3300, 12600),
+    'central': ('Central • Kabanino Fields', 6050, 7650),
+    'north': ('North • Severograd Outskirts', 7500, 12600),
+    'east': ('East • Gorka Ridge', 10300, 9100),
+    'northeast': ('Northeast • Turovo Outskirts', 13200, 13300),
 }
 
 # Select a region first so the density of coastal labels does not bias the draw.

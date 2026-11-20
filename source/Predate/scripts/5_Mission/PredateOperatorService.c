@@ -6,9 +6,10 @@ class PredateOperatorService
         return position;
     }
 
-    static void PredateEquip(PredateSession s, PlayerBase player, string kitId = "")
+    static void PredateEquip(PredateSession s, PlayerBase player, string kitId = "", PredateOutfit outfit = null, bool tan = false)
     {
-        if (kitId == "" && s.m_HuntConfig.HasCustomInventory && !eAIBase.Cast(player))
+        bool rival = eAIBase.Cast(player) != null;
+        if (kitId == "" && s.m_HuntConfig.HasCustomInventory && !rival)
         {
             string error;
             if (!PredateCustomInventory.Equip(player, s.m_HuntConfig.PlayerInventory, error))
@@ -23,7 +24,7 @@ class PredateOperatorService
         if (kitId == "")
         {
             kitId = s.m_HuntConfig.PlayerLoadout;
-            if (eAIBase.Cast(player)) kitId = "m4a1";
+            if (rival) kitId = "m4a1";
         }
         PredateStartingKit kit;
         if (s.m_Loadouts) kit = s.m_Loadouts.Find(kitId);
@@ -31,49 +32,121 @@ class PredateOperatorService
         // This entry point equips a fresh deployment body. Continuation loads
         // native inventory; it never calls this to refill an existing character.
         player.RemoveAllItems();
-        player.GetInventory().CreateInInventory("TTSKOPants");
-        player.GetInventory().CreateInInventory("TTsKOJacket_Camo");
-        player.GetInventory().CreateInInventory("MilitaryBoots_Black");
-        player.GetInventory().CreateInInventory("TacticalGloves_Black");
-        player.GetInventory().CreateInInventory("Mich2001Helmet");
-        player.GetInventory().CreateInInventory("PlateCarrierVest");
-        player.GetInventory().CreateInInventory("AssaultBag_Green");
+        if (!outfit) outfit = s.m_Loadouts.FindOutfit(s.m_HuntConfig.PlayerOutfit);
+        if (!player.GetInventory().CreateAttachment(outfit.Body) || !player.GetInventory().CreateAttachment(outfit.Legs) || !player.GetInventory().CreateAttachment(outfit.Feet))
+            PredatePersistence.Fail(s, "Starting-kit clothing could not be equipped: " + kit.Id);
+        string mountClass = s.m_Loadouts.NightVisionMount;
+        string gogglesClass = kit.NightVisionClass;
+        if (gogglesClass == "") gogglesClass = "NVGoggles";
+        string vestClass = "PlateCarrierVest";
+        string pouchClass = "PlateCarrierPouches";
+        string glovesClass = "TacticalGloves_Black";
+        if (rival)
+        {
+            vestClass = "PlateCarrierVest_Black";
+            pouchClass = "PlateCarrierPouches_Black";
+            mountClass = "PredateOperatorHeadstrap_Black";
+            gogglesClass = "PredateOperatorNVG_Black";
+            string maskClass = "BalaclavaMask_Black";
+            if (tan)
+            {
+                vestClass = "PlateCarrierVest_Desert";
+                pouchClass = "PlateCarrierPouches_Desert";
+                mountClass = "PredateOperatorHeadstrap_Tan";
+                gogglesClass = "PredateOperatorNVG_Tan";
+                glovesClass = "TacticalGloves_Beige";
+                maskClass = "BalaclavaMask_Beige";
+            }
+            if (GetGame().ConfigIsExisting("CfgVehicles FOG_GPNVG_Black") && GetGame().ConfigIsExisting("CfgVehicles FOG_GPNVG_Tan"))
+            {
+                gogglesClass = "FOG_GPNVG_Black";
+                if (tan) gogglesClass = "FOG_GPNVG_Tan";
+            }
+            if (!player.GetInventory().CreateAttachment(maskClass))
+                PredatePersistence.Fail(s, "Starting-kit balaclava could not be equipped");
+        }
+        else
+        {
+            if (outfit.Vest != "") vestClass = outfit.Vest;
+            if (outfit.Pouches != "") pouchClass = outfit.Pouches;
+            if (outfit.Gloves != "") glovesClass = outfit.Gloves;
+            if (outfit.Eyewear != "") mountClass = outfit.Eyewear;
+            if (outfit.NightVision != "") gogglesClass = outfit.NightVision;
+            if (outfit.WorkshopNightVision != "" && PredateLoadoutCatalog.ClassExists(outfit.WorkshopNightVision))
+                gogglesClass = outfit.WorkshopNightVision;
+        }
+        if (!player.GetInventory().CreateAttachment(glovesClass))
+            PredatePersistence.Fail(s, "Starting-kit gloves could not be equipped");
+        EntityAI headstrap = player.GetInventory().CreateAttachment(mountClass);
+        EntityAI vest = player.GetInventory().CreateAttachment(vestClass);
+        if (!vest || !vest.GetInventory().CreateAttachment(pouchClass))
+            PredatePersistence.Fail(s, "Starting-kit vest pouches could not be equipped");
         Weapon_Base rifle = Weapon_Base.Cast(player.GetHumanInventory().CreateInHands(kit.FirearmClass));
         if (rifle)
         {
             foreach (string attachment : kit.Attachments)
-                if (!rifle.GetInventory().CreateAttachment(attachment)) PredatePersistence.Fail(s, "Starting-kit attachment is incompatible: " + attachment);
+            {
+                EntityAI item = rifle.GetInventory().CreateAttachment(PredateLoadoutCatalog.IssuedAttachment(attachment));
+                if (!item) PredatePersistence.Fail(s, "Starting-kit attachment is incompatible: " + attachment);
+                else if (kit.NightVisionClass != "" && item.GetInventory().HasAttachmentSlot(InventorySlots.GetSlotIdFromString("BatteryD")) && !InstallBattery(item))
+                    PredatePersistence.Fail(s, "Starting-kit accessory could not be powered: " + attachment);
+            }
+            if (!rifle.GetAttachedSuppressor() && !rifle.GetInventory().CreateAttachment(kit.SuppressorClass))
+                PredatePersistence.Fail(s, "Starting-kit suppressor is incompatible: " + kit.SuppressorClass);
             rifle.SpawnAttachedMagazine(kit.MagazineClass);
             Magazine attached = rifle.GetMagazine(rifle.GetCurrentMuzzle());
             if (!attached || attached.GetType() != kit.MagazineClass) PredatePersistence.Fail(s, "Starting-kit magazine is incompatible: " + kit.MagazineClass);
         }
         else PredatePersistence.Fail(s, "Starting-kit firearm could not be created");
-        for (int i = 0; i < kit.SpareMagazines; i++)
-            if (!player.GetInventory().CreateInInventory(kit.MagazineClass)) PredatePersistence.Fail(s, "Starting-kit magazine could not be carried");
+        EntityAI goggles;
+        if (headstrap) goggles = headstrap.GetInventory().CreateAttachment(gogglesClass);
+        if (!InstallBattery(goggles)) PredatePersistence.Fail(s, "Starting-kit goggles could not be mounted and powered: " + gogglesClass);
         for (int j = 0; j < 4; j++)
             player.GetInventory().CreateInInventory("BandageDressing");
         player.GetInventory().CreateInInventory("Morphine");
         player.GetInventory().CreateInInventory("Epinephrine");
         player.GetInventory().CreateInInventory("Compass");
         player.GetInventory().CreateInInventory("ChernarusMap");
+        if (rival) player.GetInventory().CreateInInventory("SalineBagIV");
+        for (int i = 0; i < kit.SpareMagazines; i++)
+            if (!player.GetInventory().CreateInInventory(kit.MagazineClass)) break;
         if (rifle) player.SetQuickBarEntityShortcut(rifle, 0);
         s.SoloApplyCombatRules(player);
     }
 
-    static string RivalKit(PredateOperatorRecord record)
+    static bool InstallBattery(EntityAI device)
+    {
+        return device && (device.FindAttachmentBySlotName("BatteryD") || device.GetInventory().CreateAttachment("Battery9V"));
+    }
+
+    static string RivalKit(PredateSession session, PredateOperatorRecord record)
     {
         if (record.RifleKit != "") return record.RifleKit;
-        array<string> rotation = {"m4a1", "m4a1", "ak74", "fal", "sv98", "m14", "akm", "ak74"};
         int slot = Math.Max(0, PredateProtocol.s_OperatorIds.Find(record.Id));
-        return rotation[(slot + (record.Deployment - 1) * 3) % rotation.Count()];
+        int deploymentOffset = Math.Max(0, record.Deployment - 1);
+        array<ref PredateStartingKit> modern = session.m_Loadouts.ModernOperatorKits;
+        if (modern.Count() > 0) return modern[(slot + deploymentOffset) % modern.Count()].Id;
+        array<string> rotation = {"m4a1", "m4a1", "ak74", "fal", "sv98", "m14", "akm", "ak74"};
+        return rotation[(slot + deploymentOffset * 3) % rotation.Count()];
     }
 
     static bool EquipRival(PredateSession session, eAIBase actor, PredateOperatorRecord record)
     {
-        PredateEquip(session, actor, RivalKit(record));
+        string kitId = RivalKit(session, record);
+        int slot = Math.Max(0, PredateProtocol.s_OperatorIds.Find(record.Id));
+        PredateEquip(session, actor, kitId, RivalOutfit(session, record, slot), slot % 2 == 1);
         if (session.m_HuntError != "") return false;
+        record.RifleKit = kitId;
         if (UpgradeRivalEquipment(session, actor, record)) return true;
         return PredatePersistence.Fail(session, "Cannot equip rifle suppressor, night vision or medical kit for " + record.Id);
+    }
+
+    static PredateOutfit RivalOutfit(PredateSession session, PredateOperatorRecord record, int slot)
+    {
+        string selection = session.m_HuntConfig.OperatorOutfit;
+        if (selection != "" && selection != "varied") return session.m_Loadouts.FindOutfit(selection);
+        int deploymentOffset = Math.Max(0, record.Deployment - 1);
+        return session.m_Loadouts.RotatingOutfit(slot + deploymentOffset);
     }
 
     static bool UpgradeRivalEquipment(PredateSession session, eAIBase actor, PredateOperatorRecord record)
@@ -90,28 +163,24 @@ class PredateOperatorService
             if (rifle) continue;
             Weapon_Base candidate = Weapon_Base.Cast(entity);
             if (!candidate) continue;
-            kit = session.m_Loadouts.FindRifle(candidate.GetType());
+            kit = session.m_Loadouts.Find(record.RifleKit);
+            if (!kit || kit.FirearmClass != candidate.GetType())
+                kit = session.m_Loadouts.FindRifle(candidate.GetType());
             if (kit) rifle = candidate;
         }
         bool suppressed = rifle && (rifle.GetAttachedSuppressor() || rifle.GetInventory().CreateAttachment(kit.SuppressorClass));
         EntityAI helmet = actor.FindAttachmentBySlotName("Headgear");
         EntityAI goggles;
-        if (helmet)
-        {
-            goggles = helmet.FindAttachmentBySlotName("NVG");
-            if (!goggles) goggles = helmet.GetInventory().CreateAttachment("NVGoggles");
-        }
+        EntityAI headstrap = actor.FindAttachmentBySlotName("Eyewear");
+        if (headstrap) goggles = headstrap.FindAttachmentBySlotName("NVG");
         if (!goggles)
         {
-            EntityAI headstrap = actor.FindAttachmentBySlotName("Eyewear");
-            if (!headstrap) headstrap = actor.GetInventory().CreateAttachment("NVGHeadstrap");
-            if (headstrap)
-            {
-                goggles = headstrap.FindAttachmentBySlotName("NVG");
-                if (!goggles) goggles = headstrap.GetInventory().CreateAttachment("NVGoggles");
-            }
+            if (helmet) goggles = helmet.FindAttachmentBySlotName("NVG");
+            if (!goggles && helmet) goggles = helmet.GetInventory().CreateAttachment("NVGoggles");
+            if (!goggles && !headstrap) headstrap = actor.GetInventory().CreateAttachment(session.m_Loadouts.NightVisionMount);
+            if (!goggles && headstrap) goggles = headstrap.GetInventory().CreateAttachment("NVGoggles");
         }
-        bool powered = goggles && (goggles.FindAttachmentBySlotName("BatteryD") || goggles.GetInventory().CreateAttachment("Battery9V"));
+        bool powered = InstallBattery(goggles);
         if (!hasSaline) hasSaline = actor.GetInventory().CreateInInventory("SalineBagIV") != null;
         if (record.Supplies.NextAt > 0 && !record.Supplies.Find("SalineBagIV"))
             PredateSupplyService.AddConfigured(record.Supplies, "SalineBagIV", 1);

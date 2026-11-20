@@ -49,7 +49,12 @@ class PredatePersistence
         PredateLoadoutCatalog loadouts = new PredateLoadoutCatalog;
         if (!JsonFileLoader<PredateLoadoutCatalog>.LoadFile("Predate/data/loadouts.json", loadouts, error) || !loadouts)
             return Fail(s, "Starting-kit catalog could not be loaded: " + error);
+        if (!loadouts.LoadModernOperatorKits(s.m_HuntConfig.RequireModernGear)) return Fail(s, loadouts.ValidationError);
         if (!loadouts.Valid()) return Fail(s, "Invalid starting-kit catalog: " + loadouts.ValidationError);
+        if (!loadouts.FindOutfit(s.m_HuntConfig.PlayerOutfit)) return Fail(s, "Unknown player clothing preset: " + s.m_HuntConfig.PlayerOutfit);
+        string operatorOutfit = s.m_HuntConfig.OperatorOutfit;
+        if (operatorOutfit != "" && operatorOutfit != "varied" && !loadouts.FindOutfit(operatorOutfit))
+            return Fail(s, "Unknown AI clothing preset: " + operatorOutfit);
         if (s.m_HuntConfig.HasCustomInventory)
         {
             if (!PredateCustomInventory.Validate(s.m_HuntConfig.PlayerInventory, error)) return Fail(s, error);

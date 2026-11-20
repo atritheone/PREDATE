@@ -1,4 +1,5 @@
 import catalog from '../../../resources/operation-catalog.json'
+import modernLoadouts from '../../../resources/modern-loadouts.json'
 import presets from '../../../../source/Predate/data/loadouts.json'
 import type { InventoryEntry } from '../../shared/types'
 
@@ -49,7 +50,12 @@ const railHandguards: Record<string, string> = {
 }
 
 function lightRailSlot(item: InventoryItem): string | undefined {
-  if (!Object.values(item.attachments).some((part) => part.id === 'UniversalLight')) return
+  if (
+    !Object.values(item.attachments).some((part) =>
+      ['UniversalLight', 'PredateWeaponModule'].includes(part.id),
+    )
+  )
+    return
   const slot = gearById.get(item.id)?.accepts.find((key) => railHandguards[key.toLowerCase()])
   return (
     slot &&
@@ -155,7 +161,7 @@ export function inventoryEntries(inventory: Inventory): InventoryEntry[] {
 export const equipment = [
   ['Hands', 'Hands'],
   ['Shoulder', 'Shoulder'],
-  ['Melee', 'Second shoulder'],
+  ['Melee', 'Second Shoulder'],
   ['Headgear', 'Head'],
   ['Mask', 'Face'],
   ['Eyewear', 'Eyes'],
@@ -169,7 +175,8 @@ export const equipment = [
   ['Armband', 'Armband'],
 ] as const
 
-export const gear: Gear[] = catalog
+export const workshopGearIds = new Set(modernLoadouts.Catalog.map((item) => item.id))
+export const gear: Gear[] = [...catalog, ...modernLoadouts.Catalog]
 export const gearById = new Map(gear.map((item) => [item.id, item]))
 const gearByConfigName = new Map(gear.map((item) => [item.id.toLowerCase(), item]))
 const slotOptions = new Map<string, Gear[]>()
@@ -190,11 +197,11 @@ const slotLabels: Record<string, string> = {
   vestpouch: 'Pouches',
   weaponoptics: 'Optic',
   weaponopticsak: 'Optic',
-  weaponflashlight: 'Weapon light',
-  weaponwrap: 'Weapon wrap',
+  weaponflashlight: 'Weapon Light',
+  weaponwrap: 'Weapon Wrap',
   weaponbayonet: 'Bayonet',
   weaponbayonetak: 'Bayonet',
-  backpack_1: 'Utility slot',
+  backpack_1: 'Utility Slot',
 }
 
 export function slotLabel(slot: string): string {
@@ -205,6 +212,7 @@ export function slotLabel(slot: string): string {
       .replace(/(M4|AK)$/i, '')
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .replaceAll('_', ' ')
+      .replace(/^\w/, (initial) => initial.toUpperCase())
   )
 }
 
@@ -277,51 +285,158 @@ export function placeInCargo(
   return null
 }
 
-export function starterInventory(id: string): Inventory {
-  const preset = [...presets.Kits, ...presets.OperatorKits].find((kit) => kit.Id === id)
+interface ClothingPreset {
+  Id: string
+  Name: string
+  Body: string
+  Legs: string
+  Feet: string
+  Vest?: string
+  Pouches?: string
+  Gloves?: string
+  Eyewear?: string
+  NightVision?: string
+  WorkshopNightVision?: string
+  Legacy?: boolean
+}
+
+const allClothingPresets: ClothingPreset[] = presets.Outfits
+export const clothingPresets = allClothingPresets.filter((outfit) => !outfit.Legacy)
+export const defaultPlayerOutfit = presets.DefaultOutfit
+
+function clothingPreset(id: string): ClothingPreset {
+  return allClothingPresets.find((option) => option.Id === id) ?? clothingPresets[0]
+}
+
+function wornClothing(outfit: ClothingPreset): Inventory {
+  return { Body: newItem(outfit.Body), Legs: newItem(outfit.Legs), Feet: newItem(outfit.Feet) }
+}
+
+function issuedPlayerGear(outfit: ClothingPreset, kitId: string): Inventory {
+  const modern = modernLoadouts.Kits.some((kit) => kit.Id === kitId)
+  const native = [...presets.Kits, ...presets.OperatorKits].find((kit) => kit.Id === kitId)
+  const workshop = modern || (native && 'WorkshopItems' in native)
+  const kitGoggles = modern
+    ? modernLoadouts.Equipment.NightVisionClass
+    : native && 'NightVisionClass' in native ? native.NightVisionClass : undefined
+  const standardGoggles = typeof kitGoggles === 'string' ? kitGoggles : 'NVGoggles'
+  const eyewear = newItem(outfit.Eyewear ?? presets.NightVisionMount)
+  const goggles = workshop && outfit.WorkshopNightVision
+    ? outfit.WorkshopNightVision
+    : outfit.NightVision ?? standardGoggles
+  eyewear.attachments.NVG = newItem(goggles)
+  const vest = newItem(outfit.Vest ?? 'PlateCarrierVest')
+  vest.attachments.VestPouch = newItem(outfit.Pouches ?? 'PlateCarrierPouches')
+  return { Eyewear: eyewear, Vest: vest, Gloves: newItem(outfit.Gloves ?? 'TacticalGloves_Black') }
+}
+
+function transferCarriedItems(
+  previous: InventoryItem,
+  garment: InventoryItem,
+  displaced: InventoryItem[],
+): void {
+  for (const [slot, part] of Object.entries(previous.attachments)) {
+    const replacement = garment.attachments[slot]
+    if (replacement) transferCarriedItems(part, replacement, displaced)
+    else if (attachmentChoices(garment, slot).some((choice) => choice.id === part.id))
+      garment.attachments[slot] = part
+    else displaced.push(part)
+  }
+  const host = gearById.get(garment.id)
+  for (const placement of previous.cargo) {
+    if (host && canPlace(host, garment.cargo, placement)) garment.cargo.push(placement)
+    else displaced.push(placement.item)
+  }
+}
+
+export function changeOutfit(
+  inventory: Inventory,
+  outfitId: string,
+  previousOutfitId: string,
+  kitId: string,
+): Inventory | null {
+  const outfit = clothingPreset(outfitId)
+  const worn = wornClothing(outfit)
+  if (outfit.Eyewear || clothingPreset(previousOutfitId).Eyewear)
+    Object.assign(worn, issuedPlayerGear(outfit, kitId))
+  const updated = { ...inventory }
+  const displaced: InventoryItem[] = []
+  for (const [slot, garment] of Object.entries(worn)) {
+    const previous = inventory[slot]
+    if (previous) transferCarriedItems(previous, garment, displaced)
+    updated[slot] = garment
+  }
+  for (const item of displaced) {
+    const fits = ['Body', 'Legs', 'Feet', 'Back', 'Vest'].some((slot) => {
+      const container = updated[slot]
+      const host = container && gearById.get(container.id)
+      const placement = host && placeInCargo(host, container.cargo, item)
+      if (!placement) return false
+      updated[slot] = { ...container, cargo: [...container.cargo, placement] }
+      return true
+    })
+    if (fits) continue
+    const vest = updated.Vest
+    const pouch = vest?.attachments.VestPouch
+    const host = pouch && gearById.get(pouch.id)
+    const placement = host && placeInCargo(host, pouch.cargo, item)
+    if (!placement) return null
+    updated.Vest = {
+      ...vest,
+      attachments: {
+        ...vest.attachments,
+        VestPouch: { ...pouch, cargo: [...pouch.cargo, placement] },
+      },
+    }
+  }
+  return updated
+}
+
+export function starterInventory(id: string, outfitId: string): Inventory {
+  const modern = modernLoadouts.Kits.find((kit) => kit.Id === id)
+  const preset = modern ?? [...presets.Kits, ...presets.OperatorKits].find((kit) => kit.Id === id)
   if (!preset) return {}
-  const root: Inventory = {}
-  for (const [slot, item] of Object.entries({
-    Headgear: 'Mich2001Helmet',
-    Body: 'TTsKOJacket_Camo',
-    Vest: 'PlateCarrierVest',
-    Back: 'AssaultBag_Green',
-    Legs: 'TTSKOPants',
-    Feet: 'MilitaryBoots_Black',
-    Gloves: 'TacticalGloves_Black',
-    Hands: preset.FirearmClass,
-  })) {
-    root[slot] = newItem(item)
+  const outfit = clothingPreset(outfitId)
+  const root: Inventory = {
+    ...wornClothing(outfit),
+    ...issuedPlayerGear(outfit, id),
+    Hands: newItem(preset.FirearmClass),
   }
   const weapon = gearById.get(preset.FirearmClass)
-  for (const part of [...preset.Attachments, preset.SuppressorClass]) {
+  const parts = [...preset.Attachments, preset.SuppressorClass]
+  if (modern) parts.push(modernLoadouts.Equipment.ModuleClass)
+  for (const part of parts) {
     const slot = weapon?.accepts.find((option) =>
       compatibleGear(option, weapon).some((item) => item.id === part),
     )
     if (slot) root.Hands.attachments[slot] = newItem(part)
   }
-  root.Headgear.attachments.NVG = newItem('NVGoggles')
+  const pouches = root.Vest.attachments.VestPouch
   root.Hands.attachments['@magazine'] = newItem(preset.MagazineClass)
-  const spares = [
-    ...Array<string>(playerSpareMagazines).fill(preset.MagazineClass),
+  const supplies = [
     ...Array<string>(4).fill('BandageDressing'),
     'Morphine',
     'Epinephrine',
     'Compass',
     'ChernarusMap',
   ]
-  for (const id of spares) {
-    const item = newItem(id)
-    if (id === preset.MagazineClass) item.amount = gearById.get(id)?.capacity
-    for (const slot of ['Body', 'Legs', 'Back']) {
-      const container = root[slot]
-      const host = gearById.get(container.id)
-      const placement = host && placeInCargo(host, container.cargo, item)
-      if (placement) {
+  const containers = [pouches, root.Legs, root.Body]
+  const spareLimit = modern ? modernLoadouts.Equipment.SpareMagazines : playerSpareMagazines
+  for (let count = spareLimit; count >= 0; count--) {
+    for (const container of containers) container.cargo = []
+    const items = [...Array<string>(count).fill(preset.MagazineClass), ...supplies]
+    const fits = items.every((id) => {
+      const item = newItem(id)
+      if (id === preset.MagazineClass) item.amount = gearById.get(id)?.capacity
+      return containers.some((container) => {
+        const host = gearById.get(container.id)
+        const placement = host && placeInCargo(host, container.cargo, item)
+        if (!placement) return false
         container.cargo.push(placement)
-        break
-      }
-    }
+        return true
+      })
+    })
+    if (fits) break
   }
   return root
 }

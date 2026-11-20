@@ -1,5 +1,36 @@
 {
   "Schema": 1,
+  "DefaultOutfit": "spectral",
+  "Outfits": [
+    {
+      "Id": "spectral", "Name": "Spectral",
+      "Body": "TShirt_White", "Legs": "CanvasPants_Beige", "Feet": "WorkingBoots_Brown",
+      "Vest": "PlateCarrierVest_Desert", "Pouches": "PlateCarrierPouches_Desert", "Gloves": "TacticalGloves_Black",
+      "Eyewear": "PredateOperatorHeadstrap_Black", "NightVision": "PredateOperatorNVG_Black",
+      "WorkshopNightVision": "FOG_GPNVG_Black", "InRotation": true
+    },
+    {
+      "Id": "ghost", "Name": "Ghost",
+      "Body": "TShirt_White", "Legs": "CanvasPants_Beige", "Feet": "WorkingBoots_Brown",
+      "Vest": "PlateCarrierVest_Black", "Pouches": "PlateCarrierPouches_Black", "Gloves": "TacticalGloves_Black",
+      "Eyewear": "PredateOperatorHeadstrap_Black", "NightVision": "PredateOperatorNVG_Black",
+      "WorkshopNightVision": "FOG_GPNVG_Black", "InRotation": false
+    },
+    {
+      "Id": "operator", "Name": "Operator",
+      "Body": "TShirt_White", "Legs": "Jeans_BlueDark", "Feet": "Sneakers_Black",
+      "Vest": "PlateCarrierVest_Desert", "Pouches": "PlateCarrierPouches_Desert", "Gloves": "TacticalGloves_Black",
+      "Eyewear": "PredateOperatorHeadstrap_Black", "NightVision": "PredateOperatorNVG_Black",
+      "WorkshopNightVision": "FOG_GPNVG_Black", "InRotation": true
+    },
+    {"Id": "original-uniform", "Name": "File", "Body": "TTsKOJacket_Camo", "Legs": "TTSKOPants", "Feet": "MilitaryBoots_Black", "InRotation": false},
+    {"Id": "white-tee", "Name": "White T-shirt", "Body": "TShirt_White", "Legs": "Jeans_Black", "Feet": "Sneakers_Black", "InRotation": false, "Legacy": true},
+    {"Id": "black-hoodie", "Name": "Black Hoodie", "Body": "Hoodie_Black", "Legs": "Jeans_Black", "Feet": "Sneakers_Gray", "InRotation": false, "Legacy": true},
+    {"Id": "grey-hoodie", "Name": "Grey Hoodie", "Body": "Hoodie_Grey", "Legs": "CanvasPants_Beige", "Feet": "WorkingBoots_Brown", "InRotation": false, "Legacy": true},
+    {"Id": "black-tee", "Name": "Black T-shirt", "Body": "TShirt_Black", "Legs": "Jeans_BlueDark", "Feet": "Sneakers_Black", "InRotation": false, "Legacy": true},
+    {"Id": "green-tee", "Name": "Olive T-shirt", "Body": "TShirt_Green", "Legs": "CanvasPants_Grey", "Feet": "WorkingBoots_Brown", "InRotation": false, "Legacy": true}
+  ],
+  "NightVisionMount": "NVGHeadstrap",
   "Kits": [
     {
       "Id": "m4a1",
@@ -16,6 +47,17 @@
       ]
     },
     {
+      "Id": "m4a1-night",
+      "Name": "M4A1 Night Kit",
+      "Description": "Suppressed carbine with a powered night optic and multimode weapon light",
+      "FirearmClass": "M4A1",
+      "MagazineClass": "Mag_STANAG_30Rnd",
+      "SpareMagazines": 6,
+      "SuppressorClass": "M4_Suppressor",
+      "NightVisionClass": "PredatePanoramicNVG",
+      "Attachments": ["M4_RISHndgrd", "M4_CQBBttstck", "StarlightOptic", "PredateWeaponModule"]
+    },
+    {
       "Id": "ak74",
       "Name": "AK-74",
       "Description": "Assault rifle",
@@ -28,6 +70,18 @@
         "AK74_WoodBttstck",
         "PSO1Optic"
       ]
+    },
+    {
+      "Id": "hk417-night",
+      "Name": "HK-417 Night Kit",
+      "Description": "Suppressed HK-417 with GPNVG-18, a powered night optic, and a multimode weapon light",
+      "FirearmClass": "BC_HK417_Tan",
+      "MagazineClass": "BC_HK417_Magazine",
+      "SpareMagazines": 6,
+      "SuppressorClass": "BC_KAC_PRS_Universal_Suppressor_Tan",
+      "NightVisionClass": "FOG_GPNVG_Tan",
+      "WorkshopItems": ["2931560672", "3092251597"],
+      "Attachments": ["M4_CQBBttstck", "StarlightOptic", "PredateWeaponModule"]
     },
     {
       "Id": "aug",

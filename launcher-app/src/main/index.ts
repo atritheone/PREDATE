@@ -22,12 +22,12 @@ function validateAction(value: unknown): SessionAction {
     action.profile !== undefined &&
     (typeof action.profile !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(action.profile))
   )
-    throw new Error('Invalid operation')
+    throw new Error('Invalid hunt')
   if (
     action.name !== undefined &&
     (typeof action.name !== 'string' || !action.name.trim() || action.name.length > 80)
   )
-    throw new Error('Use an operation name of 1–80 characters')
+    throw new Error('Use a hunt name of 1–80 characters')
   if (
     action.backup !== undefined &&
     (typeof action.backup !== 'string' || basename(action.backup) !== action.backup)
@@ -39,15 +39,15 @@ function validateAction(value: unknown): SessionAction {
       typeof action.loadout !== 'string' ||
       !/^[a-z0-9-]{1,32}$/.test(action.loadout))
   )
-    throw new Error('Select a starting kit for a new operation')
+    throw new Error('Select a starting kit for a new hunt')
   if (
     action.opponents !== undefined &&
     (action.action !== 'new' || !OPPONENT_COUNTS.includes(action.opponents as OpponentCount))
   )
-    throw new Error('Choose 1, 3, 6, 15, or 30 opponents for a new operation')
+    throw new Error('Choose 1, 3, 6, 15, or 30 opponents for a new hunt')
   if (action.spawn !== undefined) {
     if (action.action !== 'new' || !action.spawn || typeof action.spawn !== 'object')
-      throw new Error('Set a spawn when creating a new operation')
+      throw new Error('Set a spawn when creating a new hunt')
     const spawn = action.spawn as Record<string, unknown>
     const preset = Object.keys(spawn).length === 1 && typeof spawn.preset === 'string'
     const coordinates =
@@ -65,7 +65,7 @@ function validateAction(value: unknown): SessionAction {
       typeof action.setup !== 'object' ||
       Array.isArray(action.setup))
   )
-    throw new Error('Game settings apply only to a new operation')
+    throw new Error('Game settings apply only to a new hunt')
   return action as SessionAction
 }
 
@@ -199,11 +199,22 @@ async function createWindow(): Promise<void> {
       horizontalOverflow: boolean
       error: string | null
       kitOptions?: string[]
+      defaultKit?: string
+      clothingOptions?: string[]
+      defaultPlayerOutfit?: string
+      playerEquipmentLabel?: string
+      aiEquipmentLabel?: string
+      defaultOperatorOutfit?: string
+      defaultOperatorOutfitLabel?: string
+      operatorOutfitByCount?: boolean
       opponentOptions?: string[]
       defaultOpponents?: string
       footprintControlAbsent?: boolean
       createVisible?: boolean
       spawnOptions?: string[]
+      defaultSpawn?: string
+      defaultSpawnLabel?: string
+      classicSpawnGroup?: string
       customSpawnFields?: boolean
       startTime?: boolean
       spawnMap?: boolean
@@ -218,8 +229,8 @@ async function createWindow(): Promise<void> {
     for (const [width, height, pages] of [
       [windowSize.width, windowSize.height, launcherPages],
       [windowSize.minWidth, windowSize.minHeight, launcherPages],
-      [setupSize.width, setupSize.height, ['New Operation']],
-      [setupSize.minWidth, setupSize.minHeight, ['New Operation']],
+      [setupSize.width, setupSize.height, ['New Hunt']],
+      [setupSize.minWidth, setupSize.minHeight, ['New Hunt']],
     ] as const) {
       window.setSize(width, height)
       for (const page of pages) {
@@ -233,7 +244,7 @@ async function createWindow(): Promise<void> {
           const createButton = document.querySelector('.new-operation button.primary');
           const startTime = !!document.getElementById('start-time');
           const features = {};
-          if (page === 'New Operation') {
+          if (page === 'New Hunt') {
             const paint = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
             const sections = Array.from(document.querySelectorAll('.setup-sections > section > h2'));
             const setupBody = document.querySelector('.setup-body');
@@ -248,15 +259,29 @@ async function createWindow(): Promise<void> {
               });
             const spawnSelect = document.getElementById('spawn-location');
             features.spawnOptions = Array.from(spawnSelect?.options ?? []).map(option => option.value);
+            features.defaultSpawn = spawnSelect?.value;
+            features.defaultSpawnLabel = spawnSelect?.selectedOptions[0]?.textContent.trim();
+            features.classicSpawnGroup = spawnSelect?.querySelector('optgroup')?.label;
             features.spawnMap = !!document.querySelector('.map-viewport img');
             features.customSpawnFields = !!document.getElementById('spawn-x') && !!document.getElementById('spawn-z');
-            features.kitOptions = Array.from(document.getElementById('starting-kit')?.options ?? []).map(option => option.value);
+            const kitSelect = document.getElementById('starting-kit');
+            features.kitOptions = Array.from(kitSelect?.options ?? []).map(option => option.value);
+            features.defaultKit = kitSelect?.value;
+            const playerOutfit = document.getElementById('player-outfit');
+            const operatorOutfit = document.getElementById('operator-outfit');
+            features.clothingOptions = Array.from(playerOutfit?.options ?? []).map(option => option.value);
+            features.defaultPlayerOutfit = playerOutfit?.value;
+            features.playerEquipmentLabel = playerOutfit?.labels?.[0]?.firstChild?.textContent?.trim();
+            features.aiEquipmentLabel = operatorOutfit?.labels?.[0]?.firstChild?.textContent?.trim();
+            features.defaultOperatorOutfit = operatorOutfit?.value;
+            features.defaultOperatorOutfitLabel = operatorOutfit?.selectedOptions[0]?.textContent.trim();
+            features.operatorOutfitByCount = !!operatorOutfit?.closest('.game-fields')?.querySelector('#opponent-count');
             features.equipmentSlots = document.querySelectorAll('.equipment-slot').length;
             features.attachments = document.querySelectorAll('.attachment-list summary, .attachment-empty').length;
             document.querySelector('.inventory-subhead button')?.click();
             await paint();
             features.itemPicker = !!document.querySelector('.gear-picker[open] .picker-item');
-            document.querySelector('[aria-label="Close item picker"]')?.click();
+            document.querySelector('[aria-label="Close Item Picker"]')?.click();
             await paint();
           }
           const create = createButton?.getBoundingClientRect();
@@ -266,8 +291,8 @@ async function createWindow(): Promise<void> {
               (document.querySelector('.setup-body')?.scrollWidth ?? 0) > (document.querySelector('.setup-body')?.clientWidth ?? 0),
             error: document.querySelector('[role="alert"]')?.textContent ?? null,
             displayControls: page === 'Settings' ?
-              !!document.querySelector('input[aria-label="Compass size in percent"]') &&
-              !!document.querySelector('input[aria-label="Compass high contrast"]') : undefined,
+              !!document.querySelector('input[aria-label="Compass Size in Percent"]') &&
+              !!document.querySelector('input[aria-label="Compass High Contrast"]') : undefined,
             opponentOptions: opponentSelect ? Array.from(opponentSelect.options).map(option => option.value) : undefined,
             defaultOpponents: opponentSelect?.value,
             footprintControlAbsent: !document.getElementById('enable-footprints'),
@@ -291,6 +316,7 @@ async function createWindow(): Promise<void> {
       bridge: typeof window.predate?.overview === 'function',
       navigation: Array.from(document.querySelectorAll('nav button')).map(button => button.textContent),
       operationCount: document.querySelectorAll('#operation option').length,
+      huntLabel: document.getElementById('operation')?.labels?.[0]?.firstChild?.textContent?.trim(),
       continueVisible: !!document.querySelector('button.play'),
       imageCount: document.images.length,
       wordmarkLoaded: !!wordmark?.naturalWidth,
@@ -301,6 +327,7 @@ async function createWindow(): Promise<void> {
       bridge: boolean
       navigation: string[]
       operationCount: number
+      huntLabel?: string
       continueVisible: boolean
       imageCount: number
       wordmarkLoaded: boolean
@@ -309,8 +336,9 @@ async function createWindow(): Promise<void> {
     }
     const passed =
       result.bridge &&
-      result.navigation.join(',') === 'New Operation,Settings,Backups' &&
+      result.navigation.join(',') === 'New Hunt,Settings,Backups' &&
       result.operationCount > 0 &&
+      result.huntLabel === 'Hunt' &&
       result.continueVisible &&
       result.imageCount === 1 &&
       result.wordmarkLoaded &&
@@ -322,11 +350,19 @@ async function createWindow(): Promise<void> {
           !check.horizontalOverflow &&
           !check.error &&
           (check.page !== 'Settings' || check.displayControls === true) &&
-          (check.page !== 'New Operation' ||
+          (check.page !== 'New Hunt' ||
             (check.createVisible === true &&
               check.startTime === true &&
-              check.kitOptions?.includes('m4a1') &&
-              check.kitOptions.includes('ak74') &&
+              (check.kitOptions?.includes('hk417')
+                ? check.defaultKit === 'hk417'
+                : check.kitOptions?.includes('m4a1') && check.kitOptions.includes('ak74')) &&
+              check.clothingOptions?.join(',') === 'spectral,ghost,operator,original-uniform' &&
+              check.defaultPlayerOutfit === 'spectral' &&
+              check.playerEquipmentLabel === 'Equipment' &&
+              check.aiEquipmentLabel === 'AI Equipment' &&
+              check.defaultOperatorOutfit === 'varied' &&
+              check.defaultOperatorOutfitLabel === 'Default' &&
+              check.operatorOutfitByCount === true &&
               check.equipmentSlots === 14 &&
               (check.attachments ?? 0) > 0 &&
               check.itemPicker === true &&
@@ -335,6 +371,9 @@ async function createWindow(): Promise<void> {
               (check.opponentOptions?.join(',') === OPPONENT_COUNTS.join(',') ||
                 check.opponentOptions?.join(',') === '1,3,6') &&
               check.spawnMap === true &&
+              check.defaultSpawn === 'original' &&
+              check.defaultSpawnLabel === 'PREDATE Starting Area' &&
+              check.classicSpawnGroup === 'Classic Spawns' &&
               check.spawnOptions?.includes('cherno') &&
               (!check.spawnOptions.includes('regional') ||
                 check.spawnOptions.includes('northwest')) &&

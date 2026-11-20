@@ -13,6 +13,7 @@ import world
 import loadouts
 import operation_setup
 import spawn_points
+import workshop_lasers
 
 
 def initialize():
@@ -27,18 +28,28 @@ def initialize():
         store.save_preferences({"selected_world": profile})
         return
     snapshot = store.snapshot("main", reason="before-launcher-upgrade")
-    operation = store.restore_snapshot(snapshot.name, "Current operation")
+    operation = store.restore_snapshot(snapshot.name, "Current Hunt")
     store.atomic_json(record_path, {"schema": 1, "profile": operation["id"], "backup": snapshot.name})
     store.save_preferences({"selected_world": operation["id"]})
 
 
 def overview():
     operations = store.worlds()
+    preferences = store.preferences()
     if world.stable_fallback():
         operations = [item for item in operations if item["id"] != "main"]
-    return {"operations": operations, "preferences": store.preferences(), "loadouts": loadouts.options(),
+    imported = session.read_native(session.RUNTIME / "original-import.json").get("profile")
+    operations = [
+        {**item, "name": "Current Hunt"}
+        if item["id"] == imported and item["name"] == "Current operation" else item
+        for item in operations
+    ]
+    operation_options = {"opponents": store.OPPONENT_COUNTS, "randomRegion": True}
+    if workshop_lasers.preview_available(ROOT, loadouts.WORKSHOP):
+        operation_options["weaponModule"] = {"className": "MM_ANPEQ15", "name": "AN/PEQ-15 Laser / Light Module"}
+    return {"operations": operations, "preferences": preferences, "loadouts": loadouts.options(preferences["extra_mods"]),
             "spawnPoints": spawn_points.options(),
-            "operationOptions": {"opponents": store.OPPONENT_COUNTS, "randomRegion": True},
+            "operationOptions": operation_options,
             "backups": [item for item in store.backups() if item.get("kind", "operation") == "operation" and not item["file"].startswith("crashlab-")],
             "status": session.state()}
 

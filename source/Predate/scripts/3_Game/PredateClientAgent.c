@@ -20,6 +20,7 @@ modded class DayZGame
 
 class PredateClientAgent
 {
+    static ref ScriptInvoker BeforeExit = new ScriptInvoker;
     ref PredateClientStatus m_Status;
     float m_Timer;
     float m_QuitTime;
@@ -46,7 +47,7 @@ class PredateClientAgent
         m_Status.Phase = "saving";
         if (GetGame().GetGameState() != DayZGameState.IN_GAME)
         {
-            GetGame().RequestExit(0);
+            ExitGame();
             return;
         }
         ScriptRPC rpc = new ScriptRPC;
@@ -100,7 +101,7 @@ class PredateClientAgent
                 string exitError;
                 JsonFileLoader<PredateClientStatus>.SaveFile("$profile:PredateClientStatus.json", m_Status, exitError);
                 Print("[Predate] Save acknowledged; closing the game normally.");
-                GetGame().RequestExit(0);
+                ExitGame();
                 return;
             }
             if (m_QuitTime > 30)
@@ -142,7 +143,7 @@ class PredateClientAgent
                     {
                         // The server has already failed; an acknowledgement cannot arrive.
                         m_Status.Phase = "exiting";
-                        GetGame().RequestExit(0);
+                        ExitGame();
                         return;
                     }
                     else if (command.Action == "connect" && !m_QuitRequested)
@@ -169,6 +170,12 @@ class PredateClientAgent
         }
         string error;
         JsonFileLoader<PredateClientStatus>.SaveFile("$profile:PredateClientStatus.json", m_Status, error);
+    }
+
+    protected void ExitGame()
+    {
+        BeforeExit.Invoke();
+        GetGame().RequestExit(0);
     }
 }
 

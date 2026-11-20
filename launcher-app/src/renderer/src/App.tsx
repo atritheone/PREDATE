@@ -3,10 +3,10 @@ import type { Overview, Preferences, SessionAction, SessionStatus } from '../../
 import wordmark from '../../../../flash/predate_wordmark.png'
 import { OperationSetup, readOperationDraft } from './OperationSetup'
 
-type Page = 'Continue' | 'New Operation' | 'Settings' | 'Backups'
+type Page = 'Continue' | 'New Hunt' | 'Settings' | 'Backups'
 type SettingsValues = Omit<Preferences, 'schema' | 'selected_world'>
 
-const menu = ['New Operation', 'Settings', 'Backups'] as const
+const menu = ['New Hunt', 'Settings', 'Backups'] as const
 const busyPhases = new Set([
   'starting',
   'loading',
@@ -17,33 +17,33 @@ const busyPhases = new Set([
   'pausing',
 ])
 const phaseLabels: Record<string, string> = {
-  starting: 'Preparing operation…',
-  loading: 'Loading operation…',
-  launching: 'Loading operation…',
-  connecting: 'Loading operation…',
-  playing: 'In operation',
+  starting: 'Preparing Hunt…',
+  loading: 'Loading Hunt…',
+  launching: 'Loading Hunt…',
+  connecting: 'Loading Hunt…',
+  playing: 'In Hunt',
   pausing: 'Pausing…',
   paused: 'Paused',
-  reconnecting: 'Operation interrupted',
+  reconnecting: 'Hunt Interrupted',
   saving: 'Saving…',
-  stopping: 'Saving and quitting…',
+  stopping: 'Saving and Quitting…',
   suspended: 'Saved',
 }
 
 const actionErrors: Record<SessionAction['action'], string> = {
-  continue: 'Couldn’t open the operation. Try Continue again.',
-  new: 'Couldn’t start the operation. Check your setup and try again.',
+  continue: 'Couldn’t open the hunt. Try Continue again.',
+  new: 'Couldn’t start the hunt. Check your setup and try again.',
   quit: 'Couldn’t finish saving. Try Save and Quit again.',
   backup: 'Couldn’t create a backup. Try again.',
   restore: 'Couldn’t restore the backup. Try another backup.',
 }
 
-const operationListError = 'Couldn’t load your operations. Try again.'
+const huntListError = 'Couldn’t load your hunts. Try again.'
 const internalDetails =
   /dayz|\b(?:steam|battleye|servers?|connect\w*|reconnect\w*|disconnect\w*|remote|rcon|network|localhost|backend|bridge|supervisor|ipc|native|script|process|dependency)\b/i
 const playerValidation = [
   /^(?:Starting inventory|Unknown starting (?:inventory item|kit)|Invalid starting inventory|Too many levels|Cargo overlaps|Two items occupy)/i,
-  /^(?:Invalid (?:container|position|quantity|placement|cargo position|operation name|new operation settings)|Use an operation name|Set (?:a valid|whether|a respawn))/i,
+  /^(?:Invalid (?:container|position|quantity|placement|cargo position|(?:operation|hunt) name|new (?:operation|hunt) settings)|Use (?:an operation|a hunt) name|Set (?:a valid|whether|a respawn))/i,
   /^(?:Choose (?:a spawn|one, three|1, 3)|Unknown Chernarus spawn|Both Chernarus coordinates|The selected spawn|That operation already exists)/i,
   /^(?:Unsupported launcher settings|Backup retention|Compass|This operation.s mod|Mod content changed|Mod changed while|Additional mod is selected|Use Save and Quit|Select a starting kit|Select a backup)/i,
   /\b(?:does not fit in|is incompatible with)\b/i,
@@ -54,21 +54,21 @@ function errorMessage(error: unknown, fallback: string): string {
     .replace(/^Error invoking remote method '[^']+': Error: /, '')
     .trim()
   if (/^DayZ is already open|^This world's server was started separately/i.test(message))
-    return 'A game is already open. Close it before starting this operation.'
+    return 'A game is already open. Close it before starting this hunt.'
   if (/^The server (had already )?stopped unexpectedly/i.test(message))
-    return 'The operation ended unexpectedly. Select Continue to recover your last backup.'
+    return 'The hunt ended unexpectedly. Select Continue to recover your last backup.'
   if (/^The paused operation could not reconnect/i.test(message))
-    return 'The operation couldn’t resume. Use Save and Quit to keep your progress.'
+    return 'The hunt couldn’t resume. Use Save and Quit to keep your progress.'
   if (/^DayZ has not acknowledged Save and Quit/i.test(message)) return actionErrors.quit
   if (/missing mod folder/i.test(message))
-    return 'This operation needs a mod that is missing. Restore its mod folder and try again.'
+    return 'This hunt needs a mod that is missing. Restore its mod folder and try again.'
   if (/^Mod folder must contain/i.test(message)) return 'Choose a valid mod folder.'
   if (/^Additional mod is selected more than once/i.test(message))
     return 'That mod is already added.'
   if (
     /^Mod content changed|^This operation.s mod (?:preset|order or folders) changed/i.test(message)
   )
-    return 'The mods for this operation have changed. Restore the previous mods or start a new operation.'
+    return 'The mods for this hunt have changed. Restore the previous mods or start a new hunt.'
   if (/^This snapshot requires a different game/i.test(message))
     return 'This backup was made with a different version of the game.'
   if (/^An older PREDATE session/i.test(message))
@@ -80,7 +80,13 @@ function errorMessage(error: unknown, fallback: string): string {
     /[\r\n]|[a-z]:[\\/]|(?:\.exe|\.log|\.pbo|\.py)\b/i.test(message)
   )
     return fallback
-  return playerValidation.some((pattern) => pattern.test(message)) ? message : fallback
+  if (!playerValidation.some((pattern) => pattern.test(message))) return fallback
+  return message
+    .replace(/\boperation(s?)\b/gi, (word, plural: string) => {
+      const noun = word.startsWith('O') ? 'Hunt' : 'hunt'
+      return noun + plural
+    })
+    .replace(/\ban hunt\b/gi, 'a hunt')
 }
 
 function Settings({
@@ -136,9 +142,9 @@ function Settings({
     <form onSubmit={submit} onChange={() => setSaved(false)}>
       <fieldset disabled={saving}>
         <label className="setting">
-          Compass size
+          Compass Size
           <input
-            aria-label="Compass size in percent"
+            aria-label="Compass Size in Percent"
             type="number"
             min="80"
             max="150"
@@ -150,16 +156,16 @@ function Settings({
           <span className="unit">%</span>
         </label>
         <label className="setting">
-          Compass high contrast
+          Compass High Contrast
           <input
-            aria-label="Compass high contrast"
+            aria-label="Compass High Contrast"
             type="checkbox"
             checked={contrast}
             onChange={(event) => setContrast(event.target.checked)}
           />
         </label>
         <label className="setting">
-          Backups to keep
+          Backups to Keep
           <input
             type="number"
             min="1"
@@ -173,7 +179,7 @@ function Settings({
           <div className="split">
             <div>
               <h2>Extra Mods</h2>
-              <p className="hint">For new operations.</p>
+              <p className="hint">For new hunts.</p>
             </div>
             <button type="button" onClick={() => void addMod()}>
               Add Folder
@@ -202,7 +208,7 @@ function Settings({
         <div className="form-actions">
           <button className="primary">{saving ? 'Saving…' : 'Save Settings'}</button>
           <span className="hint" role="status">
-            {saved && 'Settings saved'}
+            {saved && 'Settings Saved'}
           </span>
         </div>
       </fieldset>
@@ -222,7 +228,7 @@ export function App(): ReactNode {
   const [notice, setNotice] = useState('')
   const [draft, setDraft] = useState(readOperationDraft)
   const [backupFile, setBackupFile] = useState('')
-  const [restoreName, setRestoreName] = useState('Restored operation')
+  const [restoreName, setRestoreName] = useState('Restored Hunt')
 
   const refresh = useCallback(async (selectPreferred = false): Promise<void> => {
     const result = await window.predate.overview()
@@ -243,19 +249,19 @@ export function App(): ReactNode {
       setError('PREDATE couldn’t open. Close the launcher and try again.')
       return
     }
-    void refresh().catch((error) => setError(errorMessage(error, operationListError)))
+    void refresh().catch((error) => setError(errorMessage(error, huntListError)))
     return window.predate.onStatus(setStatus)
   }, [refresh])
 
   useEffect(() => {
     // Game-exit saves can update the backup history independently of the launcher.
     if (window.predate && ['suspended', 'error'].includes(status.phase))
-      void refresh().catch((error) => setError(errorMessage(error, operationListError)))
+      void refresh().catch((error) => setError(errorMessage(error, huntListError)))
   }, [status.phase, refresh])
 
   useEffect(() => {
     heading.current?.focus()
-    void window.predate?.setSetupOpen?.(page === 'New Operation').catch(() => {})
+    void window.predate?.setSetupOpen?.(page === 'New Hunt').catch(() => {})
   }, [page])
 
   const openPage = (next: Page): void => {
@@ -301,13 +307,13 @@ export function App(): ReactNode {
   const selectedBackup = overview?.backups.find((item) => item.file === backupFile)
   const phase = phaseLabels[status.phase]
   const sessionNote = quitting
-    ? 'Saving and quitting…'
+    ? 'Saving and Quitting…'
     : (active ? phase : undefined) || (pending ? 'Working…' : notice || phase)
   const failure =
     status.phase === 'error'
       ? errorMessage(
           status.error || status.message,
-          'The operation was interrupted. Select Continue to try again.',
+          'The hunt was interrupted. Select Continue to try again.',
         )
       : ''
   const onHome = page === 'Continue'
@@ -330,7 +336,7 @@ export function App(): ReactNode {
           <div className="error-banner split" role="alert">
             <span>{error || failure}</span>
             {overview && error && error !== failure && (
-              <button className="quiet" aria-label="Dismiss error" onClick={() => setError('')}>
+              <button className="quiet" aria-label="Dismiss Error" onClick={() => setError('')}>
                 ×
               </button>
             )}
@@ -338,7 +344,7 @@ export function App(): ReactNode {
         )}
         <main
           key={page}
-          className={onHome ? 'home-view' : page === 'New Operation' ? 'setup-view' : undefined}
+          className={onHome ? 'home-view' : page === 'New Hunt' ? 'setup-view' : undefined}
         >
           {onHome && (
             <div className="home">
@@ -348,14 +354,14 @@ export function App(): ReactNode {
               {overview ? (
                 <>
                   <label className="field">
-                    Operation
+                    Hunt
                     <select
                       id="operation"
                       value={selected}
                       disabled={busy || !operation}
                       onChange={(event) => setSelected(event.target.value)}
                     >
-                      {!operation && <option value="">No saved operations</option>}
+                      {!operation && <option value="">No Saved Hunts</option>}
                       {overview.operations.map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.name}
@@ -374,7 +380,7 @@ export function App(): ReactNode {
                       ? 'Resume'
                       : 'Continue'}
                   </button>
-                  <nav aria-label="Launcher menu">
+                  <nav aria-label="Launcher Menu">
                     {menu.map((item) => (
                       <button key={item} onClick={() => openPage(item)}>
                         {item}
@@ -392,9 +398,7 @@ export function App(): ReactNode {
                     className="retry"
                     onClick={() => {
                       setError('')
-                      void refresh().catch((error) =>
-                        setError(errorMessage(error, operationListError)),
-                      )
+                      void refresh().catch((error) => setError(errorMessage(error, huntListError)))
                     }}
                   >
                     Retry
@@ -403,7 +407,7 @@ export function App(): ReactNode {
               )}
             </div>
           )}
-          {overview && page === 'New Operation' && (
+          {overview && page === 'New Hunt' && (
             <OperationSetup
               overview={overview}
               draft={draft}
@@ -430,7 +434,7 @@ export function App(): ReactNode {
                     value={selectedBackup?.file ?? ''}
                     onChange={(event) => setBackupFile(event.target.value)}
                   >
-                    <option value="">Select a snapshot</option>
+                    <option value="">Select a Snapshot</option>
                     {overview.backups.map((item) => (
                       <option key={item.file} value={item.file}>
                         {new Date(item.created).toLocaleString(undefined, {
@@ -459,7 +463,7 @@ export function App(): ReactNode {
                   }}
                 >
                   <label className="field">
-                    Restored operation name
+                    Restored Hunt Name
                     <input
                       id="restore-name"
                       maxLength={80}
