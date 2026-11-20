@@ -1,8 +1,7 @@
 class PredateProtocol
 {
-    static const int VERSION = 17;
-    static const int MAX_OPERATORS = 30;
-    static const int ALL_OPERATORS = 1073741823;
+    static const int VERSION = 18;
+    static const int MAX_OPERATORS = 100;
     static const int MAX_BEARING_HISTORY = 4;
     static const int REQUEST = 918601;
     static const int STATE = 918602;
@@ -15,22 +14,30 @@ class PredateProtocol
         "fox-01", "wolf-01", "osprey-01", "marten-01", "hawk-01", "badger-01",
         "kite-01", "otter-01", "sable-01", "heron-01", "falcon-01", "adder-01",
         "eagle-01", "pike-01", "sparrow-01", "stoat-01", "shrike-01", "boar-01",
-        "magpie-01", "owl-01", "ferret-01", "salmon-01", "wren-01", "weasel-01"
+        "magpie-01", "owl-01", "ferret-01", "salmon-01", "wren-01", "weasel-01",
+        "bear-01", "cougar-01", "coyote-01", "dingo-01", "caracal-01", "panther-01", "leopard-01",
+        "tiger-01", "jaguar-01", "lion-01", "cheetah-01", "bobcat-01", "mongoose-01", "civet-01",
+        "hyena-01", "bison-01", "elk-01", "antelope-01", "ibex-01", "chamois-01", "moose-01",
+        "reindeer-01", "stag-01", "ram-01", "buck-01", "oryx-01", "saiga-01", "yak-01",
+        "muskox-01", "zebra-01", "crane-01", "kingfisher-01", "buzzard-01", "condor-01", "harrier-01",
+        "goshawk-01", "merlin-01", "harpy-01", "griffon-01", "tern-01", "curlew-01", "plover-01",
+        "lapwing-01", "snipe-01", "quail-01", "grouse-01", "lark-01", "swift-01", "swallow-01",
+        "finch-01", "crossbill-01", "redstart-01", "nightjar-01", "bittern-01", "stork-01", "pelican-01",
+        "gannet-01", "petrel-01", "albatross-01", "cormorant-01", "shark-01", "marlin-01", "bonito-01",
+        "tuna-01", "sturgeon-01", "grayling-01", "barbel-01", "perch-01", "zander-01", "swordfish-01"
     };
 
     static bool AcceptRequest(int version, string operatorId, int request)
     {
         if (version != VERSION) return false;
-        if (request == 1 || request == 2) return OperatorBit(operatorId) != 0;
+        if (request == 1 || request == 2) return OperatorSlot(operatorId) >= 0;
         if (operatorId != "raven-01") return false;
         return request >= 1 && request <= 5;
     }
 
-    static int OperatorBit(string id)
+    static int OperatorSlot(string id)
     {
-        int slot = s_OperatorIds.Find(id);
-        if (slot < 0) return 0;
-        return 1 << slot;
+        return s_OperatorIds.Find(id);
     }
 
     static string OperatorAt(int slot)
@@ -41,14 +48,14 @@ class PredateProtocol
 
     static string SignatureFor(string id)
     {
-        if (OperatorBit(id) == 0) return "";
+        if (OperatorSlot(id) < 0) return "";
         id.ToUpper();
         return id;
     }
 
     static string DisplayName(string id)
     {
-        if (OperatorBit(id) == 0) return "";
+        if (OperatorSlot(id) < 0) return "";
         string first = id.Substring(0, 1);
         first.ToUpper();
         return first + id.Substring(1, id.Length() - 4);
@@ -81,7 +88,7 @@ class PredateState
     vector PulseOrigin;
     float BearingError;
     bool Intercepted;
-    int ConfirmedKills;
+    ref array<int> ConfirmedKills = {};
     bool SuppliesRefreshed;
     bool NeedsRedeploy;
     bool DeploymentSpawnRejected;
@@ -124,6 +131,7 @@ class PredateConfig
     ref array<ref PredateInventoryNode> PlayerInventory = new array<ref PredateInventoryNode>;
     float ThreatDistance = DEFAULT_THREAT_DISTANCE;
     int OpponentCount = 1;
+    bool RandomInitialSpawns;
     vector PlayerStart = "4500 0 6500";
     bool ExplicitPlayerStart;
     vector BotStart = "4780 0 6710";

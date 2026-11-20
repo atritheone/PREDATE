@@ -83,6 +83,8 @@ class PredateWorldState
     int Schema = 1;
     float SimulationSeconds;
     int PlayerLife = 1;
+    string PlayerCharacterModel;
+    bool PlayerPrimaryAssigned;
     float PlayerLifeStartedAt;
     ref PredateSupplyPlan PlayerSupplies = new PredateSupplyPlan;
     bool PlayerAwaitingRedeploy;

@@ -122,15 +122,16 @@ modded class eAIBase
             if (group.m_BaseName != "" && !PredateOperatorDeaths.Contains(group.m_BaseName))
             {
                 PredateOperatorDeaths.Keys.Insert(group.m_BaseName);
-                int operatorBit = PredateProtocol.OperatorBit(m_PredateOperatorId);
-                if (GetGame().IsServer() && operatorBit != 0)
+                int slot = PredateProtocol.OperatorSlot(m_PredateOperatorId);
+                if (GetGame().IsServer() && slot >= 0)
                 {
                     PlayerBase credited = PlayerBase.Cast(killer);
                     EntityAI source = EntityAI.Cast(killer);
                     if (!credited && source) credited = PlayerBase.Cast(source.GetHierarchyRootPlayer());
                     Grenade_Base grenade = Grenade_Base.Cast(killer);
                     if (!credited && grenade) credited = grenade.m_PredateExplosionOwner;
-                    if (credited && credited.GetIdentity()) credited.m_PredateKillNotices = credited.m_PredateKillNotices | operatorBit;
+                    if (credited && credited.GetIdentity() && credited.m_PredateKillNotices.Find(slot) < 0)
+                        credited.m_PredateKillNotices.Insert(slot);
                 }
             }
         }

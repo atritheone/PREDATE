@@ -18,6 +18,12 @@ class PredateOperatorService
                 PredatePersistence.Fail(s, error);
                 return;
             }
+            array<EntityAI> issued = {};
+            player.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, issued);
+            foreach (EntityAI entity : issued)
+                SetDefaultFireMode(Weapon_Base.Cast(entity));
+            s.m_WorldState.PlayerPrimaryAssigned = false;
+            AssignPrimary(s, player);
             s.SoloApplyCombatRules(player);
             return;
         }
@@ -99,6 +105,7 @@ class PredateOperatorService
             rifle.SpawnAttachedMagazine(kit.MagazineClass);
             Magazine attached = rifle.GetMagazine(rifle.GetCurrentMuzzle());
             if (!attached || attached.GetType() != kit.MagazineClass) PredatePersistence.Fail(s, "Starting-kit magazine is incompatible: " + kit.MagazineClass);
+            SetDefaultFireMode(rifle);
         }
         else PredatePersistence.Fail(s, "Starting-kit firearm could not be created");
         EntityAI goggles;
@@ -107,14 +114,50 @@ class PredateOperatorService
         for (int j = 0; j < 4; j++)
             player.GetInventory().CreateInInventory("BandageDressing");
         player.GetInventory().CreateInInventory("Morphine");
-        player.GetInventory().CreateInInventory("Epinephrine");
         player.GetInventory().CreateInInventory("Compass");
         player.GetInventory().CreateInInventory("ChernarusMap");
         if (rival) player.GetInventory().CreateInInventory("SalineBagIV");
         for (int i = 0; i < kit.SpareMagazines; i++)
             if (!player.GetInventory().CreateInInventory(kit.MagazineClass)) break;
-        if (rifle) player.SetQuickBarEntityShortcut(rifle, 0);
+        if (!rival)
+        {
+            s.m_WorldState.PlayerPrimaryAssigned = false;
+            AssignPrimary(s, player);
+        }
         s.SoloApplyCombatRules(player);
+    }
+
+    static void SetDefaultFireMode(Weapon_Base weapon)
+    {
+        if (weapon && !weapon.Expansion_SetFireMode(ExpansionFireMode.SemiAuto))
+            weapon.Expansion_SetFireMode(ExpansionFireMode.Single);
+    }
+
+    static void AssignPrimary(PredateSession session, PlayerBase player)
+    {
+        if (!player.GetIdentity()) return;
+        Weapon_Base primary = Weapon_Base.Cast(player.GetEntityInHands());
+        if (!primary || primary.IsKindOf("Pistol_Base"))
+        {
+            Weapon_Base shoulder = Weapon_Base.Cast(player.FindAttachmentBySlotName("Shoulder"));
+            if (shoulder) primary = shoulder;
+            else
+            {
+                array<EntityAI> inventory = {};
+                player.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
+                foreach (EntityAI entity : inventory)
+                {
+                    Weapon_Base weapon = Weapon_Base.Cast(entity);
+                    if (!weapon) continue;
+                    if (!primary) primary = weapon;
+                    if (weapon.IsKindOf("Pistol_Base")) continue;
+                    primary = weapon;
+                    break;
+                }
+            }
+        }
+        if (primary && player.GetQuickBarEntity(0) != primary) player.PredateAssignPrimarySlot(primary);
+        session.m_WorldState.PlayerPrimaryAssigned = true;
     }
 
     static bool InstallBattery(EntityAI device)
@@ -154,6 +197,7 @@ class PredateOperatorService
 
     static bool UpgradeRivalEquipment(PredateSession session, eAIBase actor, PredateOperatorRecord record)
     {
+        PredateSupplyService.RemoveEpinephrine(actor, record.Supplies);
         if (record.EquipmentRevision >= 1) return true;
         array<EntityAI> inventory = {};
         actor.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
@@ -277,13 +321,21 @@ class PredateOperatorService
             }
             else
             {
-                if (s.m_HuntConfig.ExplicitPlayerStart || s.m_HuntConfig.EnableOperatorRespawns || s.m_HuntConfig.OpponentCount >= 6)
+                if (s.m_HuntConfig.RandomInitialSpawns || s.m_HuntConfig.ExplicitPlayerStart || s.m_HuntConfig.EnableOperatorRespawns || s.m_HuntConfig.OpponentCount >= 6)
                 {
                     array<vector> occupied = {s.m_HuntConfig.PlayerStart};
                     vector insertion;
-                    if (!PredateSpawnPlanner.OperatorSite(s, s.m_HuntConfig.PlayerStart, occupied, PredateDeployment.MINIMUM_DISTANCE, insertion))
+                    bool found;
+                    if (s.m_HuntConfig.RandomInitialSpawns)
                     {
-                        PredatePersistence.Fail(s, "Could not find a dry, navigable insertion for Raven");
+                        found = PredateSpawnPlanner.InitialRoster(s, s.m_PredateOpeningSites);
+                        if (found) insertion = s.m_PredateOpeningSites[0];
+                    }
+                    else
+                        found = PredateSpawnPlanner.OperatorSite(s, s.m_HuntConfig.PlayerStart, occupied, PredateDeployment.MINIMUM_DISTANCE, insertion);
+                    if (!found)
+                    {
+                        PredatePersistence.Fail(s, "Could not find dry, navigable opening positions for the selected roster");
                         return;
                     }
                     s.m_HuntConfig.BotStart = insertion;
@@ -335,6 +387,7 @@ class PredateOperatorService
             string rosterError;
             if (!s.AttachPeerRoster(s.m_HuntConfig.LynxStart, s.m_HuntConfig.RookStart, rosterError)) return;
         }
+        s.m_PredateOpeningSites.Clear();
         s.m_HuntReady = true;
         s.PredateSave();
         Print("[Predate] SESSION READY: schema=1; operator=" + record.Id + "; state=" + record.LifeState + "; development=" + s.m_Development);

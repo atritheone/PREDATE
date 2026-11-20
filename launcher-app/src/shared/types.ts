@@ -115,8 +115,14 @@ export interface NewOperationSettings {
   inventory?: InventoryEntry[]
 }
 
-export const OPPONENT_COUNTS = [1, 3, 6, 15, 30] as const
-export type OpponentCount = (typeof OPPONENT_COUNTS)[number]
+export const OPPONENT_COUNTS = [1, 3, 6, 15, 30, 50, 100] as const
+export const MAX_OPPONENT_COUNT = 100
+export const DEFAULT_OPPONENT_COUNT = MAX_OPPONENT_COUNT
+export type OpponentCount = number
+
+export function isOpponentCount(value: unknown): value is OpponentCount {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MAX_OPPONENT_COUNT
+}
 
 export type SessionAction =
   | { action: 'continue'; profile: string }

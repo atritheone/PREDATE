@@ -1114,6 +1114,1406 @@ font "gui/fonts/sdf_MetronBook24"
 "text valign" center
  {  }
 }
+TextWidgetClass MapPulse30 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse31 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse32 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse33 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse34 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse35 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse36 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse37 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse38 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse39 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse40 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse41 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse42 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse43 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse44 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse45 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse46 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse47 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse48 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse49 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse50 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse51 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse52 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse53 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse54 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse55 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse56 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse57 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse58 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse59 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse60 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse61 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse62 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse63 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse64 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse65 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse66 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse67 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse68 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse69 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse70 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse71 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse72 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse73 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse74 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse75 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse76 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse77 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse78 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse79 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse80 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse81 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse82 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse83 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse84 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse85 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse86 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse87 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse88 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse89 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse90 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse91 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse92 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse93 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse94 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse95 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse96 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse97 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse98 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
+TextWidgetClass MapPulse99 {
+ position 0 0
+ size 0.12 0.035
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 120
+color 1 0.79 0.44 1
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"exact text" 1
+"exact text size" 15
+"bold text" 1
+"text halign" center
+"text valign" center
+ {  }
+}
  }
 }
 TextWidgetClass Title {

@@ -44,8 +44,8 @@ class PredatePeerRoster
     bool Open(PredateSession session, vector lynxStart, vector rookStart, out string error)
     {
         float now = session.m_WorldState.SimulationSeconds;
-        int count = 3;
-        if (session.m_HuntConfig.OpponentCount > 3) count = session.m_HuntConfig.OpponentCount;
+        int count = session.m_HuntConfig.OpponentCount;
+        if (count == 1) count = 3; // Explicit three-Operator developer fixture.
         if (FileExist(SAVE_PATH))
         {
             if (!JsonFileLoader<PredatePeerRosterSave>.LoadFile(SAVE_PATH, m_State, error)) return false;
@@ -56,10 +56,22 @@ class PredatePeerRoster
             if (count == 6) sites = {"6050 0 7650", "10300 0 9100", "3200 0 9250", "7500 0 12600", "10300 0 4200"};
             array<vector> occupied = {session.m_HuntConfig.PlayerStart};
             if (session.m_HuntBot) occupied.Insert(session.m_HuntBot.GetPosition());
-            if (count > 6)
+            bool randomSpawns = session.m_HuntConfig.RandomInitialSpawns;
+            if (randomSpawns && session.m_PredateOpeningSites.Count() == count)
             {
                 sites.Clear();
-                if (!PredateSpawnPlanner.RegionalSites(session, occupied, count - 1, sites))
+                for (int siteIndex = 1; siteIndex < count; siteIndex++)
+                    sites.Insert(session.m_PredateOpeningSites[siteIndex]);
+            }
+            else if (randomSpawns || count > 6)
+            {
+                sites.Clear();
+                bool found;
+                if (randomSpawns)
+                    found = PredateSpawnPlanner.InitialSites(session, session.m_HuntConfig.PlayerStart, occupied, count - 1, sites);
+                else
+                    found = PredateSpawnPlanner.RegionalSites(session, occupied, count - 1, sites);
+                if (!found)
                 {
                     error = "The selected operation could not fit its opponents at the required separation";
                     return false;
@@ -68,7 +80,7 @@ class PredatePeerRoster
             for (int slot = 1; slot < count; slot++)
             {
                 vector site = sites[slot - 1];
-                if (count <= 6 && (count == 6 || session.m_HuntConfig.ExplicitPlayerStart || session.m_HuntConfig.EnableOperatorRespawns))
+                if (!randomSpawns && count <= 6 && (count == 6 || session.m_HuntConfig.ExplicitPlayerStart || session.m_HuntConfig.EnableOperatorRespawns))
                 {
                     vector insertion;
                     if (!PredateSpawnPlanner.OperatorSite(session, site, occupied, PredateDeployment.MINIMUM_DISTANCE, insertion))
@@ -217,9 +229,9 @@ class PredatePeerRoster
 
     PredatePeerBinding Find(string id)
     {
-        foreach (PredatePeerBinding binding : m_Bindings)
-            if (binding.State.Operator.Id == id) return binding;
-        return null;
+        int index = PredateProtocol.OperatorSlot(id) - 1;
+        if (index < 0 || index >= m_Bindings.Count()) return null;
+        return m_Bindings[index];
     }
 
     bool RefreshSupplies(PredateSession session, float now)
@@ -233,14 +245,13 @@ class PredatePeerRoster
         return refreshed;
     }
 
-    int AvailableMask(PredateSession session)
+    int AvailableCount(PredateSession session)
     {
-        int mask;
-        if (session.m_WorldState.PlayerSignal.Reception != PredatePulseReception.UNAVAILABLE) mask = PredateProtocol.OperatorBit("raven-01");
+        int count;
+        if (session.m_WorldState.PlayerSignal.Reception != PredatePulseReception.UNAVAILABLE) count++;
         foreach (PredatePeerBinding binding : m_Bindings)
-            if (binding.State.PlayerReceiver.Reception != PredatePulseReception.UNAVAILABLE)
-                mask = mask | PredateProtocol.OperatorBit(binding.State.Operator.Id);
-        return mask;
+            if (binding.State.PlayerReceiver.Reception != PredatePulseReception.UNAVAILABLE) count++;
+        return count;
     }
 
     PredatePeerBinding PlayerLock()
@@ -253,7 +264,17 @@ class PredatePeerRoster
     bool SelectPlayerTarget(PredateSession session, string id)
     {
         bool wantsRaven = id == "raven-01";
-        if (id != "" && (AvailableMask(session) & PredateProtocol.OperatorBit(id)) == 0) return false;
+        if (id != "")
+        {
+            PredateSignalTrack receiver;
+            if (wantsRaven) receiver = session.m_WorldState.PlayerSignal;
+            else
+            {
+                PredatePeerBinding selected = Find(id);
+                if (selected) receiver = selected.State.PlayerReceiver;
+            }
+            if (!receiver || receiver.Reception == PredatePulseReception.UNAVAILABLE) return false;
+        }
         foreach (PredatePeerBinding peer : m_Bindings)
             peer.State.PlayerReceiver.SetPlayerTracking(peer.State.Operator.Id == id);
         PredateSignalService.Select(session, wantsRaven);
@@ -422,13 +443,14 @@ class PredatePeerRoster
 
     bool Save(PredateSession session, out string error)
     {
+        PredateOperatorIndex index = PredateOperatorIndex.Capture();
         foreach (PredatePeerBinding binding : m_Bindings)
         {
             PredatePeerState peer = binding.State;
             PredateOperatorRecord record = peer.Operator;
             eAIBase actor;
             eAIGroup group;
-            if (!session.m_Operators.Resolve(record.Id, actor, group, error)) return false;
+            if (!session.m_Operators.Resolve(record.Id, actor, group, error, index)) return false;
             if (record.LifeState == "defeated")
             {
                 if (binding.Group)

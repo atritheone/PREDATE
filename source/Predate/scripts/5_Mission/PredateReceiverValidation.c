@@ -48,9 +48,9 @@ class PredateReceiverValidation
         result.Check(Fits(mission.m_PredateHudText) && mission.m_PredateReceiverContents.Contains("Raven") && mission.m_PredateReceiverContents.Contains("Next"));
         PredateHuntFeed feed = mission.m_PredateHuntFeed;
         result.Check(HuntWarningVisible(feed));
-        player.m_PredateKillNotices = PredateProtocol.OperatorBit("raven-01");
+        player.m_PredateKillNotices.Insert(0);
         feed.Update(player, state, 0);
-        result.Check(feed.m_Notices[0].Text == "Raven is KIA." && Fits(feed.m_Rows[0]) && feed.m_Rows[0].GetColor() == PredateHuntFeed.ELIMINATION && HuntWarningVisible(feed));
+        result.Check(feed.m_Notices[0].Text == "Raven is KIA." && Fits(feed.m_Rows[0]) && feed.m_Rows[0].GetColor() == PredateHuntFeed.NORMAL && HuntWarningVisible(feed));
         feed.Post("Tracking Lynx.");
         feed.Update(player, state, 0);
         result.Check(feed.m_Rows[0].GetColor() == 0xFFFFFFFF);

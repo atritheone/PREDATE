@@ -85,7 +85,7 @@ class PredatePersistence
         if (s.m_HuntConfig.EnableStrategicHunter && !s.m_HuntConfig.EnableSharedSignals)
             return Fail(s, "Strategic hunter requires shared signals");
         int opponentCount = s.m_HuntConfig.OpponentCount;
-        if (opponentCount != 1 && opponentCount != 3 && opponentCount != 6 && opponentCount != 15 && opponentCount != 30)
+        if (opponentCount < 1 || opponentCount > PredateProtocol.MAX_OPERATORS)
             return Fail(s, "Unsupported opponent count");
         if (opponentCount > 1 && !s.m_HuntConfig.EnableStrategicHunter)
             return Fail(s, "Multi-opponent operations require strategic hunters");

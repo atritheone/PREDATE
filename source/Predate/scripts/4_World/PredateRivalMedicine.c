@@ -37,10 +37,6 @@ modded class eAIBase
     {
         ModifiersManager modifiers = GetModifiersManager();
         if (!modifiers) return false;
-        if (type == "Epinephrine")
-        {
-            return GetHealth01("", "Shock") < 0.60 && !modifiers.IsModifierActive(eModifiers.MDF_EPINEPHRINE);
-        }
         // Let Expansion's native bandaging state deal with cuts first.
         if (IsBleeding() && GetBandageToUse()) return false;
         if (type == "SalineBagIV")
@@ -75,13 +71,11 @@ modded class eAIBase
         }
         if (now < m_PredateNextMedicalCheck || !PredateCanTreat()) return;
         m_PredateNextMedicalCheck = now + 1;
-        bool adrenaline = PredateNeedsMedicine("Epinephrine", now);
         bool saline = PredateNeedsMedicine("SalineBagIV", now);
         bool morphine = PredateNeedsMedicine("Morphine", now);
-        if (!adrenaline && !saline && !morphine) return;
+        if (!saline && !morphine) return;
         array<EntityAI> inventory = {};
         GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
-        ItemBase injection;
         ItemBase fluids;
         ItemBase painRelief;
         foreach (EntityAI entity : inventory)
@@ -89,12 +83,10 @@ modded class eAIBase
             ItemBase available = ItemBase.Cast(entity);
             if (!available || available.IsRuined()) continue;
             string itemType = available.GetType();
-            if (adrenaline && itemType == "Epinephrine") injection = available;
-            else if (saline && itemType == "SalineBagIV") fluids = available;
+            if (saline && itemType == "SalineBagIV") fluids = available;
             else if (morphine && itemType == "Morphine") painRelief = available;
         }
-        if (injection) m_PredateTreatment = injection;
-        else if (fluids) m_PredateTreatment = fluids;
+        if (fluids) m_PredateTreatment = fluids;
         else m_PredateTreatment = painRelief;
         if (!m_PredateTreatment) return;
         m_PredateTreatmentEnds = now + 2.5;

@@ -100,9 +100,8 @@ class PredateRosterReceiverValidation
 
     bool Update(PredateState state)
     {
-        if (!state || (state.AvailableOperators != 7 && state.AvailableOperators != PredateProtocol.ALL_OPERATORS)) return true;
-        int rosterSize = 3;
-        if (state.AvailableOperators == PredateProtocol.ALL_OPERATORS) rosterSize = PredateProtocol.MAX_OPERATORS;
+        if (!state || state.AvailableOperators < 2) return true;
+        int rosterSize = state.AvailableOperators;
         UIManager ui = GetGame().GetUIManager();
         if (m_Phase == 0 && !ui.GetMenu() && state.Pulses.Count() >= 2)
         {
@@ -120,7 +119,7 @@ class PredateRosterReceiverValidation
             m_Result.Second = m_Second;
             m_Result.InRange = m_Count;
             bool countCovered = m_Count <= rosterSize;
-            if (rosterSize == 30) countCovered = m_Count < rosterSize;
+            if (rosterSize >= 30) countCovered = m_Count < rosterSize;
             m_Result.Check(countCovered && m_First != m_Second && PredateProtocol.DisplayName("raven-01") == "Raven", "only in-range rivals have named arcs");
             m_Result.Check(!state.Locked && state.History.Count() == 0, "untracked arcs show sectors without bearing history");
             m_Phase = 1;

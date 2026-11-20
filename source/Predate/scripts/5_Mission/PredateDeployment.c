@@ -16,12 +16,19 @@ class PredateInsertionScore
 // Player life changes are independent of the operation and its Raven record.
 class PredateDeployment
 {
+    static void RememberCharacter(PredateWorldState state, PlayerBase player)
+    {
+        if (state && player && state.PlayerCharacterModel == "")
+            state.PlayerCharacterModel = player.GetType();
+    }
+
     static void ObserveDeath(PredateSession session, PlayerBase player)
     {
         if (!session || !session.m_HuntReady || session.m_HuntError != "" || !player || player.m_PredateDeathRecorded || !player.GetIdentity()) return;
         if (player.IsAlive() && player.GetHealth("", "Health") > 0) return;
         player.m_PredateDeathRecorded = true;
         PredateWorldState state = session.m_WorldState;
+        RememberCharacter(state, player);
         if (state.PlayerAwaitingRedeploy) return;
         state.PlayerAwaitingRedeploy = true;
         state.PlayerLastDeathAt = state.SimulationSeconds;

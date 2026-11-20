@@ -24,7 +24,7 @@ The hunt persists between sessions. Surviving Operators carry their injuries and
 
 ## Highlights
 
-- First-person hunts across the full Chernarus map with a configurable roster of up to 30 AI enemies.
+- First-person hunts across the full Chernarus map with 1–100 AI Operators. New hunts default to 100.
 - Operators carry rifles ready on patrol. Stamina never drains for the player or Operators, and bullet damage between them is doubled.
 - Weapons, suppressors, and wearable gear keep their condition for the player and Operators. Ammunition and single-use items are still consumed.
 - Scheduled bearing pulses on the map and compass, with one interception warning per continuous hunt.
@@ -37,6 +37,8 @@ The hunt persists between sessions. Surviving Operators carry their injuries and
 2. Open the map to see bearing pulses from Operators within 5 km of you when sampled. Each pulse covers a 15° range that can shift between samples. Overlapping arcs stack with nearer Operators inside farther ones. Pulse colours run from yellow for distant signals to red for nearby ones. Select an arc to see its estimated distance band and track it on your compass.
 3. Select a contact to see its historical sectors on the terrain from where you took each reading. The receiver hands off to sight and sound when a scheduled pulse finds the target inside 200 metres. Earlier sectors stay on the map.
 4. Use **Save and Quit** to save the hunt and stop the local server. Select **Continue** in the launcher to resume it.
+
+Each new hunt shuffles its Operator starting positions. At least one Operator starts 1.5–3.2 km from your insertion, while larger rosters fill regions across Chernarus. Dense starting rosters allow Operators to start closer to each other. The 1.5 km separation for redeployment and Operator respawns still applies.
 
 If you die, choose **Redeploy** to return with the hunt's starting kit. PREDATE looks across the map for safe ground at least 1.5 km from every living Operator. It favors sites with more Operators within the 5 km receiver range, then shorter approaches to those Operators. Your death location breaks ties. Operator and player corpses cannot be looted. You can also save and quit from the death screen.
 

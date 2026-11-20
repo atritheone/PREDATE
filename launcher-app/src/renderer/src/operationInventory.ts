@@ -106,6 +106,27 @@ export function completeLegacyInventory(inventory: Inventory): Inventory {
   return Object.fromEntries(Object.entries(inventory).map(([slot, item]) => [slot, complete(item)]))
 }
 
+function isEpinephrine(id: string): boolean {
+  return id.toLowerCase() === 'epinephrine'
+}
+
+export function removeEpinephrine(inventory: Inventory): Inventory {
+  function clean(item: InventoryItem): InventoryItem {
+    return {
+      ...item,
+      attachments: removeEpinephrine(item.attachments),
+      cargo: item.cargo
+        .filter(({ item }) => !isEpinephrine(item.id))
+        .map((placement) => ({ ...placement, item: clean(placement.item) })),
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(inventory)
+      .filter(([, item]) => !isEpinephrine(item.id))
+      .map(([slot, item]) => [slot, clean(item)]),
+  )
+}
+
 export function inventoryEntries(inventory: Inventory): InventoryEntry[] {
   const entries: InventoryEntry[] = []
 
@@ -146,7 +167,9 @@ export function inventoryEntries(inventory: Inventory): InventoryEntry[] {
 }
 
 export const workshopGearIds = new Set(modernLoadouts.Catalog.map((item) => item.id))
-export const gear: Gear[] = [...catalog, ...modernLoadouts.Catalog]
+export const gear: Gear[] = [...catalog, ...modernLoadouts.Catalog].filter(
+  (item) => !isEpinephrine(item.id),
+)
 export const gearById = new Map(gear.map((item) => [item.id, item]))
 const gearByConfigName = new Map(gear.map((item) => [item.id.toLowerCase(), item]))
 const slotOptions = new Map<string, Gear[]>()
@@ -435,7 +458,6 @@ export function starterInventory(id: string, outfitId: string): Inventory {
   const supplies = [
     ...Array<string>(4).fill('BandageDressing'),
     'Morphine',
-    'Epinephrine',
     'Compass',
     'ChernarusMap',
   ]

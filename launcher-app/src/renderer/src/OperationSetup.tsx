@@ -1,6 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import {
+  DEFAULT_OPPONENT_COUNT,
+  MAX_OPPONENT_COUNT,
   OPPONENT_COUNTS,
+  isOpponentCount,
   weaponSlots,
   type LoadoutPreset,
   type OpponentCount,
@@ -17,6 +20,7 @@ import {
   completeLegacyInventory,
   defaultPlayerOutfit,
   inventoryEntries,
+  removeEpinephrine,
   starterInventory,
   upgradeDraftOutfitMount,
   type Inventory,
@@ -61,7 +65,7 @@ export interface OperationDraft {
 const defaults: OperationDraft = {
   name: '',
   time: defaultTime,
-  opponents: 30,
+  opponents: DEFAULT_OPPONENT_COUNT,
   enemyRespawns: true,
   respawnDelay: '120',
   spawn: 'original',
@@ -82,8 +86,11 @@ export function readOperationDraft(): OperationDraft {
       footprints?: boolean
     }
     delete draft.footprints
-    if (!componentsReady && draft.inventory)
-      draft.inventory = completeLegacyInventory(draft.inventory)
+    if (!isOpponentCount(draft.opponents)) delete draft.opponents
+    if (draft.inventory) {
+      draft.inventory = removeEpinephrine(draft.inventory)
+      if (!componentsReady) draft.inventory = completeLegacyInventory(draft.inventory)
+    }
     if (draft.playerOutfit === undefined && draft.inventory) {
       const worn = draft.inventory
       draft.playerOutfit = clothingPresets.find(
@@ -146,6 +153,7 @@ export function OperationSetup({
   const [saveStatus, setSaveStatus] = useState('')
   const [presets, setPresets] = useState<LoadoutPreset[] | null>(null)
   const [savingPreset, setSavingPreset] = useState<PresetKind | null>(null)
+  const [exactOpponents, setExactOpponents] = useState<string | null>(null)
   useEffect(() => {
     let mounted = true
     void window.predate.loadoutPresets().then(
@@ -183,7 +191,7 @@ export function OperationSetup({
   const applyPreset = (preset: LoadoutPreset): void => {
     const inventory = {
       ...inventoryPart(loadout, preset.kind === 'weapon' ? 'equipment' : 'weapon'),
-      ...structuredClone(preset.inventory),
+      ...removeEpinephrine(preset.inventory),
     }
     change(
       preset.kind === 'weapon'
@@ -233,8 +241,9 @@ export function OperationSetup({
     }
     change({ playerOutfit: outfitId, inventory, equipmentPresetId: undefined })
   }
-  const opponentOptions = overview.operationOptions?.opponents ?? OPPONENT_COUNTS.slice(0, 3)
-  const opponents = opponentOptions.includes(draft.opponents) ? draft.opponents : opponentOptions[0]
+  const opponentOptions: readonly number[] = overview.operationOptions?.opponents ?? OPPONENT_COUNTS
+  const customOpponents = exactOpponents !== null || !opponentOptions.includes(draft.opponents)
+  const opponents = exactOpponents === null ? draft.opponents : Number(exactOpponents)
   const randomRegion = overview.operationOptions?.randomRegion === true
   const spawn = draft.spawn === 'regional' && !randomRegion ? 'original' : draft.spawn
   const spawnValid = spawn !== 'custom' || validSpawn(draft.x, draft.z)
@@ -243,9 +252,14 @@ export function OperationSetup({
     !!draft.name.trim() &&
     !!kit &&
     spawnValid &&
+    isOpponentCount(opponents) &&
     /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(draft.time) &&
     (!draft.enemyRespawns || (Number.isInteger(delay) && delay >= 1 && delay <= 3600))
   const saveDraft = (): void => {
+    if (!isOpponentCount(opponents)) {
+      showError('Enter a whole number from 1 to 100 opponents.')
+      return
+    }
     try {
       localStorage.setItem(
         setupKey,
@@ -322,10 +336,14 @@ export function OperationSetup({
                   Enemy Count
                   <select
                     id="opponent-count"
-                    value={opponents}
+                    value={customOpponents ? 'custom' : opponents}
                     onChange={(event) => {
-                      const value = Number(event.target.value) as OpponentCount
-                      if (opponentOptions.includes(value)) change({ opponents: value })
+                      if (event.target.value === 'custom') {
+                        if (exactOpponents === null) setExactOpponents(String(draft.opponents))
+                        return
+                      }
+                      setExactOpponents(null)
+                      change({ opponents: Number(event.target.value) })
                     }}
                   >
                     {opponentOptions.map((count) => (
@@ -333,6 +351,7 @@ export function OperationSetup({
                         {count} {count === 1 ? 'Operator' : 'Operators'}
                       </option>
                     ))}
+                    <option value="custom">Custom</option>
                   </select>
                 </label>
                 <label className="field">
@@ -350,6 +369,25 @@ export function OperationSetup({
                     ))}
                   </select>
                 </label>
+                {customOpponents && (
+                  <label className="field">
+                    Exact Operator Count
+                    <input
+                      id="exact-opponent-count"
+                      type="number"
+                      min={1}
+                      max={MAX_OPPONENT_COUNT}
+                      step={1}
+                      required
+                      value={exactOpponents ?? draft.opponents}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        setExactOpponents(value)
+                        if (isOpponentCount(Number(value))) change({ opponents: Number(value) })
+                      }}
+                    />
+                  </label>
+                )}
               </div>
               <div className="time-presets" aria-label="Time Presets">
                 {timePresets.map(([label, value]) => (

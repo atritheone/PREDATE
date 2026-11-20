@@ -9,7 +9,6 @@ class PredateHuntFeed
 {
     static const int NORMAL = 0xFFFFFFFF;
     static const int HUNTED = 0xFFFFB253;
-    static const int ELIMINATION = 0xFF77E49C;
     static const int DEATH = 0xFFFF6666;
     static const int ROWS = 6;
     ref array<TextWidget> m_Rows = new array<TextWidget>;
@@ -55,12 +54,11 @@ class PredateHuntFeed
             m_WasHunted = false;
             m_Target = "";
         }
-        if (player.m_PredateKillNotices != 0)
+        if (player.m_PredateKillNotices.Count() > 0)
         {
-            for (int slot = 0; slot < PredateProtocol.MAX_OPERATORS; slot++)
-                if ((player.m_PredateKillNotices & (1 << slot)) != 0)
-                    Post(PredateProtocol.DisplayName(PredateProtocol.OperatorAt(slot)) + " is KIA.", ELIMINATION);
-            player.m_PredateKillNotices = 0;
+            foreach (int slot : player.m_PredateKillNotices)
+                Post(PredateProtocol.DisplayName(PredateProtocol.OperatorAt(slot)) + " is KIA.");
+            player.m_PredateKillNotices.Clear();
         }
         if (player.m_PredateSupplyNotice)
         {

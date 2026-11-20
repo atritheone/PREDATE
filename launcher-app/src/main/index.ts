@@ -4,7 +4,7 @@ import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Backend, findProject } from './backend'
 import { loadPresets, savePreset } from './loadoutPresets'
-import { OPPONENT_COUNTS, type OpponentCount, type SessionAction } from '../shared/types'
+import { DEFAULT_OPPONENT_COUNT, OPPONENT_COUNTS, isOpponentCount, type SessionAction } from '../shared/types'
 
 let window: BrowserWindow | null = null
 let backend: Backend
@@ -43,9 +43,9 @@ function validateAction(value: unknown): SessionAction {
     throw new Error('Select a starting kit for a new hunt')
   if (
     action.opponents !== undefined &&
-    (action.action !== 'new' || !OPPONENT_COUNTS.includes(action.opponents as OpponentCount))
+    (action.action !== 'new' || !isOpponentCount(action.opponents))
   )
-    throw new Error('Choose 1, 3, 6, 15, or 30 opponents for a new hunt')
+    throw new Error('Enter a whole number from 1 to 100 opponents for a new hunt')
   if (action.spawn !== undefined) {
     if (action.action !== 'new' || !action.spawn || typeof action.spawn !== 'object')
       throw new Error('Set a spawn when creating a new hunt')
@@ -219,6 +219,7 @@ async function createWindow(): Promise<void> {
       operatorOutfitByCount?: boolean
       opponentOptions?: string[]
       defaultOpponents?: string
+      exactOpponents?: boolean
       footprintControlAbsent?: boolean
       createVisible?: boolean
       spawnOptions?: string[]
@@ -289,6 +290,22 @@ async function createWindow(): Promise<void> {
             features.defaultOperatorOutfit = operatorOutfit?.value;
             features.defaultOperatorOutfitLabel = operatorOutfit?.selectedOptions[0]?.textContent.trim();
             features.operatorOutfitByCount = !!operatorOutfit?.closest('.game-fields')?.querySelector('#opponent-count');
+            if (opponentSelect) {
+              const preset = opponentSelect.value;
+              opponentSelect.value = 'custom';
+              opponentSelect.dispatchEvent(new Event('change', { bubbles: true }));
+              await paint();
+              const exactCount = document.getElementById('exact-opponent-count');
+              if (exactCount) {
+                exactCount.value = '47';
+                const allowsExact = exactCount.checkValidity();
+                exactCount.value = '101';
+                features.exactOpponents = allowsExact && !exactCount.checkValidity();
+              }
+              opponentSelect.value = preset;
+              opponentSelect.dispatchEvent(new Event('change', { bubbles: true }));
+              await paint();
+            }
             features.equipmentSlots = document.querySelectorAll('.equipment-slot').length;
             features.attachments = document.querySelectorAll('.attachment-list summary, .attachment-empty').length;
             document.querySelector('.inventory-subhead button')?.click();
@@ -382,8 +399,7 @@ async function createWindow(): Promise<void> {
               check.itemPicker === true &&
               check.setupSections?.join(',') === 'Game,Spawn,Loadout' &&
               check.setupFits === true &&
-              (check.opponentOptions?.join(',') === OPPONENT_COUNTS.join(',') ||
-                check.opponentOptions?.join(',') === '1,3,6') &&
+              check.opponentOptions?.join(',') === [...OPPONENT_COUNTS, 'custom'].join(',') &&
               check.spawnMap === true &&
               check.defaultSpawn === 'original' &&
               check.defaultSpawnLabel === 'PREDATE Starting Area' &&
@@ -393,7 +409,8 @@ async function createWindow(): Promise<void> {
                 check.spawnOptions.includes('northwest')) &&
               check.spawnOptions.includes('custom') &&
               check.customSpawnFields === true &&
-              check.defaultOpponents === (check.opponentOptions?.includes('30') ? '30' : '1') &&
+              check.defaultOpponents === String(DEFAULT_OPPONENT_COUNT) &&
+              check.exactOpponents &&
               check.footprintControlAbsent === true)),
       )
     mkdirSync(join(backend.root, 'build'), { recursive: true })

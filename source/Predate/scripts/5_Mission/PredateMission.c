@@ -65,6 +65,8 @@ class PredateSession
         return true;
     }
 
+    ref array<vector> m_PredateOpeningSites = {};
+
     void HoldPauseActor(Man actor)
     {
         if (!actor) return;
@@ -149,6 +151,8 @@ class PredateSession
 
     void PredateSend(PlayerBase player)
     {
+        if (player.m_PredateKillNotices.Count() > 0 && m_WorldState && m_WorldState.PlayerSignal)
+            PredateSignalService.ConfirmPlayerKills(this, player.m_PredateKillNotices);
         // Keep the payload in local values. Filling a temporary receiver object
         // in this path triggered a native access violation after the first send.
         bool needsRedeploy = m_WorldState && m_WorldState.PlayerAwaitingRedeploy;
@@ -165,7 +169,7 @@ class PredateSession
                 receiverTrack = chosen.State.PlayerReceiver;
                 operatorId = chosen.State.Operator.Id;
             }
-            if (receiverReady && m_WorldState.PlayerSignal) availableOperators = m_PeerRoster.AvailableMask(this);
+            if (receiverReady && m_WorldState.PlayerSignal) availableOperators = m_PeerRoster.AvailableCount(this);
         }
         string signature = PredateProtocol.SignatureFor(operatorId);
         bool development = m_Development && !m_PeerRoster;
@@ -222,8 +226,9 @@ class PredateSession
         rpc.Write(pulseOrigin);
         rpc.Write(bearingError);
         rpc.Write(intercepted);
-        rpc.Write(player.m_PredateKillNotices);
-        player.m_PredateKillNotices = 0;
+        rpc.Write(player.m_PredateKillNotices.Count());
+        foreach (int slot : player.m_PredateKillNotices) rpc.Write(slot);
+        player.m_PredateKillNotices.Clear();
         rpc.Write(player.m_PredateSupplyNotice);
         player.m_PredateSupplyNotice = false;
         rpc.Write(needsRedeploy);
@@ -397,7 +402,7 @@ class PredateSession
             if (!player.IsAlive())
             {
                 PredateDeployment.ObserveDeath(this, player);
-                if (m_HuntStateTimer >= 1) PredateSend(player);
+                if (player.m_PredateKillNotices.Count() > 0 || m_HuntStateTimer >= 1) PredateSend(player);
                 continue;
             }
             if (m_WorldState.PlayerAwaitingRedeploy)
@@ -418,6 +423,10 @@ class PredateSession
             activePlayer = true;
             activePlayerId = player.GetIdentity().GetId();
             activeParticipant = player;
+            PredateDeployment.RememberCharacter(m_WorldState, player);
+            if (!m_WorldState.PlayerPrimaryAssigned && player.IsPlayerLoaded())
+                PredateOperatorService.AssignPrimary(this, player);
+            player.PredateSyncPrimarySlot();
             PredateMemoryPersistence.RestoreContact(this, player);
             int request = player.m_PredateRequest;
             string requestedOperator = player.m_PredateRequestedOperator;
@@ -450,7 +459,12 @@ class PredateSession
             }
             PredateSignalService.Tick(this, player, seconds);
             if (m_PeerRoster) m_PeerRoster.SampleForPlayer(this, player);
-            if (m_HuntStateTimer >= 1) PredateSend(player);
+            if (player.m_PredateKillNotices.Count() > 0 || m_HuntStateTimer >= 1)
+            {
+                bool confirmedKill = player.m_PredateKillNotices.Count() > 0;
+                PredateSend(player);
+                if (confirmedKill) PredateSave();
+            }
         }
         if (activePlayer && m_WorldState)
         {

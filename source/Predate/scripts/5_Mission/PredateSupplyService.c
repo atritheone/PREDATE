@@ -1,7 +1,24 @@
 class PredateSupplyService
 {
+    static bool IsEpinephrine(string name)
+    {
+        return name == "Epinephrine" || GetGame().IsKindOf(name, "Epinephrine");
+    }
+
+    static void RemoveEpinephrine(PlayerBase actor, PredateSupplyPlan plan)
+    {
+        array<EntityAI> inventory = {};
+        actor.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
+        foreach (EntityAI entity : inventory)
+            if (entity && IsEpinephrine(entity.GetType())) GetGame().ObjectDelete(entity);
+        if (!plan) return;
+        for (int i = plan.Entries.Count() - 1; i >= 0; i--)
+            if (IsEpinephrine(plan.Entries[i].ClassName)) plan.Entries.RemoveOrdered(i);
+    }
+
     static int Kind(ItemBase item)
     {
+        if (IsEpinephrine(item.GetType())) return PredateSupplyKind.NONE;
         Magazine magazine = Magazine.Cast(item);
         if (magazine)
         {
@@ -11,7 +28,7 @@ class PredateSupplyService
         ComponentEnergyManager energy = item.GetCompEM();
         if (energy && energy.GetEnergyMax() > 0 && !energy.PredatePermanentBattery()) return PredateSupplyKind.FUELLED_ITEM;
         if (item.HasQuantity() && !energy) return PredateSupplyKind.QUANTITY;
-        if (ExplosivesBase.Cast(item) || item.IsKindOf("Morphine") || item.IsKindOf("Epinephrine") || item.IsKindOf("SalineBagIV"))
+        if (ExplosivesBase.Cast(item) || item.IsKindOf("Morphine") || item.IsKindOf("SalineBagIV"))
             return PredateSupplyKind.SINGLE;
         return PredateSupplyKind.NONE;
     }
@@ -40,6 +57,7 @@ class PredateSupplyService
 
     static void AddConfigured(PredateSupplyPlan plan, string name, int objects, float specified = -1)
     {
+        if (IsEpinephrine(name)) return;
         string magazines = "CfgMagazines " + name;
         if (GetGame().ConfigIsExisting(magazines))
         {
@@ -67,7 +85,7 @@ class PredateSupplyService
             if (specified >= 0) quantity = specified;
             plan.Add(name, PredateSupplyKind.QUANTITY, quantity * objects);
         }
-        else if (GetGame().IsKindOf(name, "ExplosivesBase") || name == "Morphine" || name == "Epinephrine" || name == "SalineBagIV")
+        else if (GetGame().IsKindOf(name, "ExplosivesBase") || name == "Morphine" || name == "SalineBagIV")
             plan.Add(name, PredateSupplyKind.SINGLE, objects);
     }
 
@@ -85,7 +103,6 @@ class PredateSupplyService
             if (kit) AddConfigured(starting, kit.MagazineClass, kit.SpareMagazines + 1);
             AddConfigured(starting, "BandageDressing", 4);
             AddConfigured(starting, "Morphine", 1);
-            AddConfigured(starting, "Epinephrine", 1);
             if (eAIBase.Cast(actor)) AddConfigured(starting, "SalineBagIV", 1);
         }
         foreach (PredateSupplyEntry entry : starting.Entries)
@@ -159,6 +176,7 @@ class PredateSupplyService
         }
         foreach (PredateSupplyEntry entry : plan.Entries)
         {
+            if (IsEpinephrine(entry.ClassName)) continue;
             float missing = entry.Units;
             foreach (EntityAI candidate : inventory)
             {

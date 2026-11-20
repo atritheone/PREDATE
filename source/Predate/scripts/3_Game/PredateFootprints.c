@@ -49,7 +49,7 @@ class PredateFootprintLedger
         foreach (PredateFootprint mark : Marks)
         {
             if (!mark || mark.Serial <= previousSerial || mark.Serial >= NextSerial) return false;
-            if (mark.Creator != "" && mark.Creator != "player-01" && PredateProtocol.OperatorBit(mark.Creator) == 0) return false;
+            if (mark.Creator != "" && mark.Creator != "player-01" && PredateProtocol.OperatorSlot(mark.Creator) < 0) return false;
             if (mark.Heading < 0 || mark.Heading >= 360) return false;
             if (!PredateInformationMath.FiniteVector(mark.Position) || !PredateInformationMath.Finite(mark.CreatedAt) || !PredateInformationMath.Finite(mark.ExpiresAt)) return false;
             if (mark.CreatedAt < previousTime || mark.CreatedAt > now || mark.ExpiresAt <= mark.CreatedAt || mark.ExpiresAt - mark.CreatedAt > 181) return false;

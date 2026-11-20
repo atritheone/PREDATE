@@ -19,9 +19,11 @@ class PredateRivalTests
         EntityAI helmet = rival.FindAttachmentBySlotName("Headgear");
         EntityAI goggles;
         if (helmet) goggles = helmet.FindAttachmentBySlotName("NVG");
+        EntityAI headstrap = rival.FindAttachmentBySlotName("Eyewear");
+        if (!goggles && headstrap) goggles = headstrap.FindAttachmentBySlotName("NVG");
         EntityAI battery;
         if (goggles) battery = goggles.FindAttachmentBySlotName("BatteryD");
-        Check(battery && battery.GetCompEM() && battery.GetCompEM().GetEnergy() > 0, "helmet goggles have a powered battery");
+        Check(battery && battery.GetCompEM() && battery.GetCompEM().GetEnergy() > 0, "mounted goggles have a powered battery");
 
         // The saved rival may be tracking the player or reacting to the other
         // live fixtures. Exercise treatment with a separate actor out of contact.
@@ -37,9 +39,19 @@ class PredateRivalTests
         patient.DisableSimulation(true);
         PredateOperatorService.PredateEquip(session, patient, "m4a1");
         patient.GetInventory().CreateInInventory("SalineBagIV");
+        array<EntityAI> issued = {};
+        patient.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, issued);
+        bool issuedInjector;
+        foreach (EntityAI item : issued)
+            if (item && PredateSupplyService.IsEpinephrine(item.GetType())) issuedInjector = true;
+        Check(!issuedInjector, "new Operators spawn without epinephrine");
+        EntityAI legacyInjector = patient.GetInventory().CreateInInventory("Epinephrine");
+        PredateSupplyPlan legacyPlan = new PredateSupplyPlan;
+        legacyPlan.Add("Epinephrine", PredateSupplyKind.SINGLE, 1);
+        Check(legacyInjector && legacyPlan.Find("Epinephrine"), "old issued kit can be reconstructed");
+        PredateSupplyService.RemoveEpinephrine(patient, legacyPlan);
+        Check(!legacyPlan.Find("Epinephrine"), "old refill allowance loses epinephrine");
         float now = 100;
-        patient.SetHealth("", "Shock", patient.GetMaxHealth("", "Shock") * 0.5);
-        TestTreatment(patient, "Epinephrine", eModifiers.MDF_EPINEPHRINE, now);
         patient.SetHealth("", "Blood", patient.GetMaxHealth("", "Blood") * 0.6);
         TestTreatment(patient, "SalineBagIV", eModifiers.MDF_SALINE, now + 30);
         patient.SetHealth("", "Health", patient.GetMaxHealth("", "Health") * 0.5);

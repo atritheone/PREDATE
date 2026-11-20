@@ -124,12 +124,14 @@ def new_id():
     return "op-" + datetime.now().strftime("%y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:4]
 
 
-OPPONENT_COUNTS = (1, 3, 6, 15, 30)
+OPPONENT_COUNTS = (1, 3, 6, 15, 30, 50, 100)
+MAX_OPPONENT_COUNT = 100
+DEFAULT_OPPONENT_COUNT = MAX_OPPONENT_COUNT
 
 
 def validate_opponent_count(value):
-    if type(value) is not int or value not in OPPONENT_COUNTS:
-        raise ValueError("Choose 1, 3, 6, 15, or 30 opponents")
+    if type(value) is not int or not 1 <= value <= MAX_OPPONENT_COUNT:
+        raise ValueError("Enter a whole number from 1 to 100 opponents")
     return value
 
 
@@ -176,6 +178,7 @@ def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, pl
             'PlayerLoadout': player_loadout,
             'RequireModernGear': require_modern_gear,
             'OpponentCount': opponent_count,
+            'RandomInitialSpawns': True,
             'EnableFootprints': footprints,
             'EnableOperatorRespawns': True,
             **player_start,

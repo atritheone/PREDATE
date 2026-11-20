@@ -54,7 +54,7 @@ class PredateHuntReceiver
 
     bool KnownSubject(string id)
     {
-        return id != OwnerId && (id == "player-01" || PredateProtocol.OperatorBit(id) != 0);
+        return id != OwnerId && (id == "player-01" || PredateProtocol.OperatorSlot(id) >= 0);
     }
 
     static bool ValidTime(float value)

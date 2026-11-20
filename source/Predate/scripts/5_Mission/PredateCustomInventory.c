@@ -120,6 +120,11 @@ class PredateCustomInventory
         {
             EntityAI parent = player;
             if (node.Parent >= 0) parent = created[node.Parent];
+            if (!parent || PredateSupplyService.IsEpinephrine(node.ClassName))
+            {
+                created.Insert(null);
+                continue;
+            }
             EntityAI entity = Create(player, parent, node);
             if (!entity) return Error(message, index, node.ClassName + " does not fit at " + node.Placement + " " + node.Slot);
             if (!ApplyAmount(entity, node.Amount)) return Error(message, index, "amount cannot be applied to " + node.ClassName);

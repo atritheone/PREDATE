@@ -100,6 +100,32 @@ class PredateSignalService
         SyncReceiverProgress(s);
     }
 
+    static void ClearDefeatedSignal(PredateSignalTrack track)
+    {
+        track.SetPlayerTracking(false);
+        track.LastSample = null;
+        track.History.Clear();
+        track.Reception = PredatePulseReception.UNAVAILABLE;
+    }
+
+    static void ConfirmPlayerKills(PredateSession session, array<int> kills)
+    {
+        foreach (int slot : kills)
+        {
+            if (slot == 0)
+            {
+                ClearDefeatedSignal(session.m_WorldState.PlayerSignal);
+                session.m_WorldState.BotInterceptionUntil = 0;
+                SyncReceiverProgress(session);
+                continue;
+            }
+            if (!session.m_PeerRoster || slot > session.m_PeerRoster.m_Bindings.Count()) continue;
+            PredatePeerBinding peer = session.m_PeerRoster.m_Bindings[slot - 1];
+            ClearDefeatedSignal(peer.State.PlayerReceiver);
+            peer.State.InterceptedUntil = 0;
+        }
+    }
+
     static void WriteHistory(PredateSession s, ScriptRPC rpc, bool visible, PredateSignalTrack track)
     {
         if (!visible || !track)

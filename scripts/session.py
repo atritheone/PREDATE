@@ -328,7 +328,7 @@ class Supervisor:
             elif action == "quit": self.save_quit()
             elif action == "new":
                 info = store.create_operation(command.get("name", ""), player_loadout=command.get('loadout', 'm4a1'),
-                                              opponent_count=command.get('opponents', 1),
+                                              opponent_count=command.get('opponents', store.DEFAULT_OPPONENT_COUNT),
                                               footprints=command.get('footprints', False), spawn=command.get('spawn'),
                                               setup=command.get('setup'), require_modern_gear=True)
                 self.start_operation(info["id"], command.get("launcher_pid"))

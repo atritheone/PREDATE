@@ -29,7 +29,7 @@ modded class PlayerBase
     bool m_PredateDeathRecorded;
     bool m_PredateNativeInsertion;
     bool m_PredateSpawnRejected;
-    int m_PredateKillNotices;
+    ref array<int> m_PredateKillNotices = {};
     bool m_PredateSupplyNotice;
     string m_PredateModuleMessage;
     int m_PredateModuleMessageTime;
@@ -161,7 +161,7 @@ modded class PlayerBase
             int stateVersion;
             if (!ctx.Read(stateVersion) || stateVersion != PredateProtocol.VERSION) return;
             bool ok = ctx.Read(state.OperatorId);
-            ok = ok && PredateProtocol.OperatorBit(state.OperatorId) != 0;
+            ok = ok && PredateProtocol.OperatorSlot(state.OperatorId) >= 0;
             ok = ok && ctx.Read(state.Development);
             ok = ok && ctx.Read(state.CanDeploy);
             ok = ok && ctx.Read(state.Signature);
@@ -179,14 +179,14 @@ modded class PlayerBase
             ok = ok && ctx.Read(state.PulseOrigin);
             ok = ok && ctx.Read(state.BearingError);
             ok = ok && ctx.Read(state.Intercepted);
-            ok = ok && ctx.Read(state.ConfirmedKills) && state.ConfirmedKills >= 0 && state.ConfirmedKills <= PredateProtocol.ALL_OPERATORS;
+            ok = ok && PredateReadKills(ctx, state.ConfirmedKills);
             ok = ok && ctx.Read(state.SuppliesRefreshed);
             ok = ok && ctx.Read(state.NeedsRedeploy);
             if (ok && state.NeedsRedeploy) ok = ctx.Read(state.DeploymentSpawnRejected);
             ok = ok && PredateReadBearingHistory(ctx, state);
             ok = ok && PredateReadPulses(ctx, state);
             ok = ok && ctx.Read(state.AvailableOperators);
-            ok = ok && state.AvailableOperators >= -1 && state.AvailableOperators <= PredateProtocol.ALL_OPERATORS;
+            ok = ok && state.AvailableOperators >= -1 && state.AvailableOperators <= PredateProtocol.MAX_OPERATORS;
             if (ok && state.AvailableOperators == -1) ok = state.OperatorId == "raven-01";
             ok = ok && ctx.Read(state.FootprintClue);
             ok = ok && state.FootprintClue >= 0 && state.FootprintClue <= 2;
@@ -198,7 +198,8 @@ modded class PlayerBase
             if (ok)
             {
                 m_PredateState = state;
-                m_PredateKillNotices = m_PredateKillNotices | state.ConfirmedKills;
+                foreach (int slot : state.ConfirmedKills)
+                    if (m_PredateKillNotices.Find(slot) < 0) m_PredateKillNotices.Insert(slot);
                 m_PredateSupplyNotice = m_PredateSupplyNotice || state.SuppliesRefreshed;
                 if (!m_PredateReceivedState)
                 {
@@ -208,6 +209,19 @@ modded class PlayerBase
             }
             else Print("[Predate] Receiver state packet could not be decoded.");
         }
+    }
+
+    bool PredateReadKills(ParamsReadContext ctx, array<int> kills)
+    {
+        int count;
+        if (!ctx.Read(count) || count < 0 || count > PredateProtocol.MAX_OPERATORS) return false;
+        for (int index = 0; index < count; index++)
+        {
+            int slot;
+            if (!ctx.Read(slot) || slot < 0 || slot >= PredateProtocol.MAX_OPERATORS || kills.Find(slot) >= 0) return false;
+            kills.Insert(slot);
+        }
+        return true;
     }
 
     bool PredateReadBearingHistory(ParamsReadContext ctx, PredateState state)
@@ -232,15 +246,14 @@ modded class PlayerBase
         int count;
         if (!ctx.Read(count) || count < 0 || count > PredateProtocol.MAX_OPERATORS) return false;
         if (count > 0 && state.NeedsRedeploy) return false;
-        int seen;
+        array<string> seen = {};
         for (int index = 0; index < count; index++)
         {
             PredateBearingPulse pulse = new PredateBearingPulse;
             if (!ctx.Read(pulse.OperatorId) || !ctx.Read(pulse.Start) || !PredateBearingPulse.Valid(pulse.Start)) return false;
             if (!ctx.Read(pulse.DistanceBand) || pulse.DistanceBand < 1 || pulse.DistanceBand > PredateBearingPulse.MAX_BAND) return false;
-            int bit = PredateProtocol.OperatorBit(pulse.OperatorId);
-            if (bit == 0 || (seen & bit) != 0) return false;
-            seen = seen | bit;
+            if (PredateProtocol.OperatorSlot(pulse.OperatorId) < 0 || seen.Find(pulse.OperatorId) >= 0) return false;
+            seen.Insert(pulse.OperatorId);
             state.Pulses.Insert(pulse);
         }
         return true;

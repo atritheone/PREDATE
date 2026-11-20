@@ -56,9 +56,22 @@ modded class MissionServer
             nativeInsertion = PredateDeployment.StartPosition(m_PredateSession, null, site);
             if (nativeInsertion) start = site;
         }
-        Entity entity = GetGame().CreatePlayer(identity, characterName, start, 0, "NONE");
+        PredateWorldState state = m_PredateSession.m_WorldState;
+        string model = state.PlayerCharacterModel;
+        TStringArray models = GetGame().ListAvailableCharacters();
+        if (models.Find(model) < 0)
+        {
+            // Older saves can reach redeploy without a saved model.
+            if (state.PlayerAwaitingRedeploy)
+                model = GetGame().GetMenuDefaultCharacterData().GetCharacterType();
+            else
+                model = characterName;
+            if (models.Find(model) < 0) model = "SurvivorM_Mirek";
+        }
+        Entity entity = GetGame().CreatePlayer(identity, model, start, 0, "NONE");
         Class.CastTo(m_player, entity);
         if (!m_player) return null;
+        state.PlayerCharacterModel = m_player.GetType();
         m_player.m_PredateNativeInsertion = nativeInsertion;
         GetGame().SelectPlayer(identity, m_player);
         if (m_PredateSession.m_Paused) m_PredateSession.HoldPauseActor(m_player);

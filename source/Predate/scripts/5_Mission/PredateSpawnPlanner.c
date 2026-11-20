@@ -1,3 +1,8 @@
+class PredateSpawnRegion
+{
+    ref array<vector> Sites = {};
+}
+
 class PredateSpawnPlanner
 {
     static bool PlayerTerrain(vector point)
@@ -30,6 +35,141 @@ class PredateSpawnPlanner
             for (int sector = 0; sector < 8; sector++)
                 if (SafeOperatorSite(session, center + PredateInformationMath.BearingDirection(sector * 45) * radius, occupied, spacing, site)) return true;
         return false;
+    }
+
+    static bool InitialNearPlayer(PredateSession session, vector player, array<vector> occupied, float maximum, out vector site)
+    {
+        float minimum = PredateDeployment.MINIMUM_DISTANCE;
+        for (int attempt = 0; attempt < 90; attempt++)
+        {
+            float distance = Math.Sqrt(Math.RandomFloat(minimum * minimum, maximum * maximum));
+            vector point = player + PredateInformationMath.BearingDirection(Math.RandomFloat(0, 360)) * distance;
+            if (SafeOperatorSite(session, point, occupied, minimum, site) && PredateHunterBrain.Distance(site, player) <= maximum)
+                return true;
+        }
+        // Sample a denser ring where the available land is narrow, such as the coast.
+        float offset = Math.RandomFloat(0, 360);
+        for (float radius = minimum + 100; radius <= maximum; radius += 330)
+            for (int bearing = 0; bearing < 360; bearing += 10)
+                if (SafeOperatorSite(session, player + PredateInformationMath.BearingDirection(offset + bearing) * radius, occupied, minimum, site))
+                    return true;
+        return false;
+    }
+
+    static bool ReserveInitialSite(PredateSpawnRegion region, array<vector> occupied, float spacing, out vector site)
+    {
+        while (region.Sites.Count() > 0)
+        {
+            int index = Math.RandomInt(0, region.Sites.Count());
+            vector candidate = region.Sites[index];
+            region.Sites.Remove(index);
+            bool clear = true;
+            foreach (vector other : occupied)
+            {
+                if (PredateHunterBrain.Distance(candidate, other) >= spacing) continue;
+                clear = false;
+                break;
+            }
+            if (!clear) continue;
+            site = candidate;
+            occupied.Insert(site);
+            return true;
+        }
+        return false;
+    }
+
+    static bool InitialSites(PredateSession session, vector player, array<vector> occupied, int count, array<vector> output)
+    {
+        float spacing = PredateDeployment.MINIMUM_DISTANCE;
+        // Keep the player's insertion and all later respawns at the normal
+        // separation. A dense initial roster needs more room for local variation.
+        if (session.m_HuntConfig.OpponentCount > 30) spacing = 1250;
+        if (session.m_HuntConfig.OpponentCount > 65) spacing = 1000;
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            array<vector> reserved = {};
+            reserved.InsertAll(occupied);
+            array<vector> sites = {};
+            if (!TryInitialSites(session, player, reserved, spacing, count, sites)) continue;
+            output.InsertAll(sites);
+            return true;
+        }
+        return false;
+    }
+
+    static bool InitialRoster(PredateSession session, array<vector> sites)
+    {
+        vector player = session.m_HuntConfig.PlayerStart;
+        array<vector> occupied = {player};
+        vector insertion;
+        if (!InitialNearPlayer(session, player, occupied, 3200, insertion)) return false;
+        occupied.Insert(insertion);
+        sites.Insert(insertion);
+        int count = session.m_HuntConfig.OpponentCount;
+        int nearby = Math.RandomInt(1, Math.Min(count, 2 + count / 25) + 1);
+        while (sites.Count() < nearby && InitialNearPlayer(session, player, occupied, 4400, insertion))
+        {
+            occupied.Insert(insertion);
+            sites.Insert(insertion);
+        }
+        int remaining = count - sites.Count();
+        if (remaining > 0 && !InitialSites(session, player, occupied, remaining, sites)) return false;
+        // The nearby slot can belong to any Operator.
+        for (int index = sites.Count() - 1; index > 0; index--)
+        {
+            int other = Math.RandomInt(0, index + 1);
+            vector held = sites[index];
+            sites[index] = sites[other];
+            sites[other] = held;
+        }
+        return true;
+    }
+
+    static bool TryInitialSites(PredateSession session, vector player, array<vector> occupied, float spacing, int count, array<vector> sites)
+    {
+        array<ref PredateSpawnRegion> regions = {};
+        array<vector> playerOnly = {player};
+        float worldSize = GetGame().GetWorld().GetWorldSize() - 60;
+        float width = 2600;
+        for (float east = 60; east < worldSize; east += width)
+        {
+            for (float north = 60; north < worldSize; north += width)
+            {
+                PredateSpawnRegion region = new PredateSpawnRegion;
+                for (int sample = 0; sample < 26; sample++)
+                {
+                    float x = Math.RandomFloat(east, Math.Min(east + width, worldSize));
+                    float z = Math.RandomFloat(north, Math.Min(north + width, worldSize));
+                    vector site;
+                    if (SafeOperatorSite(session, Vector(x, 0, z), playerOnly, PredateDeployment.MINIMUM_DISTANCE, site))
+                        region.Sites.Insert(site);
+                }
+                if (region.Sites.Count() > 0) regions.Insert(region);
+            }
+        }
+
+        // Sample different regions first, then let populated regions receive
+        // extra Operators in a random order. There is no maximum-distance score
+        // to pull every insertion back into a grid.
+        array<ref PredateSpawnRegion> covered = {};
+        while (regions.Count() > 0 && sites.Count() < count)
+        {
+            int regionIndex = Math.RandomInt(0, regions.Count());
+            PredateSpawnRegion next = regions[regionIndex];
+            regions.Remove(regionIndex);
+            vector insertion;
+            if (!ReserveInitialSite(next, occupied, spacing, insertion)) continue;
+            sites.Insert(insertion);
+            if (next.Sites.Count() > 0) covered.Insert(next);
+        }
+        while (covered.Count() > 0 && sites.Count() < count)
+        {
+            int index = Math.RandomInt(0, covered.Count());
+            vector additionalSite;
+            if (ReserveInitialSite(covered[index], occupied, spacing, additionalSite)) sites.Insert(additionalSite);
+            if (covered[index].Sites.Count() == 0) covered.Remove(index);
+        }
+        return sites.Count() == count;
     }
 
     // Draw several irregular points per sector and reserve the actual snapped
