@@ -3,6 +3,8 @@ modded class eAIBase
     bool m_PredateStrategicControl;
     bool m_PredateRouteActive;
     int m_PredateAppliedGoal = -1;
+    int m_PredateLookStep;
+    int m_PredateNextLookAt;
 
     override float GetThreatToSelf(bool ignoreLOS = false)
     {
@@ -40,6 +42,35 @@ modded class eAIBase
         return false;
     }
 
+    override bool eAI_UpdateLookDirectionPreference()
+    {
+        if (!m_PredateStrategicControl || !m_PredateCombatEnabled || m_eAI_IsFightingFSM || GetCurrentCommandID() != DayZPlayerConstants.COMMANDID_MOVE || !m_eAI_CommandMove || m_eAI_CommandMove.GetBlockingObject())
+            return super.eAI_UpdateLookDirectionPreference();
+
+        int now = GetGame().GetTime();
+        if (now >= m_PredateNextLookAt)
+        {
+            m_PredateLookStep = (m_PredateLookStep + 1) % 4;
+            m_PredateNextLookAt = now + Math.RandomIntInclusive(900, 1250);
+        }
+
+        float heading;
+        if (m_PredateRouteActive)
+        {
+            vector toWaypoint = m_eAI_CommandMove.GetWaypoint() - GetPosition();
+            if (toWaypoint.LengthSq() > 1)
+                heading = ExpansionMath.AngleDiff2(GetOrientation()[0], toWaypoint.VectorToAngles()[0]);
+        }
+        float sideLook = 68;
+        if (m_PredateRouteActive) sideLook = 46;
+        if (m_PredateLookStep == 1) heading -= sideLook;
+        if (m_PredateLookStep == 3) heading += sideLook;
+        vector gaze = Vector(Math.Clamp(heading, -75, 75), 0, 0);
+        LookAtDirection(gaze.AnglesToVector());
+        AimAtDirection("0 0 1");
+        return true;
+    }
+
     string PredateRouteDiagnostic()
     {
         string value = "active=" + m_PredateRouteActive + "; simulationDisabled=" + GetIsSimulationDisabled() + "; command=" + GetCurrentCommandID();
@@ -60,11 +91,12 @@ modded class eAIBase
         bool claim = !m_PredateStrategicControl;
         m_PredateStrategicControl = true;
         m_PredateRouteActive = state.HasGoal;
-        // A restored body can receive a late native deactivation after the
-        // route is assigned. Wake owned active travel without rewriting it.
-        if (state.HasGoal && GetIsSimulationDisabled()) DisableSimulation(false);
+        // Observation stops need the same active perception as travel.
+        if (GetIsSimulationDisabled()) DisableSimulation(false);
         if (!claim && m_PredateAppliedGoal == state.GoalRevision) return;
         m_PredateAppliedGoal = state.GoalRevision;
+        m_PredateLookStep = 0;
+        m_PredateNextLookAt = GetGame().GetTime() + Math.RandomIntInclusive(700, 1200);
         eAIGroup group = GetGroup();
         group.ClearWaypoints();
         group.SetWaypointBehaviour(eAIWaypointBehavior.HALT);
@@ -136,8 +168,8 @@ modded class eAIState_Dormant
 {
     override int Guard()
     {
-        // Active strategic travel must not depend on hidden human proximity.
-        if (unit.m_PredateRouteActive) return eAITransition.FAIL;
+        // Independent Operators scan during both travel and observation stops.
+        if (unit.m_PredateStrategicControl || unit.m_PredateRouteActive) return eAITransition.FAIL;
         return super.Guard();
     }
 }

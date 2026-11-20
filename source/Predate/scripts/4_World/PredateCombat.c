@@ -25,17 +25,26 @@ modded class eAIDamageHandler
 class PredateFirePolicy
 {
     static const float DELIBERATE_RANGE = 20;
-    static bool AimAcceptable(float distance, float alignment)
+    static const float LONG_RANGE = 450;
+    static const float LONG_RANGE_SETTLE_TIME = 1.1;
+
+    static bool AimAcceptable(vector toTarget, vector aimDirection)
     {
-        if (distance > 450 || alignment <= 0) return false;
-        // Estimated lateral miss at the target plane; never correct the shot.
-        float missSq = distance * distance * Math.Max(0, 1 - alignment * alignment);
+        float distance = toTarget.Length();
+        if (distance < 1 || distance > PredateConfig.DEFAULT_THREAT_DISTANCE) return false;
+        vector aim = aimDirection.Normalized();
+        float alongAim = vector.Dot(toTarget, aim);
+        if (alongAim <= 0) return false;
+        // Project in metres to keep sub-metre differences at extended range.
+        vector miss = toTarget - aim * alongAim;
         float tolerance = 0.30 + distance * 0.0005;
-        return missSq <= tolerance * tolerance;
+        if (distance > LONG_RANGE) tolerance = 0.5;
+        return miss.LengthSq() <= tolerance * tolerance;
     }
 
     static float ShotInterval(float distance)
     {
+        if (distance > LONG_RANGE) return Math.RandomFloat(3.2, 4.5);
         if (distance >= 200) return Math.RandomFloat(1.4, 2.2);
         return Math.RandomFloat(0.7, 1.1);
     }
@@ -43,7 +52,7 @@ class PredateFirePolicy
 
 class PredateShotLane
 {
-    static bool Clear(eAIBase observer, Weapon_Base weapon, vector point, EntityAI target)
+    static bool Clear(eAIBase observer, Weapon_Base weapon, vector point, EntityAI target, bool requireTarget = false)
     {
         vector origin = observer.GetBonePositionWS(observer.GetBoneIndexByName("neck"));
         vector direction = point - origin;
@@ -54,17 +63,17 @@ class PredateShotLane
         vector hitPosition, hitNormal;
         int component;
         bool hit = weapon.Hitscan(origin, direction, distance + 0.3, observer, weapon, hitObject, hitPosition, hitNormal, component);
-        if (!hit) return true; // A clear predicted lead point need not hit the body now.
+        if (!hit) return !requireTarget; // The target has yet to reach a predicted lead point.
         if (hitObject == target) return true;
         EntityAI hitEntity = EntityAI.Cast(hitObject);
         if (hitEntity && hitEntity.GetHierarchyRoot() == target) return true;
-        return vector.Distance(origin, hitPosition) >= distance;
+        return !requireTarget && vector.Distance(origin, hitPosition) >= distance;
     }
 }
 
 class PredateMotionAim
 {
-    static bool Flight(Weapon_Base weapon, vector origin, vector point, out float flight, out float distance)
+    static bool Flight(Weapon_Base weapon, vector origin, vector point, out float flight, out float distance, out float damageCoef = 0)
     {
         int muzzle = weapon.GetCurrentMuzzle();
         if (weapon.IsChamberEmpty(muzzle) || weapon.IsChamberFiredOut(muzzle)) return false;
@@ -73,10 +82,10 @@ class PredateMotionAim
         weapon.GetCartridgeInfo(muzzle, cartridgeHealth, ammo);
         if (ammo == "") return false;
         float friction, speedCoef, initialSpeed;
-        weapon.eAI_CalculateProjectileDamageCoefAtPosition(origin, ammo, point, 1.0, friction, distance, speedCoef, initialSpeed);
+        damageCoef = weapon.eAI_CalculateProjectileDamageCoefAtPosition(origin, ammo, point, 1.0, friction, distance, speedCoef, initialSpeed);
         if (initialSpeed <= 0) return false;
         flight = weapon.eAI_CalculateProjectileTravelTime(friction, distance, initialSpeed);
-        return PredateInformationMath.Finite(flight) && flight >= 0 && flight <= 1.5;
+        return PredateInformationMath.Finite(flight) && flight >= 0 && flight <= 2.4;
     }
 
     static vector Lead(eAIBase observer, Weapon_Base weapon, eAITargetInformationState state, vector offset)
@@ -100,7 +109,6 @@ class PredateMotionAim
 
 modded class eAIBase
 {
-    bool m_PredateCombatEnabled;
     float m_PredateNextShotTime;
     float m_PredateAimSince;
     float m_PredateLastAimCheck;
@@ -109,6 +117,19 @@ modded class eAIBase
     int m_PredateFiredShots;
     int m_PredateFireAttempts;
     string m_PredateFireBlock = "Native FSM has not requested firing";
+
+    override float eAI_GetVisibility(float distance, eAITarget target)
+    {
+        float visibility = super.eAI_GetVisibility(distance, target);
+        if (!m_PredateCombatEnabled || m_PredateSensorDepth <= 0 || !target || !target.IsPlayer() || !target.m_LOS || distance <= PredateFirePolicy.LONG_RANGE) return visibility;
+        PlayerBase person = PlayerBase.Cast(target.GetEntity());
+        if (!person) return visibility;
+        float sightLimit = eAI_GetVisibilityDistanceLimit(person);
+        if (distance > sightLimit) return visibility;
+        // The native accuracy curve drops sharply near its sight limit. Keep
+        // a small distance penalty while the character is actually in view.
+        return Math.Max(visibility, Math.Lerp(1.0, 0.98, distance / sightLimit));
+    }
 
     bool PredateDeliberateFireMode(Weapon_Base weapon, out bool changed)
     {
@@ -173,7 +194,12 @@ modded class eAIBase
         if (m_PredateKnowledgeEnabled)
         {
             m_PredateNextPerceptionAt = 0;
-            if (!EnforceLOS(0.25)) { m_PredateFireBlock = "Fresh visibility check failed"; return; }
+            if (!EnforceLOS(0.25))
+            {
+                m_PredateAimSince = 0;
+                m_PredateFireBlock = "Fresh visibility check failed";
+                return;
+            }
             if (target.IsNoise() || !target.m_LOS || !eAI_HasLOS()) { m_PredateFireBlock = "No confirmed visual lane"; return; }
             if (m_PredateVisualTarget != target.GetEntity() || m_PredateSeenSince < 0) { m_PredateFireBlock = "No acquired visual target"; return; }
             if (m_PredateSimulationTime - m_PredateSeenSince < 0.6 || m_PredateSimulationTime - m_PredateLastVisualAt > 0.75) { m_PredateFireBlock = "Visual reaction/freshness gate"; return; }
@@ -195,24 +221,42 @@ modded class eAIBase
             return;
         }
         // Reacquire after losing contact, moving quickly, or switching target.
-        if (m_PredateAimTarget != target.GetEntity() || now - m_PredateLastAimCheck > 0.5)
+        if (m_PredateAimTarget != target.GetEntity() || now - m_PredateLastAimCheck > 0.75)
             m_PredateAimSince = 0;
         m_PredateAimTarget = target.GetEntity();
         m_PredateLastAimCheck = now;
         if (m_PredateAimSince == 0) m_PredateAimSince = now;
-        if (now - m_PredateAimSince < 0.6) { m_PredateFireBlock = "Aim settling gate"; return; }
+        bool longRange = distance > PredateFirePolicy.LONG_RANGE;
+        float settleTime = 0.6;
+        if (longRange) settleTime = PredateFirePolicy.LONG_RANGE_SETTLE_TIME;
+        if (now - m_PredateAimSince < settleTime) { m_PredateFireBlock = "Aim settling gate"; return; }
 
         vector origin = GetBonePositionWS(GetBoneIndexByName("neck"));
-        vector direction = vector.Direction(origin, GetAimPosition());
-        float aimDistance = direction.Length();
-        if (aimDistance < 1) { m_PredateFireBlock = "Invalid aim distance"; return; }
-        float alignment = vector.Dot(direction.Normalized(), GetWeaponAimDirection().Normalized());
-        if (!PredateFirePolicy.AimAcceptable(aimDistance, alignment)) { m_PredateFireBlock = "Aim alignment gate"; return; }
+        vector point = GetAimPosition();
+        vector aim = GetWeaponAimDirection();
+        if (!PredateFirePolicy.AimAcceptable(point - origin, aim)) { m_PredateFireBlock = "Aim alignment gate"; return; }
 
         Weapon_Base weapon = Weapon_Base.Cast(GetHumanInventory().GetEntityInHands());
         if (!weapon) { m_PredateFireBlock = "No firearm"; return; }
         if (!eAI_CanFire(weapon)) { m_PredateFireBlock = "Native weapon is busy or not ready"; return; }
-        if (!PredateShotLane.Clear(this, weapon, GetAimPosition(), target.GetEntity())) { m_PredateFireBlock = "No clear firearm lane"; return; }
+        if (!PredateShotLane.Clear(this, weapon, point, target.GetEntity())) { m_PredateFireBlock = "No clear firearm lane"; return; }
+        if (longRange)
+        {
+            float flight, flightDistance, damageCoef;
+            if (weapon.ShootsExplosiveAmmo() || !PredateMotionAim.Flight(weapon, origin, point, flight, flightDistance, damageCoef) || !PredateInformationMath.Finite(damageCoef) || damageCoef < 0.35)
+            {
+                m_PredateFireBlock = "Chambered round unsuitable at this range";
+                return;
+            }
+            bool moving = target.m_PredateObservedVelocity.LengthSq() > 0.25;
+            if (moving && PredateMotionAim.Lead(this, weapon, target, target.m_PredateObservedAimOffset).LengthSq() < 0.01)
+            {
+                m_PredateFireBlock = "No reliable lead on distant moving contact";
+                return;
+            }
+            vector aimedPoint = origin + aim.Normalized() * flightDistance;
+            if (!PredateShotLane.Clear(this, weapon, aimedPoint, target.GetEntity(), !moving)) { m_PredateFireBlock = "Aim lane does not offer a clean shot"; return; }
+        }
         bool changed;
         if (!PredateDeliberateFireMode(weapon, changed)) { m_PredateFireBlock = "Supported deliberate fire mode unavailable"; return; }
         m_eAI_QueuedShots = 1;
@@ -233,6 +277,7 @@ modded class eAIBase
         if (m_PredateStringShots >= 3)
         {
             interval = Math.Max(interval, 3.0);
+            if (distance > PredateFirePolicy.LONG_RANGE) interval = 6.0;
             m_PredateStringShots = 0;
         }
         m_PredateNextShotTime = GetGame().GetTickTime() + interval;
@@ -242,12 +287,29 @@ modded class eAIBase
     }
 }
 
+modded class eAIAimingProfile
+{
+    override void Update()
+    {
+        super.Update();
+        if (!m_Unit.m_PredateCombatEnabled || m_Unit.m_PredateAimSince <= 0 || GetGame().GetTickTime() - m_Unit.m_PredateAimSince < PredateFirePolicy.LONG_RANGE_SETTLE_TIME) return;
+        eAITarget target = m_Unit.GetTarget();
+        if (!target || !target.m_LOS || target.GetEntity() != m_Unit.m_PredateAimTarget || m_Unit.Expansion_GetMovementSpeed() > 1.1) return;
+        vector origin = m_Unit.GetBonePositionWS(m_Unit.GetBoneIndexByName("neck"));
+        vector toTarget = m_Unit.GetAimPosition() - origin;
+        if (toTarget.LengthSq() <= PredateFirePolicy.LONG_RANGE * PredateFirePolicy.LONG_RANGE) return;
+        // Settling reduces the native aim variation. The sampled direction still
+        // has to pass the alignment and geometry checks before a shot is taken.
+        m_AimDirection = (m_AimDirection + toTarget.Normalized()).Normalized();
+    }
+}
+
 modded class eAIPlayerTargetInformation
 {
     override vector GetAimOffset(eAIBase ai = null)
     {
         vector observed = super.GetAimOffset(ai);
-        if (!ai || !ai.m_PredateCombatEnabled || !ai.m_PredateKnowledgeEnabled || ai.m_PredateSensorDepth > 0 || observed[1] <= 0.8) return observed;
+        if (!ai || !ai.m_PredateCombatEnabled || !ai.m_PredateKnowledgeEnabled || ai.m_PredateSensorDepth > 0) return observed;
         eAITargetInformationState state = ai.eAI_GetTargetInformationState(this, false);
         if (!state || !state.m_LOS || !state.m_PredateHasPosition) return observed;
         Weapon_Base weapon = Weapon_Base.Cast(ai.GetHumanInventory().GetEntityInHands());
@@ -258,7 +320,7 @@ modded class eAIPlayerTargetInformation
         // still use the native neck point. If the chest is covered, retain the
         // observed head/neck aim instead. No unseen position is queried here.
         vector selected = observed;
-        if (PredateShotLane.Clear(ai, weapon, state.m_LastKnownPosition + chest, GetEntity())) selected = chest;
+        if (observed[1] > 0.8 && PredateShotLane.Clear(ai, weapon, state.m_LastKnownPosition + chest, GetEntity())) selected = chest;
         // Extrapolate only the most recently visible motion, using this
         // firearm/cartridge's native flight model. This never refreshes hidden
         // motion and never changes an already-fired projectile's trajectory.

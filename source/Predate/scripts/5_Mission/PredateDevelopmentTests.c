@@ -80,10 +80,12 @@ class PredateDevelopmentTests
         Print("[Predate] SELFTEST " + result + ": cardinal bearings=" + bearings + ", living AI=" + alive);
         Print("[Predate] Target availability self-check=" + s.PredateTargetAvailable() + ", defeated=" + s.m_HuntProgress.Defeated);
         s.PredateSurvivalSelfTest();
-        bool firePolicy = PredateFirePolicy.AimAcceptable(350, 1.0);
-        firePolicy = firePolicy && !PredateFirePolicy.AimAcceptable(350, 0.9999);
-        firePolicy = firePolicy && !PredateFirePolicy.AimAcceptable(451, 1.0);
-        firePolicy = firePolicy && !PredateFirePolicy.AimAcceptable(100, -1.0);
+        bool firePolicy = PredateFirePolicy.AimAcceptable("0 0 350", "0 0 1");
+        firePolicy = firePolicy && PredateFirePolicy.AimAcceptable("0.35 0 800", "0 0 1");
+        firePolicy = firePolicy && !PredateFirePolicy.AimAcceptable("0.6 0 800", "0 0 1");
+        firePolicy = firePolicy && !PredateFirePolicy.AimAcceptable("0 0 1001", "0 0 1");
+        firePolicy = firePolicy && !PredateFirePolicy.AimAcceptable("0 0 100", "0 0 -1");
+        firePolicy = firePolicy && PredateFirePolicy.ShotInterval(800) >= 3.2;
         if (firePolicy) Print("[Predate] FIRE POLICY SELFTEST PASS: aligned shot allowed; wide miss, behind-target aim and excessive range rejected.");
         else Print("[Predate] FIRE POLICY SELFTEST FAIL.");
         GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(s.PredateRunDevelopmentScenario, 1000, false);

@@ -94,6 +94,11 @@ class PredateHuntRuntime
                 participants.Insert(new PredateHuntParticipant(peer.Operator.Id, binding.Actor, peer.HuntReceiver, peer.Hunter, peer.Memory, peer.InterceptedUntil));
             }
         }
+        if (now >= session.m_PredateNextLightScan)
+        {
+            session.m_PredateNextLightScan = now + 0.75;
+            PredatePEQClues.Scan(participants, now);
+        }
         array<string> live = {};
         foreach (PredateHuntParticipant participant : participants) live.Insert(participant.Id);
         foreach (PredateHuntParticipant observer : participants)

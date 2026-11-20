@@ -5,7 +5,8 @@ enum PredateObservationSource
     AUDIBLE = 2,
     SIGNAL = 3,
     IMPACT = 4,
-    FOOTPRINT = 5
+    FOOTPRINT = 5,
+    LIGHT = 6
 }
 
 class PredateObservation
@@ -64,7 +65,7 @@ class PredateObservation
     bool Valid(string owner, float now)
     {
         if (ObserverId != owner || owner == "" || EventKey == "") return false;
-        if (Source < PredateObservationSource.VISUAL || Source > PredateObservationSource.FOOTPRINT) return false;
+        if (Source < PredateObservationSource.VISUAL || Source > PredateObservationSource.LIGHT) return false;
         if (!PredateInformationMath.Finite(ObservedAt) || !PredateInformationMath.Finite(ExpiresAt)) return false;
         if (ObservedAt < 0 || ObservedAt > now || ExpiresAt <= ObservedAt) return false;
         if (!PredateInformationMath.Finite(Confidence) || Confidence < 0 || Confidence > 1) return false;
@@ -81,6 +82,7 @@ class PredateObservation
         // Noise and bullet impact alone never prove who produced them.
         if ((Source == PredateObservationSource.AUDIBLE || Source == PredateObservationSource.IMPACT) && SubjectId != "") return false;
         if (Source == PredateObservationSource.FOOTPRINT && (!HasPosition || HasBearing || SubjectId != "")) return false;
+        if (Source == PredateObservationSource.LIGHT && (!HasPosition || HasBearing || SubjectId != "" || VisualContactKey != "" || Radius <= 0)) return false;
         if (Source == PredateObservationSource.VISUAL && (!HasPosition || (SubjectId == "" && VisualContactKey == ""))) return false;
         return true;
     }

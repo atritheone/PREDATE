@@ -18,4 +18,12 @@ make using non-nv scopes with nvgs difficult or disable again.
 
 fix no input on client launch.
 
-fix hotbar and light / laser conflict.
+add sidearms by default and add rifle and sidearm to hotbar.
+
+remove epi-pen.
+
+improve ai target acquisition.
+
+add betters sounds.
+
+add better ragdoll.

@@ -148,7 +148,9 @@ class PredateHunterBrain
             state.SearchObservedAt = now;
             state.SearchUntil = Math.Min(contact.ExpiresAt, now + 90);
             state.SearchStep = 0;
-            Goal(state, ownPosition, contact.Estimate, now, "investigate", "Investigate an observed area; attribution remains unchanged", contact.EventKey);
+            string reason = "Investigate an observed area; attribution remains unchanged";
+            if (contact.Source == PredateObservationSource.LIGHT) reason = "Investigate a visible weapon light";
+            Goal(state, ownPosition, contact.Estimate, now, "investigate", reason, contact.EventKey);
             return;
         }
         PredateObservation signal;

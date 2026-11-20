@@ -324,6 +324,17 @@ class PredateCombatRuntimeTests
                             if (!ClearLane(from, to, Shooter)) clear = false;
                         }
                     }
+                    if (clear && range > PredateFirePolicy.LONG_RANGE)
+                    {
+                        // Leave room for the live animation and for the
+                        // compensated projectile path above the sight ray.
+                        vector shoulder = Vector(direction[2], 0, -direction[0]) * 0.5;
+                        vector eyes = Start + "0 1.4 0";
+                        vector chest = TargetPosition + "0 1.2 0";
+                        vector apex = (eyes + chest) * 0.5 + "0 1.8 0";
+                        clear = ClearLane(eyes + shoulder, chest + shoulder, Shooter) && ClearLane(eyes - shoulder, chest - shoulder, Shooter);
+                        clear = clear && ClearLane(eyes, apex, Shooter) && ClearLane(apex, chest, Shooter);
+                    }
                     if (!clear) continue;
                     passedLanes++;
                     if (passedLanes <= LaneSkip) continue;

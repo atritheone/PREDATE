@@ -2,6 +2,8 @@
 // The sensor may test truth for visibility. Decision paths receive cached evidence.
 modded class eAIBase
 {
+    protected static const float PREDATE_NVG_RANGE = 800.0;
+    bool m_PredateCombatEnabled;
     bool m_PredateKnowledgeEnabled;
     string m_PredateOperatorId;
     ref PredateObservationMemory m_PredateMemory;
@@ -12,7 +14,7 @@ modded class eAIBase
     float m_PredateLastVisualAt = -1;
     float m_PredateNextPerceptionAt;
     int m_PredateNextVisibleChoice;
-    eAITarget m_PredateNearestVisible;
+    CF_DoublyLinkedNode_WeakRef<PlayerBase> m_PredateSightCursor;
     ref array<ref PredateObservation> m_PredatePendingSounds = new array<ref PredateObservation>;
 
     void PredateBindInformation(bool enabled, string owner, PredateObservationMemory memory, array<ref PredateObservation> pending, float now)
@@ -28,6 +30,8 @@ modded class eAIBase
         m_PredateSeenSince = -1;
         m_PredateLastVisualAt = -1;
         m_PredateNextPerceptionAt = 0;
+        m_PredateNextVisibleChoice = 0;
+        m_PredateSightCursor = null;
         vector ownPosition = GetPosition();
         // Entity replacement must not import live coordinates acquired before
         // the replacement received its PREDATE policy.
@@ -132,7 +136,12 @@ modded class eAIBase
     {
         if (!m_PredateKnowledgeEnabled) return super.EnforceLOS(pDt);
         eAITarget target = GetTarget();
-        if (!target) return false;
+        if (!target)
+        {
+            m_PredateVisualTarget = null;
+            m_PredateSeenSince = -1;
+            return false;
+        }
         if (!m_eAI_TargetChanged && m_PredateSimulationTime < m_PredateNextPerceptionAt) return target.m_LOS;
         m_PredateNextPerceptionAt = m_PredateSimulationTime + 0.25;
         bool changed = m_eAI_TargetChanged;
@@ -140,15 +149,24 @@ modded class eAIBase
         m_PredateSensorDepth++;
         bool visible = super.EnforceLOS(pDt);
         m_eAI_TargetChanged = changed;
-        if (visible && target && target.IsPlayer())
+        if (target.IsPlayer())
         {
-            target.PredateCaptureVisual();
+            PlayerBase person = PlayerBase.Cast(target.GetEntity());
+            if (!visible && m_PredateCombatEnabled && person && PredateCanSeeContact(person))
+            {
+                target.m_LOS = true;
+                visible = true;
+            }
+        }
+        if (visible && target.IsPlayer())
+        {
             if (m_PredateVisualTarget != target.GetEntity())
             {
                 m_PredateVisualTarget = target.GetEntity();
                 m_PredateSeenSince = m_PredateSimulationTime;
             }
             m_PredateLastVisualAt = m_PredateSimulationTime;
+            target.PredateCaptureVisual();
         }
         else
         {
@@ -161,59 +179,140 @@ modded class eAIBase
 
     override void eAI_PrioritizeTargets()
     {
+        eAITarget previous = GetTarget();
         super.eAI_PrioritizeTargets();
-        if (!m_PredateKnowledgeEnabled || IsUnconscious()) return;
+        if (!m_PredateKnowledgeEnabled || !GetGame().IsServer() || GetIsSimulationDisabled() || IsUnconscious()) return;
         eAITarget original = GetTarget();
-        if (!original || (!original.IsPlayer() && original.IsAcuteDanger())) return;
-        int now = GetGame().GetTime();
-        if (now >= m_PredateNextVisibleChoice)
+        if (original && !original.IsPlayer() && original.IsAcuteDanger()) return;
+
+        // Give a freshly confirmed contact time to react and aim before looking elsewhere.
+        eAITarget selected;
+        if (previous && m_PredateVisualTarget && previous.GetEntity() == m_PredateVisualTarget && previous.m_LOS && m_PredateSimulationTime - m_PredateLastVisualAt <= 0.5)
+            selected = previous;
+        else if (GetGame().GetTime() >= m_PredateNextVisibleChoice)
         {
-            m_PredateNextVisibleChoice = now + 500;
-            m_PredateNearestVisible = null;
-            float closest = m_eAI_ThreatDistanceLimit;
-            vector eyes = GetBonePositionWS(GetBoneIndexByName("Head"));
-            foreach (eAITarget candidate : m_eAI_Targets)
-            {
-                PlayerBase person = PlayerBase.Cast(candidate.GetEntity());
-                if (!candidate.IsPlayer() || !person || !person.IsAlive() || !PlayerIsEnemy(person)) continue;
-                vector body = person.GetBonePositionWS(person.GetBoneIndexByName("Neck"));
-                float distance = vector.Distance(eyes, body);
-                if (distance >= closest || !PredateCanSeeContact(candidate, person, eyes, body, distance)) continue;
-                closest = distance;
-                m_PredateNearestVisible = candidate;
-            }
+            m_PredateNextVisibleChoice = GetGame().GetTime() + Math.RandomIntInclusive(220, 280);
+            PlayerBase contact = PredateFindVisibleContact();
+            if (contact) selected = contact.GetTargetInformation().AddAI(this);
         }
-        if (!m_PredateNearestVisible || m_PredateNearestVisible == original) return;
-        int index = m_eAI_Targets.Find(m_PredateNearestVisible);
+        if (!selected || selected == original) return;
+        int index = m_eAI_Targets.Find(selected);
+        if (index == 0)
+        {
+            m_eAI_TargetChanged = true;
+            m_eAI_SyncCurrentTarget = true;
+            return;
+        }
         if (index <= 0) return;
         m_eAI_Targets[index] = original;
-        m_eAI_Targets[0] = m_PredateNearestVisible;
+        m_eAI_Targets[0] = selected;
         if (m_eAI_NoiseTarget == index) m_eAI_NoiseTarget = 0;
-        else if (original.IsNoise()) m_eAI_NoiseTarget = index;
+        else if (original && original.IsNoise()) m_eAI_NoiseTarget = index;
         m_eAI_TargetChanged = true;
         m_eAI_SyncCurrentTarget = true;
     }
 
-    bool PredateCanSeeContact(eAITarget candidate, PlayerBase person, vector eyes, vector body, float distance)
+    override void eAI_OnRemovePlayer(CF_DoublyLinkedNode_WeakRef<PlayerBase> node)
     {
-        if (person.Expansion_HasAdminToolInvisibility()) return false;
+        if (m_PredateSightCursor == node) m_PredateSightCursor = node.m_Next;
+        super.eAI_OnRemovePlayer(node);
+    }
+
+    PlayerBase PredateFindVisibleContact()
+    {
+        if (!m_PredateSightCursor) m_PredateSightCursor = s_Expansion_AllPlayers.m_Head;
+        PlayerBase selected;
+        float closest = m_eAI_ThreatDistanceLimit * m_eAI_ThreatDistanceLimit;
+        vector own = GetPosition();
+        // The roster cursor is independent of the native one-player update.
+        for (int i = 0; i < 4 && m_PredateSightCursor; i++)
+        {
+            PlayerBase person = m_PredateSightCursor.m_Value;
+            m_PredateSightCursor = m_PredateSightCursor.m_Next;
+            if (!person || person == this || !person.IsAlive() || !person.IsPlayerLoaded() || person.eAI_IsPassive()) continue;
+            if ((person.IsAI() && person.IsUnconscious()) || !PlayerIsEnemy(person) || person.Expansion_IsInSafeZone()) continue;
+            float distanceSq = vector.DistanceSq(own, person.GetPosition());
+            if (distanceSq > closest || !PredateCanSeeContact(person)) continue;
+            closest = distanceSq;
+            selected = person;
+        }
+        return selected;
+    }
+
+    bool PredateCanSeeContact(PlayerBase person)
+    {
+        if (IsUnconscious() || person.Expansion_HasAdminToolInvisibility()) return false;
+        string eyeBone = "Head";
+        if (IsRaised()) eyeBone = "Neck";
+        vector eyes = GetBonePositionWS(GetBoneIndexByName(eyeBone));
+        vector body = person.GetBonePositionWS(person.GetBoneIndexByName("Neck"));
         vector sight = body - eyes;
+        float distance = sight.Length();
+        if (distance < 0.1 || distance > eAI_GetVisibilityDistanceLimit(person)) return false;
         float angle = PredateMath.RelativeBearing(PredateMath.CameraHeading(sight), PredateMath.CameraHeading(GetLookDirection()));
         if (Math.AbsFloat(angle) > eAI_CalculateFOVHalfAngleH(distance)) return false;
-        m_PredateSensorDepth++;
-        float visibleDistance = eAI_GetVisibilityDistance(distance, candidate);
-        m_PredateSensorDepth--;
-        if (visibleDistance < distance) return false;
+        if (PredateContactRay(person, eyes, body)) return true;
+        vector head = person.GetBonePositionWS(person.GetBoneIndexByName("Head"));
+        return PredateContactRay(person, eyes, head);
+    }
+
+    bool PredateContactRay(PlayerBase person, vector eyes, vector point)
+    {
+        vector direction = (point - eyes).Normalized();
+        vector end = point + direction * 0.4;
         vector position, normal;
         int component;
         set<Object> hits = new set<Object>;
-        if (!DayZPhysics.RaycastRV(eyes, body + sight.Normalized() * 0.4, position, normal, component, hits, null, this, false, false, ObjIntersectView, 0)) return false;
-        foreach (Object hit : hits)
+        if (!DayZPhysics.RaycastRV(eyes, end, position, normal, component, hits, null, this, false, false, ObjIntersectView, 0.05) || !hits.Count()) return false;
+        if (hits[0] && hits[0].IsBuilding())
         {
-            EntityAI entity = EntityAI.Cast(hit);
-            return entity && entity.GetHierarchyRoot() == person;
+            hits.Clear();
+            if (!DayZPhysics.RaycastRV(position - direction * 0.1, end, position, normal, component, hits, null, this, false, false, ObjIntersectFire, 0.05) || !hits.Count()) return false;
         }
-        return false;
+        EntityAI entity = EntityAI.Cast(hits[0]);
+        return entity && entity.GetHierarchyRoot() == person;
+    }
+
+    override void eAI_UpdateNightVisibility()
+    {
+        super.eAI_UpdateNightVisibility();
+        if (!m_PredateCombatEnabled) return;
+        NVGoggles goggles = PredateMountedGoggles();
+        // The energy manager can start working after Expansion registers
+        // visibility enhancers. Read the actual mounted goggles each time.
+        if (goggles && goggles.eAI_GetNightVisibility() > 0)
+            m_eAI_NightVisibility = Math.Max(m_eAI_NightVisibility, PREDATE_NVG_RANGE / 1100.0);
+    }
+
+    NVGoggles PredateMountedGoggles()
+    {
+        EntityAI mount = FindAttachmentBySlotName("Eyewear");
+        NVGoggles goggles;
+        if (mount) goggles = NVGoggles.Cast(mount.FindAttachmentBySlotName("NVG"));
+        if (goggles) return goggles;
+        mount = FindAttachmentBySlotName("Headgear");
+        if (mount) return NVGoggles.Cast(mount.FindAttachmentBySlotName("NVG"));
+        return null;
+    }
+
+    override float eAI_GetVisibilityDistanceLimit(PlayerBase player)
+    {
+        if (!m_PredateCombatEnabled || !player) return super.eAI_GetVisibilityDistanceLimit(player);
+        float visible = 1100.0 * m_Expansion_Visibility;
+        if (m_Expansion_Visibility == m_eAI_NightVisibility && player.eAI_IsLit()) visible = Math.Max(visible, 250);
+        if (player.m_PredatePEQWhiteLitUntil > m_PredateSimulationTime)
+            visible = Math.Max(visible, 250);
+        if (player.m_PredatePEQInfraredLitUntil > m_PredateSimulationTime && PredatePEQVision.HasNightVision(this))
+            visible = Math.Max(visible, Math.Min(PREDATE_NVG_RANGE, visible + 60));
+        return Math.Min(m_eAI_ThreatDistanceLimit, visible);
+    }
+
+    override float eAI_GetVisibilityDistance(float distance, eAITarget target)
+    {
+        if (!m_PredateCombatEnabled || !target || !target.IsPlayer()) return super.eAI_GetVisibilityDistance(distance, target);
+        PlayerBase person = PlayerBase.Cast(target.GetEntity());
+        if (!person) return super.eAI_GetVisibilityDistance(distance, target);
+        return Math.Min(distance, eAI_GetVisibilityDistanceLimit(person));
     }
 
     override void eAI_OnNoiseEvent(EntityAI source, vector position, float lifetime, eAINoiseParams params, float strengthMultiplier)
@@ -307,6 +406,13 @@ modded class eAITargetInformationState
                 else m_PredateObservedVelocity = vector.Zero;
             }
             super.UpdateThreat(true);
+            // A confirmed distant contact can hold the Operator's attention
+            // after the recognition delay even when native threat rises slowly.
+            if (m_AI.m_PredateCombatEnabled && !m_PredateObservedUnconscious && m_SearchDirection.LengthSq() > 15625 && m_AI.m_PredateSimulationTime - m_AI.m_PredateSeenSince >= 0.6 && m_AI.GetItemInHands() && m_AI.GetItemInHands().IsWeapon())
+            {
+                m_ThreatLevel = Math.Max(m_ThreatLevel, 0.42);
+                m_ThreatLevelActive = Math.Max(m_ThreatLevelActive, 0.42);
+            }
             m_PredateHasPosition = true;
             m_AI.PredateRememberVisual(this);
         }

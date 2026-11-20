@@ -6,6 +6,41 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
     eAIBase Observer;
     PlayerBase Target;
     eAITarget State;
+
+    void CheckSightRange()
+    {
+        int year, month, day, hour, minute;
+        GetGame().GetWorld().GetDate(year, month, day, hour, minute);
+        float previousLimit = Observer.m_eAI_ThreatDistanceLimit;
+        Observer.eAI_SetThreatDistanceLimit(PredateConfig.DEFAULT_THREAT_DISTANCE);
+        GetGame().GetWorld().SetDate(year, month, day, 12, 0);
+        Observer.Expansion_UpdateVisibility(true);
+        float daylight = Observer.eAI_GetVisibilityDistanceLimit(Target);
+        GetGame().GetWorld().SetDate(year, month, day, 0, 0);
+        Observer.Expansion_UpdateVisibility(true);
+        Check(Math.AbsFloat(daylight - 1000) < 0.5, "clear daylight reaches the 1 km character sight cap, measured " + daylight);
+        Print("[PredateTacticalTest] DAYLIGHT SIGHT RANGE: " + daylight);
+        GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(CheckNightSightRange, 1500, false, year, month, day, hour, minute, previousLimit);
+    }
+
+    void CheckNightSightRange(int year, int month, int day, int hour, int minute, float previousLimit)
+    {
+        Observer.Expansion_UpdateVisibility();
+        float night = Observer.eAI_GetVisibilityDistanceLimit(Target);
+        NVGoggles goggles = Observer.PredateMountedGoggles();
+        Check(goggles && goggles.eAI_GetNightVisibility() > 0, "mounted goggles are lowered and powered after dusk");
+        Check(Math.AbsFloat(night - 800) < 0.5, "working goggles reach the 800 m night sight cap, measured " + night);
+        if (goggles) goggles.Expansion_TryTurningOff();
+        Observer.Expansion_UpdateVisibility();
+        Check(Observer.eAI_GetVisibilityDistanceLimit(Target) < 300, "switched-off goggles restore native unassisted night vision");
+        GetGame().GetWorld().SetDate(year, month, day, hour, minute);
+        Observer.eAI_SetThreatDistanceLimit(previousLimit);
+        Observer.Expansion_UpdateVisibility(true);
+        Observer.DisableSimulation(true);
+        Print("[PredateTacticalTest] NVG SIGHT RANGE: " + night);
+        Print("[PredateTacticalTest] COMPLETE: checks=" + Checks + "; failures=" + Failures);
+    }
+
     bool WallBlocks(Object wall, vector start, vector finish, Object observer)
     {
         set<Object> hits = new set<Object>;
@@ -249,8 +284,7 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
             Observer.m_PredateKnowledgeEnabled = true;
             Print("[PredateTacticalTest] Sensor diagnostic: native=" + nativeVisible + "; target=" + Target.GetPosition() + "; eyes=" + Observer.GetBonePositionWS(Observer.GetBoneIndexByName("head")));
         }
-        Observer.DisableSimulation(true);
         Target.DisableSimulation(true);
-        Print("[PredateTacticalTest] COMPLETE: checks=" + Checks + "; failures=" + Failures);
+        CheckSightRange();
     }
 }

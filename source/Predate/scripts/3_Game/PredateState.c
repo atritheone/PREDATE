@@ -106,6 +106,7 @@ class PredateState
 
 class PredateConfig
 {
+    static const float DEFAULT_THREAT_DISTANCE = 1000;
     int SchemaVersion;
     int StartHour = -1;
     int StartMinute;
@@ -121,7 +122,7 @@ class PredateConfig
     string OperatorOutfit = "varied";
     bool HasCustomInventory;
     ref array<ref PredateInventoryNode> PlayerInventory = new array<ref PredateInventoryNode>;
-    float ThreatDistance = 600;
+    float ThreatDistance = DEFAULT_THREAT_DISTANCE;
     int OpponentCount = 1;
     vector PlayerStart = "4500 0 6500";
     bool ExplicitPlayerStart;

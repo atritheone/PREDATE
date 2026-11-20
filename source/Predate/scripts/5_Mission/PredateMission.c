@@ -8,6 +8,7 @@ class PredateSession
     eAIBase m_HuntBot;
     float m_HuntStateTimer;
     float m_HuntSaveTimer;
+    float m_PredateNextLightScan;
     bool m_HuntReady;
     bool m_HuntSentState;
     bool m_HuntSchemaValid;

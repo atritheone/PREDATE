@@ -66,6 +66,8 @@ The Workshop weapon module reports mode and power changes in the same bottom-lef
 
 The default rifle kits use the Workshop module when installed. AI Operators holding a rifle use its visible laser in daylight. In low light they lower their quad goggles and use the IR laser and illuminator while the goggles are powered.
 
+Operators can investigate a visible laser beam, its impact point, or a flashlight splash from another Operator. Observing IR cues requires active night vision. A white beam at night or an IR illuminator viewed through night vision can help an Operator spot someone actually lit by the beam. The observer still needs a clear view, and a light clue gives them an area to search.
+
 ## Installation
 
 PREDATE is set up with a coding agent on your Windows PC. Download or clone this repository, open its folder in your coding agent, and ask it to run the setup.

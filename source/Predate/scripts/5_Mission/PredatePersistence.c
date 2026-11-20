@@ -139,7 +139,11 @@ class PredatePersistence
         {
             s.m_HuntConfig.BotAccuracyMin = 0.80;
             s.m_HuntConfig.BotAccuracyMax = 0.95;
-            s.m_HuntConfig.CombatTuningRevision = 1;
+        }
+        if (s.m_HuntConfig.CombatTuningRevision < 2)
+        {
+            if (s.m_HuntConfig.ThreatDistance == 600) s.m_HuntConfig.ThreatDistance = PredateConfig.DEFAULT_THREAT_DISTANCE;
+            s.m_HuntConfig.CombatTuningRevision = 2;
         }
         s.m_HuntConfig.PulseInterval = Math.Clamp(s.m_HuntConfig.PulseInterval, 10, 600);
         s.m_HuntConfig.FinalApproachRadius = Math.Clamp(s.m_HuntConfig.FinalApproachRadius, 1, 2000);
