@@ -51,17 +51,6 @@
   letter-spacing: 0.08em;
 }
 
-.loadout-heading h2 {
-  margin: 0;
-  font: inherit;
-}
-
-.loadout-heading button {
-  min-height: 28px;
-  padding: 3px 8px;
-  font-size: 11px;
-}
-
 .game-setup > .setup-heading {
   margin-bottom: 0;
 }
@@ -276,6 +265,27 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 15px;
+}
+
+.kit-select .field {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.kit-select label {
+  font-size: 12px;
+}
+
+.kit-select button {
+  min-height: 28px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.kit-select select {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
 }
 
 .start-time-field {

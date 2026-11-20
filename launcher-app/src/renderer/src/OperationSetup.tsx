@@ -31,6 +31,10 @@ const timePresets = [
   ['Night', '00:00'],
 ] as const
 const defaultTime = '12:00'
+const presetSaveTitles = {
+  weapon: 'Save Weapon Preset',
+  equipment: 'Save Equipment Preset',
+} as const
 const rifleGroups = [
   ['Assault rifle', 'Assault Rifles'],
   ['Battle rifle', 'Battle Rifles'],
@@ -141,7 +145,7 @@ export function OperationSetup({
 }): ReactNode {
   const [saveStatus, setSaveStatus] = useState('')
   const [presets, setPresets] = useState<LoadoutPreset[] | null>(null)
-  const [savingPreset, setSavingPreset] = useState(false)
+  const [savingPreset, setSavingPreset] = useState<PresetKind | null>(null)
   useEffect(() => {
     let mounted = true
     void window.predate.loadoutPresets().then(
@@ -195,7 +199,7 @@ export function OperationSetup({
     })
     setPresets((existing) => [...(existing ?? []), preset])
     applyPreset(preset)
-    setSaveStatus('Preset saved.')
+    setSaveStatus(kind === 'weapon' ? 'Weapon preset saved.' : 'Equipment preset saved.')
   }
   const selectWeapon = (value: string): void => {
     const preset = weaponPresets.find((option) => presetValue(option) === value)
@@ -397,19 +401,20 @@ export function OperationSetup({
               />
             </section>
             <section className="loadout-setup" aria-labelledby="loadout-heading">
-              <div className="setup-heading split loadout-heading">
-                <h2 id="loadout-heading">Loadout</h2>
-                <button
-                  type="button"
-                  disabled={!presets || busy}
-                  onClick={() => setSavingPreset(true)}
-                >
-                  Save Preset
-                </button>
-              </div>
+              <h2 className="setup-heading" id="loadout-heading">
+                Loadout
+              </h2>
               <div className="kit-select">
-                <label className="field">
-                  Starting Kit
+                <div className="field">
+                  <label htmlFor="starting-kit">Weapon Presets</label>
+                  <button
+                    type="button"
+                    aria-label={presetSaveTitles.weapon}
+                    disabled={!presets || busy}
+                    onClick={() => setSavingPreset('weapon')}
+                  >
+                    Save
+                  </button>
                   <select
                     id="starting-kit"
                     value={savedWeapon ? presetValue(savedWeapon) : weaponEdit ? 'custom' : kit?.id}
@@ -437,7 +442,7 @@ export function OperationSetup({
                         </option>
                       ))}
                     {weaponPresets.length > 0 && (
-                      <optgroup label="Saved Weapons">
+                      <optgroup label="Saved Weapon Presets">
                         {weaponPresets.map((preset) => (
                           <option key={preset.id} value={presetValue(preset)}>
                             {preset.name}
@@ -452,9 +457,17 @@ export function OperationSetup({
                     )}
                     <option value="empty">Empty Inventory</option>
                   </select>
-                </label>
-                <label className="field">
-                  Equipment
+                </div>
+                <div className="field">
+                  <label htmlFor="player-outfit">Equipment Presets</label>
+                  <button
+                    type="button"
+                    aria-label={presetSaveTitles.equipment}
+                    disabled={!presets || busy}
+                    onClick={() => setSavingPreset('equipment')}
+                  >
+                    Save
+                  </button>
                   <select
                     id="player-outfit"
                     value={
@@ -472,7 +485,7 @@ export function OperationSetup({
                       </option>
                     ))}
                     {equipmentPresets.length > 0 && (
-                      <optgroup label="Saved Equipment">
+                      <optgroup label="Saved Equipment Presets">
                         {equipmentPresets.map((preset) => (
                           <option key={preset.id} value={presetValue(preset)}>
                             {preset.name}
@@ -486,7 +499,7 @@ export function OperationSetup({
                       </option>
                     )}
                   </select>
-                </label>
+                </div>
               </div>
               <InventoryEditor
                 inventory={loadout}
@@ -526,7 +539,13 @@ export function OperationSetup({
           </div>
         </div>
       </form>
-      {savingPreset && <SavePresetDialog save={savePreset} close={() => setSavingPreset(false)} />}
+      {savingPreset && (
+        <SavePresetDialog
+          title={presetSaveTitles[savingPreset]}
+          save={(name) => savePreset(savingPreset, name)}
+          close={() => setSavingPreset(null)}
+        />
+      )}
     </>
   )
 }

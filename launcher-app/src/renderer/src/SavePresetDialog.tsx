@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import type { PresetKind } from '../../shared/types'
 
 export function SavePresetDialog({
+  title,
   save,
   close,
 }: {
-  save: (kind: PresetKind, name: string) => Promise<void>
+  title: string
+  save: (name: string) => Promise<void>
   close: () => void
 }): ReactNode {
   const dialog = useRef<HTMLDialogElement>(null)
-  const [kind, setKind] = useState<PresetKind>('weapon')
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -36,7 +36,7 @@ export function SavePresetDialog({
           setError('')
           setSaving(true)
           try {
-            await save(kind, name.trim())
+            await save(name.trim())
             close()
           } catch (failure) {
             const message = failure instanceof Error ? failure.message : ''
@@ -49,18 +49,7 @@ export function SavePresetDialog({
           }
         }}
       >
-        <h2 id="preset-title">Save Preset</h2>
-        <label className="field">
-          Preset Type
-          <select
-            value={kind}
-            onChange={(event) => setKind(event.target.value as PresetKind)}
-            disabled={saving}
-          >
-            <option value="weapon">Weapons</option>
-            <option value="equipment">Equipment</option>
-          </select>
-        </label>
+        <h2 id="preset-title">{title}</h2>
         <label className="field">
           Preset Name
           <input

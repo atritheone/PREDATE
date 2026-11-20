@@ -209,6 +209,7 @@ async function createWindow(): Promise<void> {
       error: string | null
       kitOptions?: string[]
       defaultKit?: string
+      weaponPresetLabel?: string
       clothingOptions?: string[]
       defaultPlayerOutfit?: string
       playerEquipmentLabel?: string
@@ -277,6 +278,7 @@ async function createWindow(): Promise<void> {
             const kitSelect = document.getElementById('starting-kit');
             features.kitOptions = Array.from(kitSelect?.options ?? []).map(option => option.value);
             features.defaultKit = kitSelect?.value;
+            features.weaponPresetLabel = kitSelect?.labels?.[0]?.textContent.trim();
             const playerOutfit = document.getElementById('player-outfit');
             const operatorOutfit = document.getElementById('operator-outfit');
             features.clothingOptions = Array.from(playerOutfit?.options ?? []).map(option => option.value)
@@ -369,7 +371,8 @@ async function createWindow(): Promise<void> {
                 : check.kitOptions?.includes('m4a1') && check.kitOptions.includes('ak74')) &&
               check.clothingOptions?.join(',') === 'spectral,ghost,operator,original-uniform' &&
               check.defaultPlayerOutfit === 'spectral' &&
-              check.playerEquipmentLabel === 'Equipment' &&
+              check.weaponPresetLabel === 'Weapon Presets' &&
+              check.playerEquipmentLabel === 'Equipment Presets' &&
               check.aiEquipmentLabel === 'AI Equipment' &&
               check.defaultOperatorOutfit === 'varied' &&
               check.defaultOperatorOutfitLabel === 'Default' &&
