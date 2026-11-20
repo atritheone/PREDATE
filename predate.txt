@@ -11,3 +11,5 @@ add white phosphorous night vision with quad nod effect.
 allow numerical selection of enemy ai.
 
 increase max ai to 100.
+
+add signs of movement.
