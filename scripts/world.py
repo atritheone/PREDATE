@@ -332,7 +332,7 @@ def first_person_config(config):
     return config
 
 
-def start(session_id=None, offline=False, progress=None, cancelled=None):
+def start(session_id=None, offline=False, progress=None, cancelled=None, on_started=None):
     import release
     import workshop_lasers
     release.verify()
@@ -373,6 +373,7 @@ def start(session_id=None, offline=False, progress=None, cancelled=None):
     process_identity_only = {key: identity[key] for key in ("pid", "created", "executable")}
     guard_process(process_identity_only, PROFILE, PROFILE / "PredateFailure.json", STATE)
     print("Starting local world. Initial world generation can take a few minutes...", flush=True)
+    if on_started: on_started()
     deadline = time.monotonic() + 180
     while time.monotonic() < deadline:
         failure = process_failure(identity)
@@ -477,25 +478,27 @@ def stop(make_backup=True):
     if make_backup: backup()
 
 
-def launch_client(session_id=None, offline=False, extra_args=None):
+def launch_client(session_id=None, offline=False, extra_args=None, wait_for_server=False):
+    import platform_win
     import workshop_lasers
     workshop_lasers.verify_launch(MODS)
     # Avoid launching another client over an existing DayZ session.
-    processes = subprocess.run(["tasklist", "/FI", "IMAGENAME eq DayZ_x64.exe", "/FO", "CSV", "/NH"],
-                               capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-    if '"DayZ_x64.exe"' in processes.stdout:
+    if platform_win.find_processes("DayZ_x64.exe"):
         raise RuntimeError("DayZ is already open. Close it before using scripts/Play PREDATE.cmd.")
     private = settings()
     if offline:
         args = [str(CLIENT / "DayZ_x64.exe")]
     else:
         args = [str(CLIENT / "DayZ_BE.exe"), "0", "1", "-exe", "DayZ_x64.exe"]
-    args += [f"-connect=127.0.0.1:{PORT}:{QUERY_PORT}", f"-port={PORT}",
-             f"-password={private['join_password']}", "-noSplash", "-noPause"]
+    args += ["-noSplash", "-noPause"]
+    if not wait_for_server:
+        args += [f"-connect=127.0.0.1:{PORT}:{QUERY_PORT}", f"-port={PORT}",
+                 f"-password={private['join_password']}"]
     if session_id:
         client_profile = WORLD / "client"
         client_profile.mkdir(exist_ok=True)
         args += ["-predateSessionId=" + session_id, "-profiles=" + str(client_profile)]
+        if wait_for_server: args.append("-predateWaitForServer")
     if PROFILE_NAME == "development": args.append("-predateDevelopment")
     if TEST_CLIENT: args.extend(["-predateUITest", "-noPause"])
     args.append("-mod=" + ";".join(str(p) for p in MODS))

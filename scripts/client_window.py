@@ -154,8 +154,10 @@ class ClientWindow:
 class ClientLaunchFocus:
     """Bring the new game forward once, with keyboard focus."""
 
-    def __init__(self):
+    def __init__(self, launcher_pid):
         self.window = ClientWindow()
+        self.launcher_pid = launcher_pid
+        self.handle = None
         self.ready_at = None
         self.next_attempt_at = 0
 
@@ -172,7 +174,20 @@ class ClientLaunchFocus:
         self.next_attempt_at = now + 0.25
 
         handle = self.window.find(pid)
-        if not handle or not self.window.activate(handle):
+        if not handle:
             return False
-        print("DayZ received foreground and keyboard focus.", flush=True)
-        return True
+        if self.handle and not self.window.foreground(handle):
+            foreground = self.window.user.GetForegroundWindow()
+            owner = self.window.owner_pid(foreground)
+            replaced_with_launcher_foreground = handle != self.handle and owner == self.launcher_pid
+            if owner != pid and not replaced_with_launcher_foreground:
+                # The player can switch away once the game came forward.
+                return connected
+        if not self.window.activate(handle):
+            return False
+        if handle != self.handle:
+            self.handle = handle
+            print("DayZ received foreground and keyboard focus.", flush=True)
+        # Fullscreen can replace its top-level window during loading. Follow
+        # the DayZ-owned window through the handoff to the live mission.
+        return connected

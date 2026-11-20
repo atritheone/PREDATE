@@ -4,26 +4,14 @@
 
 add low ready.
 
-allow numerical selection of enemy ai.
-
-increase randomness of enemy spawn.
-
-increase max ai to 100.
-
 add signs of movement.
-
-optimise game launch.
 
 make using non-nv scopes with nvgs difficult or disable again.
 
-fix no input on client launch.
-
-add sidearms by default and add rifle and sidearm to hotbar.
-
-remove epi-pen.
-
-improve ai target acquisition.
+add sidearms by default and add to hotbar.
 
 add betters sounds.
 
 add better ragdoll.
+
+add other maps.

@@ -32,11 +32,16 @@ class PredateClientAgent
     bool m_ResumeAuthorized;
     bool m_DeployAfterRespawn;
     float m_DeployRetryIn;
+    bool m_StagingInitialJoin;
+    bool m_PreloadReported;
+    ref PredateClientCommand m_InitialJoin;
 
     void PredateClientAgent(string id)
     {
         m_Status = new PredateClientStatus;
         m_Status.SessionId = id;
+        string preload;
+        m_StagingInitialJoin = GetGame().CommandlineGetParam("predateWaitForServer", preload);
     }
 
     void RequestQuit()
@@ -138,7 +143,9 @@ class PredateClientAgent
                 {
                     m_Status.Acknowledged = command.Sequence;
                     m_Status.Error = "";
-                    if (command.Action == "quit") RequestQuit();
+                    if (command.Action == "server-ready" && m_StagingInitialJoin)
+                        m_InitialJoin = command;
+                    else if (command.Action == "quit") RequestQuit();
                     else if (command.Action == "server-closed")
                     {
                         // The server has already failed; an acknowledgement cannot arrive.
@@ -168,8 +175,25 @@ class PredateClientAgent
                 }
             }
         }
+        if (m_StagingInitialJoin) JoinReadyWorld();
         string error;
         JsonFileLoader<PredateClientStatus>.SaveFile("$profile:PredateClientStatus.json", m_Status, error);
+    }
+
+    void JoinReadyWorld()
+    {
+        DayZGame game = GetDayZGame();
+        if (game.GetGameState() != DayZGameState.MAIN_MENU || game.IsLoading() || game.IsConnecting() || !game.GetMission() || !game.GetUIManager().GetMenu() || game.GetUIManager().IsDialogVisible()) return;
+        if (!m_PreloadReported)
+        {
+            m_PreloadReported = true;
+            Print("[Predate] Client preloaded; waiting for the local mission.");
+        }
+        if (!m_InitialJoin || !game.IsAppActive()) return;
+        m_StagingInitialJoin = false;
+        Print("[Predate] Local mission ready; joining from the loading screen.");
+        game.ConnectFromServerBrowserEx("127.0.0.1", m_InitialJoin.Port, m_InitialJoin.QueryPort, m_InitialJoin.Password);
+        m_InitialJoin = null;
     }
 
     protected void ExitGame()

@@ -11,22 +11,36 @@ class PredateLoadingStyle
         Widget frame = root.FindAnyWidget("PredateArtwork");
         if (!frame)
         {
-            frame = workspace.CreateWidgets("Predate/gui/loading_artwork.layout", original.GetParent());
+            frame = CreateArtwork(workspace, original.GetParent());
             if (!frame) return;
             frame.SetSort(-1000);
-            ImageWidget image = ImageWidget.Cast(frame.FindAnyWidget("ArcadeImage"));
-            if (!image || !image.LoadImageFile(0, "Predate/gui/predate_arcade_loading_v2_co.paa"))
-            {
-                Print("[Predate] LOADING ART ERROR: approved texture failed to load.");
-                return;
-            }
-            image.SetImage(0);
-            Print("[Predate] Approved arcade loading artwork initialized.");
         }
         original.Show(false);
         frame.Show(true);
+        FitArtwork(frame);
+    }
+
+    static Widget CreateArtwork(WorkspaceWidget workspace, Widget parent = null)
+    {
+        if (!workspace) return null;
+        Widget frame = workspace.CreateWidgets("Predate/gui/loading_artwork.layout", parent);
+        if (!frame) return null;
+        ImageWidget image = ImageWidget.Cast(frame.FindAnyWidget("ArcadeImage"));
+        if (!image || !image.LoadImageFile(0, "Predate/gui/predate_arcade_loading_v2_co.paa"))
+        {
+            frame.Unlink();
+            Print("[Predate] LOADING ART ERROR: approved texture failed to load.");
+            return null;
+        }
+        image.SetImage(0);
+        Print("[Predate] Approved arcade loading artwork initialized.");
+        return frame;
+    }
+
+    static void FitArtwork(Widget frame)
+    {
         float screenWidth, screenHeight;
-        frame.GetParent().GetScreenSize(screenWidth, screenHeight);
+        frame.GetScreenSize(screenWidth, screenHeight);
         if (screenWidth <= 0 || screenHeight <= 0) return;
         float screenAspect = screenWidth / screenHeight;
         float artAspect = 1672.0 / 941.0;
@@ -45,17 +59,7 @@ class PredateLoadingStyle
         Widget original = root.FindAnyWidget("LoadingBar");
         if (!original) original = root.FindAnyWidget("ProgressBarWidget");
         if (!original) return null;
-        if (!s_BlueStyleLoaded)
-        {
-            if (!LoadWidgetImageSet("Predate/gui/loading.imageset"))
-            {
-                Print("[Predate] LOADING BAR ERROR: blue image set failed to load.");
-                return null;
-            }
-            LoadWidgetStyles("Predate/gui/loading.styles");
-            s_BlueStyleLoaded = true;
-        }
-        Widget frame = workspace.CreateWidgets("Predate/gui/loading_blue.layout", original.GetParent());
+        Widget frame = CreateBlueFrame(workspace, original.GetParent());
         if (!frame) return null;
         ProgressBarWidget blue = ProgressBarWidget.Cast(frame.FindAnyWidget("PredateLoadingBar"));
         if (!blue) return null;
@@ -69,6 +73,21 @@ class PredateLoadingStyle
         return blue;
     }
 
+    static Widget CreateBlueFrame(WorkspaceWidget workspace, Widget parent)
+    {
+        if (!s_BlueStyleLoaded)
+        {
+            if (!LoadWidgetImageSet("Predate/gui/loading.imageset"))
+            {
+                Print("[Predate] LOADING BAR ERROR: blue image set failed to load.");
+                return null;
+            }
+            LoadWidgetStyles("Predate/gui/loading.styles");
+            s_BlueStyleLoaded = true;
+        }
+        return workspace.CreateWidgets("Predate/gui/loading_blue.layout", parent);
+    }
+
     static void Clean(Widget root)
     {
         if (!root) return;
@@ -80,7 +99,7 @@ class PredateLoadingStyle
             bottom.SetColor(ARGB(0, 0, 0, 0));
             Print("[Predate] Bottom loading-panel background removed.");
         }
-        array<string> hidden = {"ImageLogoMid", "ImageLogoCorner", "ModdedWarning", "HintTestLongText", "hintIcon", "LinesImageLeft", "LinesRightImage"};
+        array<string> hidden = {"ImageLogoMid", "ImageLogoCorner", "ModdedWarning", "notification_root", "HintTestLongText", "hintIcon", "LinesImageLeft", "LinesRightImage"};
         foreach (string name : hidden)
         {
             Widget widget = root.FindAnyWidget(name);
@@ -94,12 +113,16 @@ modded class LoadingScreen
     bool m_PredateJoining;
     bool m_PredateNativeLoading;
     bool m_PredateWorldPhase;
+    bool m_PredatePreloading;
+    Widget m_PredatePreloadCover;
 
     void LoadingScreen(DayZGame game)
     {
         string sessionId;
         bool managedJoin = game.CommandlineGetParam("predateSessionId", sessionId);
         m_PredateJoining = managedJoin;
+        string preload;
+        m_PredatePreloading = managedJoin && game.CommandlineGetParam("predateWaitForServer", preload);
         m_PredateNativeLoading = m_WidgetRoot.IsVisible();
         PredateLoadingStyle.Clean(m_WidgetRoot);
         PredateLoadingStyle.Artwork(m_WidgetRoot, game.GetLoadingWorkspace());
@@ -143,6 +166,7 @@ modded class LoadingScreen
     void PredateHoldJoinScreen()
     {
         if (!m_PredateJoining) return;
+        PredateCoverPreload();
         if (!m_PredateWorldPhase)
         {
             // Both native stages share one bar; world loading owns its latter half.
@@ -160,10 +184,48 @@ modded class LoadingScreen
         m_ProgressText.Show(false);
     }
 
+    bool PredateMasksFrontend()
+    {
+        return m_PredateJoining && m_PredatePreloading;
+    }
+
+    void PredateCoverPreload()
+    {
+        if (!PredateMasksFrontend() || m_PredatePreloadCover) return;
+        // The ordinary workspace can render between native loading passes.
+        // Use a PREDATE-only cover there, without the stock notification layer.
+        WorkspaceWidget workspace = m_DayZGame.GetWorkspace();
+        m_PredatePreloadCover = PredateLoadingStyle.CreateArtwork(workspace);
+        if (!m_PredatePreloadCover) return;
+        m_PredatePreloadCover.SetSort(10000);
+        PredateLoadingStyle.FitArtwork(m_PredatePreloadCover);
+        Widget progress = PredateLoadingStyle.CreateBlueFrame(workspace, m_PredatePreloadCover);
+        if (progress && m_ProgressLoading)
+        {
+            float x, y, width, height;
+            Widget nativeProgress = m_ProgressLoading.GetParent();
+            nativeProgress.GetScreenPos(x, y);
+            nativeProgress.GetScreenSize(width, height);
+            if (width > 0 && height > 0)
+            {
+                progress.SetScreenSize(width, height);
+                progress.SetScreenPos(x, y);
+            }
+        }
+        Widget blue = m_PredatePreloadCover.FindAnyWidget("PredateLoadingBar");
+        if (blue) blue.Show(false);
+        Widget completed = m_PredatePreloadCover.FindAnyWidget("PredateLoadedPhase");
+        if (completed) completed.Show(true);
+        m_PredatePreloadCover.Show(true);
+        Print("[Predate] Continuous loading: PREDATE-only frontend cover visible.");
+    }
+
     void PredateFinishJoin()
     {
         if (!m_PredateJoining) return;
         m_PredateJoining = false;
+        if (m_PredatePreloadCover) m_PredatePreloadCover.Unlink();
+        m_PredatePreloadCover = null;
         m_WidgetRoot.Show(false);
         Print("[Predate] Continuous loading: released.");
     }
@@ -177,6 +239,7 @@ modded class DayZGame
     override void OnUpdate(bool doSim, float timeslice)
     {
         super.OnUpdate(doSim, timeslice);
+        if (m_loading) m_loading.PredateCoverPreload();
         if (m_PredateRestoreJoinInput) PredateRestoreJoinInput();
     }
 
@@ -188,14 +251,19 @@ modded class DayZGame
 
     override void OnEvent(EventType eventTypeId, Param params)
     {
-        if (eventTypeId == MPSessionPlayerReadyEventTypeID || eventTypeId == MPSessionFailEventTypeID || eventTypeId == MPSessionEndEventTypeID)
+        super.OnEvent(eventTypeId, params);
+        if (eventTypeId == MPSessionPlayerReadyEventTypeID)
         {
-            m_PredateRestoreJoinInput = eventTypeId == MPSessionPlayerReadyEventTypeID && (m_PredateClientAgent || (m_loading && m_loading.m_PredateJoining));
+            m_PredateRestoreJoinInput = m_PredateClientAgent || (m_loading && m_loading.m_PredateJoining);
             // DayZ schedules its device check 100 ms after player-ready.
             if (m_PredateRestoreJoinInput) m_PredateJoinInputAfter = GetTickTime() + 0.2;
             if (m_loading) m_loading.PredateFinishJoin();
         }
-        super.OnEvent(eventTypeId, params);
+        else if (eventTypeId == MPSessionFailEventTypeID || eventTypeId == MPSessionEndEventTypeID)
+        {
+            m_PredateRestoreJoinInput = false;
+            if (m_loading) m_loading.PredateFinishJoin();
+        }
     }
 
     void PredateRestoreJoinInput()
@@ -204,19 +272,19 @@ modded class DayZGame
         UIManager ui = GetUIManager();
         if (!ui || ui.GetMenu() || ui.IsDialogVisible()) return;
         Mission mission = GetMission();
-        if (!mission || mission.IsPaused()) return;
-        // A loading or pause menu may already be gone while its exclusion is
-        // still active. Use the native close path to release that exclusion.
-        if (mission.IsInputExcludeActive("menu")) mission.Continue();
-        if (mission.IsControlDisabled()) return;
+        if (!mission || !mission.IsMissionGameplay() || mission.IsPaused() || mission.IsPlayerRespawning() || !GetPlayer().IsAlive() || GetPlayer().IsUnconscious()) return;
 
-        m_PredateRestoreJoinInput = false;
         Input input = GetInput();
         bool alreadyFocused = input.HasGameFocus();
+        // A dismissed join dialog can still own widget focus or leave input
+        // exclusions behind. Release both once the live mission owns the screen.
+        SetFocus(null);
+        if (mission.IsControlDisabled()) mission.EnableAllInputs(true);
         input.UpdateConnectedInputDeviceList();
         input.ResetGameFocus();
         GetUApi().UpdateControls();
         ui.ShowUICursor(false);
+        m_PredateRestoreJoinInput = false;
         Print("[Predate] Startup input ready: prior focus=" + alreadyFocused + "; game focus=" + input.HasGameFocus());
     }
 }

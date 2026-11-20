@@ -158,7 +158,7 @@ class Supervisor:
         store.atomic_json(store.world_path(self.profile) / "client/PredateClientCommand.json", {
             "Schema": 1, "SessionId": self.session_id, "Sequence": self.command_sequence,
             "Action": action, "Port": world.PORT, "QueryPort": world.QUERY_PORT,
-            "Password": world.settings()["join_password"] if action == "connect" else ""})
+            "Password": world.settings()["join_password"] if action in ("connect", "server-ready") else ""})
 
     def start_operation(self, profile, launcher_pid=None):
         if self.profile and self.profile != profile:
@@ -187,7 +187,7 @@ class Supervisor:
         self.profile = profile
         self.session_id = uuid.uuid4().hex
         self.client = None
-        self.client_launch_focus = ClientLaunchFocus() if launcher_pid else None
+        self.client_launch_focus = ClientLaunchFocus(launcher_pid) if launcher_pid else None
         self.command_sequence = 0
         self.seen_connection = False
         self.disconnected_at = None
@@ -204,39 +204,68 @@ class Supervisor:
             "schema": 1, "session_id": self.session_id, "clean": False,
             "backup": self.last_backup.name, "started": time.time()})
         prefs = store.save_preferences({"selected_world": profile})
-        world.start(self.session_id, prefs["offline"],
-                    progress=lambda text: self.publish("loading", text), cancelled=self.cancel.is_set)
-        if self.cancel.is_set():
-            self.stop_server("launch-cancelled")
-            return
-        self.publish("launching", "World restored. Opening DayZ...")
-        launched_at = time.time()
-        world.launch_client(self.session_id, prefs["offline"])
-        self.connection_deadline = time.monotonic() + 180
-        deadline = time.monotonic() + 150
-        while time.monotonic() < deadline:
-            failure = read_native(store.world_path(profile) / "client/PredateFailure.json")
-            failed_process = failure.get("process", {})
-            created = failed_process.get("created", 0) / 10_000_000 - 11_644_473_600
-            if created >= launched_at - 0.1 and failed_process.get("executable", "").casefold() == str(world.CLIENT / "DayZ_x64.exe").casefold():
-                raise RuntimeError("DayZ failed to start: " + failure.get("message", "Unknown client error"))
+        launched_at = None
+
+        def open_client():
+            nonlocal launched_at
+            if self.cancel.is_set():
+                return
+            launched_at = time.time()
+            world.launch_client(self.session_id, prefs["offline"], wait_for_server=True)
+
+        def loading_progress(_):
+            self.observe_starting_client(launched_at)
+            if self.data["phase"] != "loading":
+                self.publish("loading", "Opening DayZ and loading the world...")
+
+        try:
+            world.start(self.session_id, prefs["offline"], progress=loading_progress,
+                        cancelled=self.cancel.is_set, on_started=open_client)
+            if self.cancel.is_set():
+                return
+            if launched_at is None:
+                raise RuntimeError("This world's server was started separately.")
+            self.command_client("server-ready")
+            self.publish("connecting", "Connecting to the restored world...")
+            self.connection_deadline = time.monotonic() + 180
+            deadline = time.monotonic() + 150
+            while time.monotonic() < deadline:
+                if self.observe_starting_client(launched_at):
+                    return
+                if not world.running(): raise RuntimeError("The server exited while the game was opening")
+                if self.cancel.is_set():
+                    return
+                time.sleep(0.25)
+            raise RuntimeError("DayZ did not open. Check Steam before retrying.")
+        except Exception:
+            if launched_at is not None:
+                self.command_client("server-closed")
+            if world.running() and not self.cancel.is_set():
+                self.stop_server("startup-failed")
+            raise
+        finally:
+            if self.session_id and launched_at is not None and self.cancel.is_set() and not self.client_alive():
+                self.command_client("server-closed")
+
+    def observe_starting_client(self, launched_at):
+        failure = read_native(store.world_path(self.profile) / "client/PredateFailure.json")
+        failed_process = failure.get("process", {})
+        created = failed_process.get("created", 0) / 10_000_000 - 11_644_473_600
+        if created >= launched_at - 0.1 and failed_process.get("executable", "").casefold() == str(world.CLIENT / "DayZ_x64.exe").casefold():
+            raise RuntimeError("DayZ failed to start: " + failure.get("message", "Unknown client error"))
+        if self.client and not self.client_alive():
+            raise RuntimeError("DayZ closed before the world was ready.")
+        if not self.client:
             for pid in platform_win.find_processes("DayZ_x64.exe"):
                 identity = world.process_identity(pid)
-                if identity:
-                    self.client = identity
-                    store.atomic_json(RUNTIME / "active-session.json", {
-                        "profile": profile, "session_id": self.session_id, "client": identity,
-                        "server": read_native(world.STATE)})
-                    self.handoff_client_focus()
-                    self.publish("connecting", "Connecting to the restored world...")
-                    return
-            if not world.running(): raise RuntimeError("The server exited while the game was opening")
-            if self.cancel.is_set():
-                self.stop_server("launch-cancelled")
-                return
-            time.sleep(0.25)
-        self.stop_server("client-start-failed")
-        raise RuntimeError("DayZ did not open. The world was saved and stopped; check Steam before retrying.")
+                if not identity: continue
+                self.client = identity
+                store.atomic_json(RUNTIME / "active-session.json", {
+                    "profile": self.profile, "session_id": self.session_id, "client": identity,
+                    "server": read_native(world.STATE)})
+                break
+        self.handoff_client_focus()
+        return bool(self.client)
 
     def handoff_client_focus(self, connected=False):
         if not self.client_launch_focus or not self.client_alive(): return
