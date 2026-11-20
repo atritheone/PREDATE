@@ -11,19 +11,23 @@
     },
     {
       "Id": "ghost", "Name": "Ghost",
-      "Body": "TShirt_White", "Legs": "CanvasPants_Beige", "Feet": "WorkingBoots_Brown",
+      "Body": "Hoodie_Grey", "Legs": "PredateChinos_Brown", "Feet": "WorkingBoots_Brown",
       "Vest": "PlateCarrierVest_Black", "Pouches": "PlateCarrierPouches_Black", "Gloves": "TacticalGloves_Black",
       "Eyewear": "PredateOperatorHeadstrap_Black", "NightVision": "PredateOperatorNVG_Black",
       "WorkshopNightVision": "FOG_GPNVG_Black", "InRotation": false
     },
     {
       "Id": "operator", "Name": "Operator",
-      "Body": "TShirt_White", "Legs": "Jeans_BlueDark", "Feet": "Sneakers_Black",
+      "Body": "Hoodie_Black", "Legs": "Jeans_BlueDark", "Feet": "Sneakers_White",
       "Vest": "PlateCarrierVest_Desert", "Pouches": "PlateCarrierPouches_Desert", "Gloves": "TacticalGloves_Black",
       "Eyewear": "PredateOperatorHeadstrap_Black", "NightVision": "PredateOperatorNVG_Black",
       "WorkshopNightVision": "FOG_GPNVG_Black", "InRotation": true
     },
-    {"Id": "original-uniform", "Name": "File", "Body": "TTsKOJacket_Camo", "Legs": "TTSKOPants", "Feet": "MilitaryBoots_Black", "InRotation": false},
+    {
+      "Id": "original-uniform", "Name": "File",
+      "Body": "TTsKOJacket_Camo", "Legs": "TTSKOPants", "Feet": "MilitaryBoots_Black",
+      "Headgear": "Mich2001Helmet", "InRotation": false
+    },
     {"Id": "white-tee", "Name": "White T-shirt", "Body": "TShirt_White", "Legs": "Jeans_Black", "Feet": "Sneakers_Black", "InRotation": false, "Legacy": true},
     {"Id": "black-hoodie", "Name": "Black Hoodie", "Body": "Hoodie_Black", "Legs": "Jeans_Black", "Feet": "Sneakers_Gray", "InRotation": false, "Legacy": true},
     {"Id": "grey-hoodie", "Name": "Grey Hoodie", "Body": "Hoodie_Grey", "Legs": "CanvasPants_Beige", "Feet": "WorkingBoots_Brown", "InRotation": false, "Legacy": true},

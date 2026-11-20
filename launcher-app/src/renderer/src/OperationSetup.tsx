@@ -1,11 +1,15 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import {
   OPPONENT_COUNTS,
+  weaponSlots,
+  type LoadoutPreset,
   type OpponentCount,
   type Overview,
+  type PresetKind,
   type SessionAction,
 } from '../../shared/types'
 import { InventoryEditor } from './InventoryEditor'
+import { SavePresetDialog } from './SavePresetDialog'
 import { SpawnEditor, validSpawn } from './SpawnEditor'
 import {
   changeOutfit,
@@ -14,6 +18,7 @@ import {
   defaultPlayerOutfit,
   inventoryEntries,
   starterInventory,
+  upgradeDraftOutfitMount,
   type Inventory,
 } from './operationInventory'
 import './operation-setup.css'
@@ -45,6 +50,8 @@ export interface OperationDraft {
   playerOutfit: string
   operatorOutfit: string
   inventory: Inventory | null
+  weaponPresetId?: string
+  equipmentPresetId?: string
 }
 
 const defaults: OperationDraft = {
@@ -84,10 +91,35 @@ export function readOperationDraft(): OperationDraft {
       )?.Id
       if (draft.playerOutfit === undefined) delete draft.playerOutfit
     }
+    if (draft.inventory && draft.playerOutfit && !draft.equipmentPresetId)
+      draft.inventory = upgradeDraftOutfitMount(draft.inventory, draft.playerOutfit)
     return { ...defaults, ...draft }
   } catch {
     return { ...defaults }
   }
+}
+
+function inventoryPart(inventory: Inventory, kind: PresetKind): Inventory {
+  return Object.fromEntries(
+    Object.entries(inventory).filter(
+      ([slot]) => weaponSlots.includes(slot) === (kind === 'weapon'),
+    ),
+  )
+}
+
+function samePart(left: Inventory, right: Inventory, kind: PresetKind): boolean {
+  const first = inventoryPart(left, kind)
+  const second = inventoryPart(right, kind)
+  return (
+    Object.keys(first).length === Object.keys(second).length &&
+    Object.entries(first).every(
+      ([slot, item]) => JSON.stringify(item) === JSON.stringify(second[slot]),
+    )
+  )
+}
+
+function presetValue(preset: LoadoutPreset): string {
+  return 'saved:' + preset.id
 }
 
 export function OperationSetup({
@@ -107,10 +139,27 @@ export function OperationSetup({
   create: (action: Extract<SessionAction, { action: 'new' }>) => Promise<void>
   showError: (message: string) => void
 }): ReactNode {
-  const [saved, setSaved] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('')
+  const [presets, setPresets] = useState<LoadoutPreset[] | null>(null)
+  const [savingPreset, setSavingPreset] = useState(false)
+  useEffect(() => {
+    let mounted = true
+    void window.predate.loadoutPresets().then(
+      (saved) => {
+        if (mounted) setPresets(saved)
+      },
+      () => {
+        if (mounted) showError('Could not read the saved loadout presets.')
+      },
+    )
+    return () => {
+      mounted = false
+    }
+  }, [showError])
+
   const change = (patch: Partial<OperationDraft>): void => {
     update({ ...draft, ...patch })
-    setSaved(false)
+    setSaveStatus('')
   }
   const kit = overview.loadouts.find((item) => item.id === draft.kit) ?? overview.loadouts[0]
   const playerOutfit = clothingPresets.some(({ Id }) => Id === draft.playerOutfit)
@@ -119,15 +168,66 @@ export function OperationSetup({
   const operatorOutfit = clothingPresets.some(({ Id }) => Id === draft.operatorOutfit)
     ? draft.operatorOutfit
     : defaults.operatorOutfit
-  const loadout = draft.inventory ?? starterInventory(kit?.id ?? '', playerOutfit)
+  const standardLoadout = starterInventory(kit?.id ?? '', playerOutfit)
+  const loadout = draft.inventory ?? standardLoadout
+  const weaponPresets = presets?.filter(({ kind }) => kind === 'weapon') ?? []
+  const equipmentPresets = presets?.filter(({ kind }) => kind === 'equipment') ?? []
+  const savedWeapon = weaponPresets.find(({ id }) => id === draft.weaponPresetId)
+  const savedEquipment = equipmentPresets.find(({ id }) => id === draft.equipmentPresetId)
+  const weaponEdit = !samePart(loadout, standardLoadout, 'weapon')
+  const equipmentEdit = !samePart(loadout, standardLoadout, 'equipment')
+  const applyPreset = (preset: LoadoutPreset): void => {
+    const inventory = {
+      ...inventoryPart(loadout, preset.kind === 'weapon' ? 'equipment' : 'weapon'),
+      ...structuredClone(preset.inventory),
+    }
+    change(
+      preset.kind === 'weapon'
+        ? { inventory, weaponPresetId: preset.id }
+        : { inventory, equipmentPresetId: preset.id },
+    )
+  }
+  const savePreset = async (kind: PresetKind, name: string): Promise<void> => {
+    const preset = await window.predate.saveLoadoutPreset({
+      kind,
+      name,
+      inventory: inventoryPart(loadout, kind),
+    })
+    setPresets((existing) => [...(existing ?? []), preset])
+    applyPreset(preset)
+    setSaveStatus('Preset saved.')
+  }
+  const selectWeapon = (value: string): void => {
+    const preset = weaponPresets.find((option) => presetValue(option) === value)
+    if (preset) {
+      applyPreset(preset)
+    } else if (value === 'empty') {
+      change({ inventory: {}, weaponPresetId: undefined, equipmentPresetId: undefined })
+    } else if (overview.loadouts.some(({ id }) => id === value)) {
+      const inventory =
+        savedEquipment || equipmentEdit
+          ? {
+              ...inventoryPart(loadout, 'equipment'),
+              ...inventoryPart(starterInventory(value, playerOutfit), 'weapon'),
+            }
+          : null
+      change({ kit: value, inventory, weaponPresetId: undefined })
+    }
+  }
   const selectPlayerOutfit = (outfitId: string): void => {
+    const preset = equipmentPresets.find((option) => presetValue(option) === outfitId)
+    if (preset) {
+      applyPreset(preset)
+      return
+    }
+    if (!clothingPresets.some(({ Id }) => Id === outfitId)) return
     const inventory =
       draft.inventory && changeOutfit(draft.inventory, outfitId, playerOutfit, kit?.id ?? '')
     if (draft.inventory && !inventory) {
       showError('There is no room for your carried gear in this outfit.')
       return
     }
-    change({ playerOutfit: outfitId, inventory })
+    change({ playerOutfit: outfitId, inventory, equipmentPresetId: undefined })
   }
   const opponentOptions = overview.operationOptions?.opponents ?? OPPONENT_COUNTS.slice(0, 3)
   const opponents = opponentOptions.includes(draft.opponents) ? draft.opponents : opponentOptions[0]
@@ -154,7 +254,7 @@ export function OperationSetup({
           componentsReady: true,
         }),
       )
-      setSaved(true)
+      setSaveStatus('Setup saved on this PC.')
     } catch {
       showError('Could not save this setup on this PC.')
     }
@@ -181,204 +281,252 @@ export function OperationSetup({
   }
 
   return (
-    <form
-      className="operation-setup new-operation"
-      onSubmit={(event) => {
-        event.preventDefault()
-        submit()
-      }}
-    >
-      <div className="setup-body">
-        <div className="setup-sections">
-          <section className="game-setup stack" aria-labelledby="game-heading">
-            <h2 className="setup-heading" id="game-heading">
-              Game
-            </h2>
-            <label className="field">
-              Hunt Name
-              <input
-                id="operation-name"
-                maxLength={80}
-                value={draft.name}
-                onChange={(event) => change({ name: event.target.value })}
-              />
-            </label>
-            <div className="game-fields">
-              <label className="field start-time-field">
-                Start Time
+    <>
+      <form
+        className="operation-setup new-operation"
+        onSubmit={(event) => {
+          event.preventDefault()
+          submit()
+        }}
+      >
+        <div className="setup-body">
+          <div className="setup-sections">
+            <section className="game-setup stack" aria-labelledby="game-heading">
+              <h2 className="setup-heading" id="game-heading">
+                Game
+              </h2>
+              <label className="field">
+                Hunt Name
                 <input
-                  type="time"
-                  id="start-time"
-                  value={draft.time}
-                  onChange={(event) => change({ time: event.target.value })}
+                  id="operation-name"
+                  maxLength={80}
+                  value={draft.name}
+                  onChange={(event) => change({ name: event.target.value })}
                 />
               </label>
-              <label className="field">
-                Enemy Count
-                <select
-                  id="opponent-count"
-                  value={opponents}
-                  onChange={(event) => {
-                    const value = Number(event.target.value) as OpponentCount
-                    if (opponentOptions.includes(value)) change({ opponents: value })
-                  }}
-                >
-                  {opponentOptions.map((count) => (
-                    <option key={count} value={count}>
-                      {count} {count === 1 ? 'Operator' : 'Operators'}
-                    </option>
-                  ))}
-                </select>
+              <div className="game-fields">
+                <label className="field start-time-field">
+                  Start Time
+                  <input
+                    type="time"
+                    id="start-time"
+                    value={draft.time}
+                    onChange={(event) => change({ time: event.target.value })}
+                  />
+                </label>
+                <label className="field">
+                  Enemy Count
+                  <select
+                    id="opponent-count"
+                    value={opponents}
+                    onChange={(event) => {
+                      const value = Number(event.target.value) as OpponentCount
+                      if (opponentOptions.includes(value)) change({ opponents: value })
+                    }}
+                  >
+                    {opponentOptions.map((count) => (
+                      <option key={count} value={count}>
+                        {count} {count === 1 ? 'Operator' : 'Operators'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  AI Equipment
+                  <select
+                    id="operator-outfit"
+                    value={operatorOutfit}
+                    onChange={(event) => change({ operatorOutfit: event.target.value })}
+                  >
+                    <option value="varied">Default</option>
+                    {clothingPresets.map(({ Id, Name }) => (
+                      <option key={Id} value={Id}>
+                        {Name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="time-presets" aria-label="Time Presets">
+                {timePresets.map(([label, value]) => (
+                  <button
+                    type="button"
+                    key={value}
+                    aria-pressed={draft.time === value}
+                    onClick={() => change({ time: value })}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <label className="game-toggle split">
+                <span>
+                  <strong>Enemy Respawns</strong>
+                  <small>Replace defeated operators after a delay.</small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={draft.enemyRespawns}
+                  onChange={(event) => change({ enemyRespawns: event.target.checked })}
+                />
               </label>
-              <label className="field">
-                AI Equipment
-                <select
-                  id="operator-outfit"
-                  value={operatorOutfit}
-                  onChange={(event) => change({ operatorOutfit: event.target.value })}
-                >
-                  <option value="varied">Default</option>
-                  {clothingPresets.map(({ Id, Name }) => (
-                    <option key={Id} value={Id}>
-                      {Name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="time-presets" aria-label="Time Presets">
-              {timePresets.map(([label, value]) => (
+              {draft.enemyRespawns && (
+                <label className="field respawn-delay">
+                  Respawn Delay (Seconds)
+                  <input
+                    type="number"
+                    min="1"
+                    max="3600"
+                    value={draft.respawnDelay}
+                    onChange={(event) => change({ respawnDelay: event.target.value })}
+                  />
+                </label>
+              )}
+            </section>
+            <section className="spawn-setup" aria-labelledby="spawn-heading">
+              <h2 className="setup-heading" id="spawn-heading">
+                Spawn
+              </h2>
+              <SpawnEditor
+                presets={overview.spawnPoints}
+                preset={spawn}
+                randomRegion={randomRegion}
+                x={draft.x}
+                z={draft.z}
+                change={(spawn, x, z) => change({ spawn, x, z })}
+              />
+            </section>
+            <section className="loadout-setup" aria-labelledby="loadout-heading">
+              <div className="setup-heading split loadout-heading">
+                <h2 id="loadout-heading">Loadout</h2>
                 <button
                   type="button"
-                  key={value}
-                  aria-pressed={draft.time === value}
-                  onClick={() => change({ time: value })}
+                  disabled={!presets || busy}
+                  onClick={() => setSavingPreset(true)}
                 >
-                  {label}
+                  Save Preset
                 </button>
-              ))}
-            </div>
-            <label className="game-toggle split">
-              <span>
-                <strong>Enemy Respawns</strong>
-                <small>Replace defeated operators after a delay.</small>
-              </span>
-              <input
-                type="checkbox"
-                checked={draft.enemyRespawns}
-                onChange={(event) => change({ enemyRespawns: event.target.checked })}
-              />
-            </label>
-            {draft.enemyRespawns && (
-              <label className="field respawn-delay">
-                Respawn Delay (Seconds)
-                <input
-                  type="number"
-                  min="1"
-                  max="3600"
-                  value={draft.respawnDelay}
-                  onChange={(event) => change({ respawnDelay: event.target.value })}
-                />
-              </label>
-            )}
-          </section>
-          <section className="spawn-setup" aria-labelledby="spawn-heading">
-            <h2 className="setup-heading" id="spawn-heading">
-              Spawn
-            </h2>
-            <SpawnEditor
-              presets={overview.spawnPoints}
-              preset={spawn}
-              randomRegion={randomRegion}
-              x={draft.x}
-              z={draft.z}
-              change={(spawn, x, z) => change({ spawn, x, z })}
-            />
-          </section>
-          <section className="loadout-setup" aria-labelledby="loadout-heading">
-            <h2 className="setup-heading" id="loadout-heading">
-              Loadout
-            </h2>
-            <div className="kit-select">
-              <label className="field">
-                Starting Kit
-                <select
-                  id="starting-kit"
-                  value={draft.inventory === null ? kit?.id : 'custom'}
-                  onChange={(event) => {
-                    const id = event.target.value
-                    if (id === 'empty') change({ inventory: {} })
-                    else change({ kit: id, inventory: null })
-                  }}
-                >
-                  {rifleGroups.map(([category, label]) => {
-                    const kits = overview.loadouts.filter((item) => item.description === category)
-                    return kits.length ? (
-                      <optgroup key={category} label={label}>
-                        {kits.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name}
+              </div>
+              <div className="kit-select">
+                <label className="field">
+                  Starting Kit
+                  <select
+                    id="starting-kit"
+                    value={savedWeapon ? presetValue(savedWeapon) : weaponEdit ? 'custom' : kit?.id}
+                    onChange={(event) => selectWeapon(event.target.value)}
+                  >
+                    {rifleGroups.map(([category, label]) => {
+                      const kits = overview.loadouts.filter((item) => item.description === category)
+                      return kits.length ? (
+                        <optgroup key={category} label={label}>
+                          {kits.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ) : null
+                    })}
+                    {overview.loadouts
+                      .filter(
+                        (item) => !rifleGroups.some(([category]) => category === item.description),
+                      )
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    {weaponPresets.length > 0 && (
+                      <optgroup label="Saved Weapons">
+                        {weaponPresets.map((preset) => (
+                          <option key={preset.id} value={presetValue(preset)}>
+                            {preset.name}
                           </option>
                         ))}
                       </optgroup>
-                    ) : null
-                  })}
-                  {overview.loadouts
-                    .filter(
-                      (item) => !rifleGroups.some(([category]) => category === item.description),
-                    )
-                    .map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
+                    )}
+                    {weaponEdit && !savedWeapon && (
+                      <option value="custom" disabled>
+                        Custom
+                      </option>
+                    )}
+                    <option value="empty">Empty Inventory</option>
+                  </select>
+                </label>
+                <label className="field">
+                  Equipment
+                  <select
+                    id="player-outfit"
+                    value={
+                      savedEquipment
+                        ? presetValue(savedEquipment)
+                        : equipmentEdit
+                          ? 'custom'
+                          : playerOutfit
+                    }
+                    onChange={(event) => selectPlayerOutfit(event.target.value)}
+                  >
+                    {clothingPresets.map(({ Id, Name }) => (
+                      <option key={Id} value={Id}>
+                        {Name}
                       </option>
                     ))}
-                  {draft.inventory !== null && <option value="custom">Custom</option>}
-                  <option value="empty">Empty Inventory</option>
-                </select>
-              </label>
-              <label className="field">
-                Equipment
-                <select
-                  id="player-outfit"
-                  value={playerOutfit}
-                  onChange={(event) => selectPlayerOutfit(event.target.value)}
-                >
-                  {clothingPresets.map(({ Id, Name }) => (
-                    <option key={Id} value={Id}>
-                      {Name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <InventoryEditor
-              inventory={loadout}
-              includeWorkshopGear={kit?.workshop === true}
-              weaponModule={overview.operationOptions?.weaponModule}
-              update={(inventory) => change({ inventory })}
-            />
-          </section>
+                    {equipmentPresets.length > 0 && (
+                      <optgroup label="Saved Equipment">
+                        {equipmentPresets.map((preset) => (
+                          <option key={preset.id} value={presetValue(preset)}>
+                            {preset.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {equipmentEdit && !savedEquipment && (
+                      <option value="custom" disabled>
+                        Custom
+                      </option>
+                    )}
+                  </select>
+                </label>
+              </div>
+              <InventoryEditor
+                inventory={loadout}
+                includeWorkshopGear={kit?.workshop === true}
+                weaponModule={overview.operationOptions?.weaponModule}
+                update={(inventory) =>
+                  change({
+                    inventory,
+                    weaponPresetId: samePart(inventory, loadout, 'weapon')
+                      ? draft.weaponPresetId
+                      : undefined,
+                    equipmentPresetId: samePart(inventory, loadout, 'equipment')
+                      ? draft.equipmentPresetId
+                      : undefined,
+                  })
+                }
+              />
+            </section>
+          </div>
         </div>
-      </div>
-      <div className="setup-footer split">
-        <p className="hint" role="status">
-          {saved
-            ? 'Setup saved on this PC.'
-            : !spawnValid
-              ? 'Enter valid spawn coordinates.'
-              : active && !busy
-                ? 'The current hunt will save and close.'
-                : ''}
-        </p>
-        <div className="setup-actions">
-          <button type="button" onClick={saveDraft}>
-            Save Draft
-          </button>
-          <button className="primary" type="submit" disabled={!valid || busy}>
-            Create and Play
-          </button>
+        <div className="setup-footer split">
+          <p className="hint" role="status">
+            {saveStatus ||
+              (!spawnValid
+                ? 'Enter valid spawn coordinates.'
+                : active && !busy
+                  ? 'The current hunt will save and close.'
+                  : '')}
+          </p>
+          <div className="setup-actions">
+            <button type="button" onClick={saveDraft}>
+              Save Draft
+            </button>
+            <button className="primary" type="submit" disabled={!valid || busy}>
+              Create and Play
+            </button>
+          </div>
         </div>
-      </div>
-    </form>
+      </form>
+      {savingPreset && <SavePresetDialog save={savePreset} close={() => setSavingPreset(false)} />}
+    </>
   )
 }

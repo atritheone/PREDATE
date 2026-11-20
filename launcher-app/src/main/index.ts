@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Backend, findProject } from './backend'
+import { loadPresets, savePreset } from './loadoutPresets'
 import { OPPONENT_COUNTS, type OpponentCount, type SessionAction } from '../shared/types'
 
 let window: BrowserWindow | null = null
@@ -121,6 +122,14 @@ async function createWindow(): Promise<void> {
   ipcMain.handle('predate:preferences', (event, values: unknown) => {
     trusted(event)
     return backend.preferences(values)
+  })
+  ipcMain.handle('predate:loadout-presets', (event) => {
+    trusted(event)
+    return loadPresets(backend.root)
+  })
+  ipcMain.handle('predate:save-loadout-preset', (event, preset: unknown) => {
+    trusted(event)
+    return savePreset(backend.root, preset)
   })
   ipcMain.handle('predate:choose-mod', async (event) => {
     trusted(event)
@@ -246,7 +255,8 @@ async function createWindow(): Promise<void> {
           const features = {};
           if (page === 'New Hunt') {
             const paint = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-            const sections = Array.from(document.querySelectorAll('.setup-sections > section > h2'));
+            const sections = Array.from(document.querySelectorAll('.setup-sections > section[aria-labelledby]'))
+              .map(section => document.getElementById(section.getAttribute('aria-labelledby')));
             const setupBody = document.querySelector('.setup-body');
             features.setupSections = sections.map(heading => heading.textContent);
             features.setupFits = !!setupBody &&
@@ -269,7 +279,8 @@ async function createWindow(): Promise<void> {
             features.defaultKit = kitSelect?.value;
             const playerOutfit = document.getElementById('player-outfit');
             const operatorOutfit = document.getElementById('operator-outfit');
-            features.clothingOptions = Array.from(playerOutfit?.options ?? []).map(option => option.value);
+            features.clothingOptions = Array.from(playerOutfit?.options ?? []).map(option => option.value)
+              .filter(value => !value.startsWith('saved:') && value !== 'custom');
             features.defaultPlayerOutfit = playerOutfit?.value;
             features.playerEquipmentLabel = playerOutfit?.labels?.[0]?.firstChild?.textContent?.trim();
             features.aiEquipmentLabel = operatorOutfit?.labels?.[0]?.firstChild?.textContent?.trim();

@@ -1,7 +1,10 @@
 import catalog from '../../../resources/operation-catalog.json'
 import modernLoadouts from '../../../resources/modern-loadouts.json'
 import presets from '../../../../source/Predate/data/loadouts.json'
-import type { InventoryEntry } from '../../shared/types'
+import type { Inventory, InventoryEntry, InventoryItem, Placement } from '../../shared/types'
+
+export type { Inventory, InventoryItem, Placement } from '../../shared/types'
+export { equipment } from '../../shared/types'
 
 export interface Gear {
   id: string
@@ -16,22 +19,6 @@ export interface Gear {
   accepts: string[]
   magazines: string[]
 }
-
-export interface InventoryItem {
-  id: string
-  amount?: number
-  attachments: Record<string, InventoryItem>
-  cargo: Placement[]
-}
-
-export interface Placement {
-  row: number
-  column: number
-  rotated: boolean
-  item: InventoryItem
-}
-
-export type Inventory = Record<string, InventoryItem>
 
 const playerSpareMagazines = 6
 const requiredParts: Record<string, string> = {
@@ -158,23 +145,6 @@ export function inventoryEntries(inventory: Inventory): InventoryEntry[] {
   return entries
 }
 
-export const equipment = [
-  ['Hands', 'Hands'],
-  ['Shoulder', 'Shoulder'],
-  ['Melee', 'Second Shoulder'],
-  ['Headgear', 'Head'],
-  ['Mask', 'Face'],
-  ['Eyewear', 'Eyes'],
-  ['Body', 'Jacket'],
-  ['Vest', 'Vest'],
-  ['Back', 'Backpack'],
-  ['Legs', 'Pants'],
-  ['Feet', 'Boots'],
-  ['Gloves', 'Gloves'],
-  ['Hips', 'Belt'],
-  ['Armband', 'Armband'],
-] as const
-
 export const workshopGearIds = new Set(modernLoadouts.Catalog.map((item) => item.id))
 export const gear: Gear[] = [...catalog, ...modernLoadouts.Catalog]
 export const gearById = new Map(gear.map((item) => [item.id, item]))
@@ -294,6 +264,7 @@ interface ClothingPreset {
   Vest?: string
   Pouches?: string
   Gloves?: string
+  Headgear?: string
   Eyewear?: string
   NightVision?: string
   WorkshopNightVision?: string
@@ -312,22 +283,50 @@ function wornClothing(outfit: ClothingPreset): Inventory {
   return { Body: newItem(outfit.Body), Legs: newItem(outfit.Legs), Feet: newItem(outfit.Feet) }
 }
 
+function outfitMount(outfit: ClothingPreset): ['Headgear' | 'Eyewear', string] {
+  return outfit.Headgear
+    ? ['Headgear', outfit.Headgear]
+    : ['Eyewear', outfit.Eyewear ?? presets.NightVisionMount]
+}
+
+export function upgradeDraftOutfitMount(inventory: Inventory, outfitId: string): Inventory {
+  const outfit = clothingPreset(outfitId)
+  const strap = inventory.Eyewear
+  const goggles = strap?.attachments.NVG
+  if (!outfit.Headgear || inventory.Headgear || strap?.id !== presets.NightVisionMount || !goggles)
+    return inventory
+
+  const helmet = newItem(outfit.Headgear)
+  helmet.attachments.NVG = goggles
+  const updated: Inventory = { ...inventory, Headgear: helmet }
+  delete updated.Eyewear
+  return updated
+}
+
 function issuedPlayerGear(outfit: ClothingPreset, kitId: string): Inventory {
   const modern = modernLoadouts.Kits.some((kit) => kit.Id === kitId)
   const native = [...presets.Kits, ...presets.OperatorKits].find((kit) => kit.Id === kitId)
   const workshop = modern || (native && 'WorkshopItems' in native)
   const kitGoggles = modern
     ? modernLoadouts.Equipment.NightVisionClass
-    : native && 'NightVisionClass' in native ? native.NightVisionClass : undefined
+    : native && 'NightVisionClass' in native
+      ? native.NightVisionClass
+      : undefined
   const standardGoggles = typeof kitGoggles === 'string' ? kitGoggles : 'NVGoggles'
-  const eyewear = newItem(outfit.Eyewear ?? presets.NightVisionMount)
-  const goggles = workshop && outfit.WorkshopNightVision
-    ? outfit.WorkshopNightVision
-    : outfit.NightVision ?? standardGoggles
-  eyewear.attachments.NVG = newItem(goggles)
+  const [mountSlot, mountClass] = outfitMount(outfit)
+  const mount = newItem(mountClass)
+  const goggles =
+    workshop && outfit.WorkshopNightVision
+      ? outfit.WorkshopNightVision
+      : (outfit.NightVision ?? standardGoggles)
+  mount.attachments.NVG = newItem(goggles)
   const vest = newItem(outfit.Vest ?? 'PlateCarrierVest')
   vest.attachments.VestPouch = newItem(outfit.Pouches ?? 'PlateCarrierPouches')
-  return { Eyewear: eyewear, Vest: vest, Gloves: newItem(outfit.Gloves ?? 'TacticalGloves_Black') }
+  return {
+    [mountSlot]: mount,
+    Vest: vest,
+    Gloves: newItem(outfit.Gloves ?? 'TacticalGloves_Black'),
+  }
 }
 
 function transferCarriedItems(
@@ -356,11 +355,25 @@ export function changeOutfit(
   kitId: string,
 ): Inventory | null {
   const outfit = clothingPreset(outfitId)
+  const previousOutfit = clothingPreset(previousOutfitId)
   const worn = wornClothing(outfit)
-  if (outfit.Eyewear || clothingPreset(previousOutfitId).Eyewear)
+  if (outfit.Headgear || outfit.Eyewear || previousOutfit.Headgear || previousOutfit.Eyewear)
     Object.assign(worn, issuedPlayerGear(outfit, kitId))
   const updated = { ...inventory }
   const displaced: InventoryItem[] = []
+  const [mountSlot] = outfitMount(outfit)
+  const [oldMountSlot, oldMountClass] = outfitMount(previousOutfit)
+  const otherSlot = mountSlot === 'Headgear' ? 'Eyewear' : 'Headgear'
+  const otherMount = inventory[otherSlot]
+  if (
+    worn[mountSlot] &&
+    otherMount &&
+    ((otherSlot === oldMountSlot && otherMount.id === oldMountClass) ||
+      (mountSlot === 'Headgear' && gearById.get(otherMount.id)?.accepts.includes('NVG')))
+  ) {
+    transferCarriedItems(otherMount, worn[mountSlot], displaced)
+    delete updated[otherSlot]
+  }
   for (const [slot, garment] of Object.entries(worn)) {
     const previous = inventory[slot]
     if (previous) transferCarriedItems(previous, garment, displaced)

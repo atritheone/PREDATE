@@ -6,6 +6,8 @@ const api: PredateAPI = {
   perform: (action) => ipcRenderer.invoke('predate:perform', action),
   savePreferences: (values) => ipcRenderer.invoke('predate:preferences', values),
   chooseMod: () => ipcRenderer.invoke('predate:choose-mod'),
+  loadoutPresets: () => ipcRenderer.invoke('predate:loadout-presets'),
+  saveLoadoutPreset: (preset) => ipcRenderer.invoke('predate:save-loadout-preset', preset),
   setSetupOpen: (open) => ipcRenderer.invoke('predate:setup-size', open),
   onStatus: (callback) => {
     const listener = (_event: Electron.IpcRendererEvent, status: SessionStatus): void =>

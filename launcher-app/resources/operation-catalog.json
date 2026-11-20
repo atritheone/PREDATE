@@ -1012,6 +1012,7 @@
 {"id":"CanvasPants_Grey","name":"Hiking Pants","kind":"item","width":3,"height":2,"cargoWidth":4,"cargoHeight":3,"capacity":0,"slots":["Legs"],"accepts":[],"magazines":[]},
 {"id":"CanvasPants_Red","name":"Hiking Pants","kind":"item","width":3,"height":2,"cargoWidth":4,"cargoHeight":3,"capacity":0,"slots":["Legs"],"accepts":[],"magazines":[]},
 {"id":"CanvasPants_Violet","name":"Hiking Pants","kind":"item","width":3,"height":2,"cargoWidth":4,"cargoHeight":3,"capacity":0,"slots":["Legs"],"accepts":[],"magazines":[]},
+{"id":"PredateChinos_Brown","name":"Brown Chinos","kind":"item","width":3,"height":2,"cargoWidth":4,"cargoHeight":3,"capacity":0,"slots":["Legs"],"accepts":[],"magazines":[]},
 {"id":"BookHinduLiterature","name":"Hindu Literature","kind":"item","width":2,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Book"],"accepts":[],"magazines":[]},
 {"id":"HipPack_Black","name":"Hip Pack","kind":"item","width":4,"height":2,"cargoWidth":3,"cargoHeight":2,"capacity":0,"slots":["Hips"],"accepts":["Belt_Left"],"magazines":[]},
 {"id":"HipPack_Green","name":"Hip Pack","kind":"item","width":4,"height":2,"cargoWidth":3,"cargoHeight":2,"capacity":0,"slots":["Hips"],"accepts":["Belt_Left"],"magazines":[]},

@@ -2,12 +2,22 @@ class CfgPatches
 {
     class Predate_Prototype
     {
-        units[]={"PredateWeaponModule","PredatePanoramicNVG","PredateOperatorNVG_Black","PredateOperatorNVG_Tan","PredateOperatorHeadstrap_Black","PredateOperatorHeadstrap_Tan"}; weapons[]={}; requiredVersion=0.1;
-        requiredAddons[]={"DZ_Data","DZ_Characters_Glasses","DZ_Weapons_Lights","DZ_Worlds_Chernarusplus_World","DayZExpansion_AI_Scripts"};
+        units[]={"PredateWeaponModule","PredatePanoramicNVG","PredateOperatorNVG_Black","PredateOperatorNVG_Tan","PredateOperatorHeadstrap_Black","PredateOperatorHeadstrap_Tan","PredateChinos_Brown"}; weapons[]={}; requiredVersion=0.1;
+        requiredAddons[]={"DZ_Data","DZ_Characters_Glasses","DZ_Characters_Pants","DZ_Weapons_Lights","DZ_Worlds_Chernarusplus_World","DayZExpansion_AI_Scripts"};
     };
 };
 class CfgVehicles
 {
+    class CanvasPants_Beige;
+    class PredateChinos_Brown: CanvasPants_Beige
+    {
+        displayName="Brown Chinos";
+        hiddenSelectionsTextures[]={
+            "#(argb,8,8,3)color(0.38,0.26,0.16,1,co)",
+            "#(argb,8,8,3)color(0.38,0.26,0.16,1,co)",
+            "#(argb,8,8,3)color(0.38,0.26,0.16,1,co)"
+        };
+    };
     class NVGoggles;
     class PredatePanoramicNVG: NVGoggles
     {

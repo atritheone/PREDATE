@@ -51,6 +51,17 @@
   letter-spacing: 0.08em;
 }
 
+.loadout-heading h2 {
+  margin: 0;
+  font: inherit;
+}
+
+.loadout-heading button {
+  min-height: 28px;
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
 .game-setup > .setup-heading {
   margin-bottom: 0;
 }
@@ -519,6 +530,19 @@
 
 .gear-picker::backdrop {
   background: #02050bc7;
+}
+
+.preset-dialog {
+  width: min(360px, calc(100vw - 32px));
+  padding: 16px;
+}
+
+.preset-dialog h2 {
+  margin: 0;
+}
+
+.preset-dialog .setup-actions {
+  justify-content: flex-end;
 }
 
 .gear-picker header {

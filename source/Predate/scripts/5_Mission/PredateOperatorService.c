@@ -77,7 +77,8 @@ class PredateOperatorService
         }
         if (!player.GetInventory().CreateAttachment(glovesClass))
             PredatePersistence.Fail(s, "Starting-kit gloves could not be equipped");
-        EntityAI headstrap = player.GetInventory().CreateAttachment(mountClass);
+        if (outfit.Headgear != "") mountClass = outfit.Headgear;
+        EntityAI nightVisionMount = player.GetInventory().CreateAttachment(mountClass);
         EntityAI vest = player.GetInventory().CreateAttachment(vestClass);
         if (!vest || !vest.GetInventory().CreateAttachment(pouchClass))
             PredatePersistence.Fail(s, "Starting-kit vest pouches could not be equipped");
@@ -99,7 +100,7 @@ class PredateOperatorService
         }
         else PredatePersistence.Fail(s, "Starting-kit firearm could not be created");
         EntityAI goggles;
-        if (headstrap) goggles = headstrap.GetInventory().CreateAttachment(gogglesClass);
+        if (nightVisionMount) goggles = nightVisionMount.GetInventory().CreateAttachment(gogglesClass);
         if (!InstallBattery(goggles)) PredatePersistence.Fail(s, "Starting-kit goggles could not be mounted and powered: " + gogglesClass);
         for (int j = 0; j < 4; j++)
             player.GetInventory().CreateInInventory("BandageDressing");

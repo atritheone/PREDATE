@@ -52,6 +52,48 @@ export interface Overview {
 }
 
 export type SpawnSelection = { preset: string } | { x: number; z: number }
+export interface InventoryItem {
+  id: string
+  amount?: number
+  attachments: Record<string, InventoryItem>
+  cargo: Placement[]
+}
+
+export interface Placement {
+  row: number
+  column: number
+  rotated: boolean
+  item: InventoryItem
+}
+
+export type Inventory = Record<string, InventoryItem>
+export type PresetKind = 'weapon' | 'equipment'
+export interface LoadoutPresetInput {
+  kind: PresetKind
+  name: string
+  inventory: Inventory
+}
+export interface LoadoutPreset extends LoadoutPresetInput {
+  id: string
+}
+export const weaponSlots: readonly string[] = ['Hands', 'Shoulder', 'Melee']
+export const equipment = [
+  ['Hands', 'Hands'],
+  ['Shoulder', 'Shoulder'],
+  ['Melee', 'Second Shoulder'],
+  ['Headgear', 'Head'],
+  ['Mask', 'Face'],
+  ['Eyewear', 'Eyes'],
+  ['Body', 'Jacket'],
+  ['Vest', 'Vest'],
+  ['Back', 'Backpack'],
+  ['Legs', 'Pants'],
+  ['Feet', 'Boots'],
+  ['Gloves', 'Gloves'],
+  ['Hips', 'Belt'],
+  ['Armband', 'Armband'],
+] as const
+
 export interface InventoryEntry {
   ClassName: string
   Parent: number
@@ -95,6 +137,8 @@ export interface PredateAPI {
   perform(action: SessionAction): Promise<void>
   savePreferences(values: Omit<Preferences, 'schema' | 'selected_world'>): Promise<Preferences>
   chooseMod(): Promise<string | null>
+  loadoutPresets(): Promise<LoadoutPreset[]>
+  saveLoadoutPreset(preset: LoadoutPresetInput): Promise<LoadoutPreset>
   setSetupOpen(open: boolean): Promise<void>
   onStatus(callback: (status: SessionStatus) => void): () => void
 }
