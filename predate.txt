@@ -13,3 +13,9 @@ increase max ai to 100.
 add signs of movement.
 
 optimise game launch.
+
+make using non-nv scopes with nvgs difficult or disable again.
+
+fix no input on client launch.
+
+fix hotbar and light / laser conflict.
