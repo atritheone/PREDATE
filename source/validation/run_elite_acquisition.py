@@ -92,12 +92,14 @@ def main():
         report['trials'] = trials
         if len(trials) != 24 or not all(trial['StartedWithoutTarget'] for trial in trials):
             raise RuntimeError('The 24 unseeded acquisition trials did not finish')
-        eligible = [trial for trial in trials if trial['ClearOpening'] and trial['StartedMoving'] and trial['SightLimit'] >= trial['Range']]
+        eligible = [trial for trial in trials if trial['ClearTravelLane'] and trial['ClearOpening']
+                    and trial['StartedMoving'] and trial['SightLimit'] >= trial['Range']]
         confirmed = [trial for trial in eligible if trial['ConfirmedSeconds'] >= 0]
         report['clear_openings'] = len(eligible)
         report['confirmed'] = len(confirmed)
         report['confirmed_while_traveling'] = sum(trial['MovementSpeedAtConfirmation'] >= 1 for trial in confirmed)
         report['median_confirmation_seconds'] = median(trial['ConfirmedSeconds'] for trial in confirmed) if confirmed else None
+        report['misses_with_sustained_view'] = sum(trial['LongestInViewSeconds'] >= 1 for trial in eligible if trial['ConfirmedSeconds'] < 0)
         if len(eligible) < 12 or not confirmed:
             raise RuntimeError('Insufficient usable DayZ exposures')
         report['passed'] = True
