@@ -365,6 +365,11 @@ class PredatePeerRetargetMission : MissionServer
         }
         else if (m_Phase == 2 && lynx.State.Operator.LifeState == "defeated")
         {
+            eAIBase resolvedActor = rook.Actor;
+            eAIGroup resolvedGroup = rook.Group;
+            string resolutionError;
+            bool resolved = m_PredateSession.m_Operators.Resolve("lynx-01", resolvedActor, resolvedGroup, resolutionError);
+            m_Result.Check(resolved && !resolvedActor && !resolvedGroup && !lynx.Actor, "a defeated slot clears reused actor and group references");
             m_Result.Check(receiver.NextPulseAt == m_NextSlot && receiver.Find("lynx-01") && receiver.TargetId == "lynx-01", "remote defeat stays private between pulses");
             // Advance only this disposable fixture's scheduled scan.
             m_ResampleAt = now;

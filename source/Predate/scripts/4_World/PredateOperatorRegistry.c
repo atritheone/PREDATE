@@ -58,6 +58,10 @@ class PredateOperatorRegistry
     // Refuse ambiguity instead of adopting whichever AI happened to be enumerated first.
     bool Resolve(string id, out eAIBase resolvedActor, out eAIGroup resolvedGroup, out string error, PredateOperatorIndex index = null)
     {
+        // A defeated slot resolves successfully without a body. Clear the
+        // caller's outputs even when it reuses the previous slot's variables.
+        resolvedActor = null;
+        resolvedGroup = null;
         PredateOperatorSlot slot = Get(id);
         if (!slot) { error = "Unregistered operator " + id; return false; }
         if (slot.Record.LifeState == "defeated") return true;

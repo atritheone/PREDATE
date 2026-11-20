@@ -6,7 +6,43 @@ enum PredateObservationSource
     SIGNAL = 3,
     IMPACT = 4,
     FOOTPRINT = 5,
-    LIGHT = 6
+    LIGHT = 6,
+    GLIMPSE = 7,
+    FOOTSTEP = 8
+}
+
+class PredateVisualRecognition
+{
+    float Score;
+    float SampleAt = -1;
+    float VisibleAt = -1;
+    float RecordedAt = -1;
+
+    bool Sample(float now, float quality)
+    {
+        if (SampleAt == now) return quality > 0 && Score >= 1;
+        float previous = SampleAt;
+        float elapsed = 0.10;
+        if (SampleAt >= 0) elapsed = Math.Max(0, now - SampleAt);
+        SampleAt = now;
+        if (quality <= 0)
+            Score = Math.Max(0, Score - elapsed * 0.65);
+        else
+        {
+            if (VisibleAt >= 0 && now - VisibleAt > 0.5)
+                Score = Math.Max(0, Score - (now - Math.Max(previous, VisibleAt + 0.5)) * 0.65);
+            Score = Math.Min(1.25, Score + quality * Math.Min(0.25, elapsed));
+            VisibleAt = now;
+        }
+        return quality > 0 && Score >= 1;
+    }
+
+    bool PriorityOver(float currentRangeSq, float challengerRangeSq)
+    {
+        // Retain an engagement unless a closer contact is confirmed and
+        // changes the immediate risk enough to justify switching attention.
+        return Score >= 1 && challengerRangeSq <= 14400 && challengerRangeSq < currentRangeSq * 0.25;
+    }
 }
 
 class PredateObservation
@@ -65,7 +101,7 @@ class PredateObservation
     bool Valid(string owner, float now)
     {
         if (ObserverId != owner || owner == "" || EventKey == "") return false;
-        if (Source < PredateObservationSource.VISUAL || Source > PredateObservationSource.LIGHT) return false;
+        if (Source < PredateObservationSource.VISUAL || Source > PredateObservationSource.FOOTSTEP) return false;
         if (!PredateInformationMath.Finite(ObservedAt) || !PredateInformationMath.Finite(ExpiresAt)) return false;
         if (ObservedAt < 0 || ObservedAt > now || ExpiresAt <= ObservedAt) return false;
         if (!PredateInformationMath.Finite(Confidence) || Confidence < 0 || Confidence > 1) return false;
@@ -80,9 +116,10 @@ class PredateObservation
         if (DistanceBand < 0 || DistanceBand > PredateBearingPulse.MAX_BAND || OverlapLane < 0 || OverlapLane > PredateProtocol.MAX_OPERATORS) return false;
         if (DistanceBand > 0 && (Source != PredateObservationSource.SIGNAL || PulseDistance != 0 || MapRadius != 0 || BearingError != PredateBearingPulse.DEGREES / 2.0)) return false;
         // Noise and bullet impact alone never prove who produced them.
-        if ((Source == PredateObservationSource.AUDIBLE || Source == PredateObservationSource.IMPACT) && SubjectId != "") return false;
+        if (IsAudible() && SubjectId != "") return false;
+        if (Source == PredateObservationSource.FOOTSTEP && (!HasPosition || HasBearing || VisualContactKey != "" || Radius <= 0)) return false;
         if (Source == PredateObservationSource.FOOTPRINT && (!HasPosition || HasBearing || SubjectId != "")) return false;
-        if (Source == PredateObservationSource.LIGHT && (!HasPosition || HasBearing || SubjectId != "" || VisualContactKey != "" || Radius <= 0)) return false;
+        if ((Source == PredateObservationSource.LIGHT || Source == PredateObservationSource.GLIMPSE) && (!HasPosition || HasBearing || SubjectId != "" || VisualContactKey != "" || Radius <= 0)) return false;
         if (Source == PredateObservationSource.VISUAL && (!HasPosition || (SubjectId == "" && VisualContactKey == ""))) return false;
         return true;
     }
@@ -96,6 +133,11 @@ class PredateObservation
     }
 
     bool Expired(float now) { return now >= ExpiresAt; }
+
+    bool IsAudible()
+    {
+        return Source == PredateObservationSource.AUDIBLE || Source == PredateObservationSource.IMPACT || Source == PredateObservationSource.FOOTSTEP;
+    }
 
     float ConfidenceAt(float now)
     {

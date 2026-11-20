@@ -110,6 +110,7 @@ export interface NewOperationSettings {
   startMinute: number
   enemyRespawns: boolean
   respawnDelay: number
+  eliteAI?: boolean
   playerOutfit?: string
   operatorOutfit?: string
   inventory?: InventoryEntry[]

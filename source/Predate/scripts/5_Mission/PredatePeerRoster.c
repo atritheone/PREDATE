@@ -218,6 +218,7 @@ class PredatePeerRoster
         actor.m_PredateSignatureRegistered = true;
         actor.eAI_SetAccuracy(session.m_HuntConfig.BotAccuracyMin, session.m_HuntConfig.BotAccuracyMax);
         actor.eAI_SetThreatDistanceLimit(session.m_HuntConfig.ThreatDistance);
+        actor.eAI_SetNoiseInvestigationDistanceLimit(PredateConfig.DEFAULT_HEARING_DISTANCE);
         actor.eAI_SetUnlimitedReload(0);
         session.SoloApplyCombatRules(actor);
         actor.SetMovementSpeedLimits(0, 0);

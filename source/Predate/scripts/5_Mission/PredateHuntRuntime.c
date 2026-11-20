@@ -122,26 +122,35 @@ class PredateHuntRuntime
             }
             Scan(observer, participants, session.m_HuntConfig, now);
         }
+        int routeBudget = 3;
         foreach (PredateHuntParticipant hunter : participants)
         {
             if (!hunter.Receiver) continue;
-            Think(session, hunter, playerId, now);
+            if (Think(session, hunter, playerId, now, routeBudget > 0)) routeBudget--;
         }
     }
 
-    static void Think(PredateSession session, PredateHuntParticipant hunter, string playerId, float now)
+    static bool Think(PredateSession session, PredateHuntParticipant hunter, string playerId, float now, bool canPlan)
     {
         eAIBase actor = eAIBase.Cast(hunter.Actor);
-        if (!actor || !actor.IsAlive()) return;
+        if (!actor || !actor.IsAlive()) return false;
+        if (!actor.m_PredateAIConfigured)
+        {
+            actor.m_PredateEliteAI = session.m_HuntConfig.EliteAI;
+            actor.m_PredateAITrace = FileExist("$profile:PredateAITrace.txt");
+            actor.m_PredateAIConfigured = true;
+        }
         bool combat = actor.PredateTacticalPriority(now);
         bool recover = actor.PredateOwnActionPriority();
+        bool limited = actor.m_PredateEliteAI && (actor.GetHealth01("", "Health") <= 0.5 || actor.GetHealth01("", "Blood") < 0.7);
+        string previousMode = hunter.Hunter.Mode;
         PredateHuntReceiver receiver = hunter.Receiver;
         vector position = hunter.Position;
         PredateHuntSelection.Update(receiver, hunter.Hunter, position, now, combat || recover);
         PredateSignalTrack track = receiver.Find(receiver.TargetId);
         string subject = receiver.TargetId;
         if (subject == "player-01") subject = playerId;
-        if (!combat && !recover && track && track.Reception == PredatePulseReception.CLOSE && track.History.Count() > 0)
+        if (!combat && !recover && !limited && now >= hunter.Hunter.WatchUntil && track && track.Reception == PredatePulseReception.CLOSE && track.History.Count() > 0)
         {
             PredateObservation last = track.History[track.History.Count() - 1];
             if (last.DistanceBand <= 2 && !last.Expired(now) && receiver.FinalSearchKey != last.EventKey)
@@ -152,24 +161,39 @@ class PredateHuntRuntime
                 hunter.Hunter.SearchObservedAt = now;
                 hunter.Hunter.SearchUntil = now + PredateBearingPulse.INTERVAL;
                 hunter.Hunter.SearchStep = 0;
+                hunter.Hunter.CheckedSectors = 0;
                 PredateHunterBrain.Goal(hunter.Hunter, position, hunter.Hunter.SearchCenter, now, "search", "Check the area from the last close pulse", last.EventKey);
             }
         }
-        PredateHunterBrain.Step(hunter.Hunter, position, now, hunter.Memory, track, combat, recover, now < hunter.InterceptedUntil, session.m_WorldState.PlayerLastDeathAt, playerId, subject, receiver.Replanned);
+        if (actor.m_PredateEliteAI && !combat && !recover && hunter.Hunter.HasGoal && hunter.Hunter.WatchUntil > 0 && now >= hunter.Hunter.WatchUntil && hunter.Hunter.GoalRevision == hunter.Hunter.SearchWatchRevision)
+        {
+            PredateRoutePlanner.RecordObservedSectors(actor, hunter.Hunter, now);
+            hunter.Hunter.WatchUntil = 0;
+        }
+        PredateHunterBrain.Step(hunter.Hunter, position, now, hunter.Memory, track, combat, recover, now < hunter.InterceptedUntil, session.m_WorldState.PlayerLastDeathAt, playerId, subject, receiver.Replanned, actor.m_PredateEliteAI, limited);
         if (track && track.LastSample && track.LastSample.ObservedAt == now && session.m_PeerRoster)
             session.m_PeerRoster.MarkInterception(session, track.SubjectId, now);
         else if (track && track.LastSample && track.LastSample.ObservedAt == now && track.SubjectId == "player-01")
             PredateSignalService.MarkPlayerHunted(session, now);
+        bool planned;
         if (combat || recover)
         {
             if (actor.m_PredateAppliedGoal != -1) actor.PredateReleaseRoute();
         }
         else
         {
-            if (!hunter.Hunter.HasGoal && receiver.TargetId == "" && now >= hunter.Hunter.ScoutAt)
+            if (!limited && !hunter.Hunter.HasGoal && receiver.TargetId == "" && now >= hunter.Hunter.ScoutAt && now >= hunter.Hunter.WatchUntil)
                 Scout(hunter.Hunter, position, now);
-            actor.PredateApplyRoute(hunter.Hunter);
+            bool needsPath = hunter.Hunter.HasGoal && actor.m_PredateAppliedGoal != hunter.Hunter.GoalRevision;
+            if (!needsPath || canPlan)
+            {
+                actor.PredateApplyRoute(hunter.Hunter);
+                planned = needsPath;
+            }
         }
+        if (previousMode != hunter.Hunter.Mode && actor.m_PredateAITrace)
+            Print("[PredateIntent] operator=" + hunter.Id + "; simulation=" + now + "; previous=" + previousMode + "; next=" + hunter.Hunter.Mode + "; evidence=" + hunter.Hunter.EvidenceKey + "; revision=" + hunter.Hunter.GoalRevision + "; reason=" + hunter.Hunter.Reason);
+        return planned;
     }
 
     static void Scout(PredateHunterState state, vector own, float now)

@@ -117,6 +117,61 @@ modded class eAIBase
     int m_PredateFiredShots;
     int m_PredateFireAttempts;
     string m_PredateFireBlock = "Native FSM has not requested firing";
+    EntityAI m_PredateReconsiderTarget;
+    float m_PredateBlockedSince = -1;
+    float m_PredateReconsiderAt;
+    float m_PredateAimPauseUntil;
+    float m_PredateNextAimPause;
+    EntityAI m_PredateAimPauseTarget;
+    vector m_PredateAimPausePosition;
+
+    override void OverrideTargetPosition(eAITarget target, bool isFinal = true)
+    {
+        if (m_PredateEliteAI && target && target.m_LOS && m_PredateAimPauseTarget && target.GetEntity() == m_PredateAimPauseTarget && m_PredateSimulationTime < m_PredateAimPauseUntil && !m_eAI_IsInDangerByArea && !eAI_IsSideStepping() && GetCurrentCommandID() == DayZPlayerConstants.COMMANDID_MOVE)
+        {
+            OverrideTargetPosition(m_PredateAimPausePosition, true, 0.25, false);
+            return;
+        }
+        super.OverrideTargetPosition(target, isFinal);
+    }
+
+    void PredateRequestAimPause(eAITarget target, float distance)
+    {
+        float now = m_PredateSimulationTime;
+        if (!m_PredateEliteAI || m_PredateProbeShooter || m_PredateVisualTarget != target.GetEntity() || now < m_PredateNextAimPause || m_eAI_IsInDangerByArea || eAI_IsSideStepping() || GetCurrentCommandID() != DayZPlayerConstants.COMMANDID_MOVE) return;
+        Weapon_Base weapon = Weapon_Base.Cast(GetHumanInventory().GetEntityInHands());
+        if (!weapon || !eAI_CanFire(weapon) || !PredateShotLane.Clear(this, weapon, GetAimPosition(), target.GetEntity())) return;
+
+        float pause = 2.1;
+        if (distance > PredateFirePolicy.LONG_RANGE) pause = 2.8;
+        m_PredateAimPausePosition = GetPosition();
+        m_PredateAimPauseTarget = target.GetEntity();
+        m_PredateAimPauseUntil = now + pause;
+        m_PredateNextAimPause = m_PredateAimPauseUntil + 2.0;
+        PredateTraceAI("paused movement to settle aim");
+    }
+
+    void PredateDeferredShot(eAITarget target, string reason, bool canChangeView)
+    {
+        m_PredateFireBlock = reason;
+        if (!m_PredateEliteAI || !target.IsPlayer() || m_PredateProbeShooter) return;
+        float now = m_PredateSimulationTime;
+        if (m_PredateReconsiderTarget != target.GetEntity() || m_PredateBlockedSince < 0)
+        {
+            m_PredateReconsiderTarget = target.GetEntity();
+            m_PredateBlockedSince = now;
+        }
+        if (now - m_PredateBlockedSince < 2.5) return;
+        m_PredateBlockedSince = now;
+        m_PredateReconsiderAt = now + 1.5;
+        if (canChangeView && GetCurrentCommandID() == DayZPlayerConstants.COMMANDID_MOVE)
+        {
+            eAI_ForceSideStep(0.8, null, 0, false);
+            m_PredateFireBlock = "Checking a different view after repeated shot denial";
+        }
+        else m_PredateFireBlock = "Watching after repeated shot denial: " + reason;
+        PredateTraceAI(m_PredateFireBlock);
+    }
 
     override float eAI_GetVisibility(float distance, eAITarget target)
     {
@@ -197,6 +252,7 @@ modded class eAIBase
             if (!EnforceLOS(0.25))
             {
                 m_PredateAimSince = 0;
+                m_PredateBlockedSince = -1;
                 m_PredateFireBlock = "Fresh visibility check failed";
                 return;
             }
@@ -214,10 +270,19 @@ modded class eAIBase
         }
         float now = GetGame().GetTickTime();
         if (now < m_PredateNextShotTime) { m_PredateFireBlock = "Cadence cooldown"; return; }
-        if (!target.m_LOS || !eAI_HasLOS() || Expansion_GetMovementSpeed() > 1.1)
+        if (m_PredateEliteAI && target.GetEntity() == m_PredateReconsiderTarget && m_PredateSimulationTime < m_PredateReconsiderAt) return;
+        if (!target.m_LOS || !eAI_HasLOS())
         {
             m_PredateAimSince = 0;
-            m_PredateFireBlock = "Visibility or movement gate";
+            m_PredateAimPauseUntil = 0;
+            m_PredateFireBlock = "Visibility gate";
+            return;
+        }
+        if (Expansion_GetMovementSpeed() > 1.1)
+        {
+            m_PredateAimSince = 0;
+            PredateRequestAimPause(target, distance);
+            m_PredateFireBlock = "Movement gate";
             return;
         }
         // Reacquire after losing contact, moving quickly, or switching target.
@@ -239,27 +304,28 @@ modded class eAIBase
         Weapon_Base weapon = Weapon_Base.Cast(GetHumanInventory().GetEntityInHands());
         if (!weapon) { m_PredateFireBlock = "No firearm"; return; }
         if (!eAI_CanFire(weapon)) { m_PredateFireBlock = "Native weapon is busy or not ready"; return; }
-        if (!PredateShotLane.Clear(this, weapon, point, target.GetEntity())) { m_PredateFireBlock = "No clear firearm lane"; return; }
+        if (!PredateShotLane.Clear(this, weapon, point, target.GetEntity())) { PredateDeferredShot(target, "No clear firearm lane", true); return; }
         if (longRange)
         {
             float flight, flightDistance, damageCoef;
             if (weapon.ShootsExplosiveAmmo() || !PredateMotionAim.Flight(weapon, origin, point, flight, flightDistance, damageCoef) || !PredateInformationMath.Finite(damageCoef) || damageCoef < 0.35)
             {
-                m_PredateFireBlock = "Chambered round unsuitable at this range";
+                PredateDeferredShot(target, "Chambered round unsuitable at this range", false);
                 return;
             }
             bool moving = target.m_PredateObservedVelocity.LengthSq() > 0.25;
             if (moving && PredateMotionAim.Lead(this, weapon, target, target.m_PredateObservedAimOffset).LengthSq() < 0.01)
             {
-                m_PredateFireBlock = "No reliable lead on distant moving contact";
+                PredateDeferredShot(target, "No reliable lead on distant moving contact", false);
                 return;
             }
             vector aimedPoint = origin + aim.Normalized() * flightDistance;
-            if (!PredateShotLane.Clear(this, weapon, aimedPoint, target.GetEntity(), !moving)) { m_PredateFireBlock = "Aim lane does not offer a clean shot"; return; }
+            if (!PredateShotLane.Clear(this, weapon, aimedPoint, target.GetEntity(), !moving)) { PredateDeferredShot(target, "Aim lane does not offer a clean shot", true); return; }
         }
         bool changed;
         if (!PredateDeliberateFireMode(weapon, changed)) { m_PredateFireBlock = "Supported deliberate fire mode unavailable"; return; }
         m_eAI_QueuedShots = 1;
+        m_PredateBlockedSince = -1;
         m_PredateFireBlock = "Native weapon action requested";
         super.TryFireWeapon();
     }
@@ -267,6 +333,7 @@ modded class eAIBase
     void PredateOnShotFired()
     {
         if (!m_PredateCombatEnabled) return;
+        PredateTraceAI("fired");
         eAITarget target = GetTarget();
         if (!target) return;
         float distance = Math.Sqrt(target.GetDistanceSq(true));
@@ -282,6 +349,7 @@ modded class eAIBase
         }
         m_PredateNextShotTime = GetGame().GetTickTime() + interval;
         m_PredateAimSince = 0;
+        m_PredateAimPauseUntil = 0;
         if (m_PredateFiredShots <= 10 || m_PredateFiredShots % 20 == 0)
             Print("[Predate] Deliberate shot " + m_PredateFiredShots + "; range=" + Math.Round(distance) + "m; minimum pause=" + interval + "s.");
     }

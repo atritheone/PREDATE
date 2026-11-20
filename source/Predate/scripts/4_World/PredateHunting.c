@@ -5,6 +5,8 @@ modded class eAIBase
     int m_PredateAppliedGoal = -1;
     int m_PredateLookStep;
     int m_PredateNextLookAt;
+    vector m_PredateWatchPoint;
+    float m_PredateWatchUntil;
 
     override float GetThreatToSelf(bool ignoreLOS = false)
     {
@@ -20,13 +22,16 @@ modded class eAIBase
         // A genuine visual contact immediately returns control to combat,
         // without waiting for the next strategic/session update.
         eAITarget target = GetTarget();
-        if (visible && target && target.IsPlayer()) m_PredateStrategicControl = false;
+        if (visible && target && m_PredateVisualTarget && target.GetEntity() == m_PredateVisualTarget)
+            m_PredateStrategicControl = false;
         return visible;
     }
 
     bool PredateTacticalPriority(float now)
     {
-        if (m_PredateLastVisualAt >= 0 && now - m_PredateLastVisualAt <= 12) return true;
+        float contactHold = 12;
+        if (m_PredateEliteAI) contactHold = 2;
+        if (m_PredateLastVisualAt >= 0 && now - m_PredateLastVisualAt <= contactHold) return true;
         if (!m_PredateMemory) return false;
         foreach (PredateObservation observation : m_PredateMemory.Entries)
             if (observation.Source == PredateObservationSource.IMPACT && now - observation.ObservedAt <= 3) return true;
@@ -37,6 +42,7 @@ modded class eAIBase
     {
         if (IsUnconscious() || IsRestrained() || IsInTransport() || IsFighting()) return true;
         if (GetActionManager().GetRunningAction()) return true;
+        if (m_PredateEliteAI) return IsBleeding() && GetBandageToUse() != null;
         if (GetHealth01("", "Health") <= 0.5 || GetHealth01("", "Blood") < 0.7) return true;
         if (GetBleedingManagerServer() && GetBleedingManagerServer().GetBleedingSourcesCount() > 0) return true;
         return false;
@@ -55,6 +61,40 @@ modded class eAIBase
         }
 
         float heading;
+        if (m_PredateEliteAI && m_PredateSimulationTime < m_PredateWatchUntil)
+        {
+            vector eyes = GetBonePositionWS(GetBoneIndexByName("Head"));
+            vector toward = m_PredateWatchPoint - eyes;
+            if (toward.LengthSq() > 1)
+            {
+                vector angles = toward.VectorToAngles();
+                float relative = ExpansionMath.AngleDiff2(GetOrientation()[0], angles[0]);
+                if (Math.AbsFloat(relative) > 60)
+                {
+                    vector point = m_PredateWatchPoint;
+                    point[1] = eyes[1];
+                    LookAtPosition(point);
+                    AimAtPosition(point);
+                }
+                else
+                {
+                    LookAtDirection(Vector(relative, Math.Clamp(angles[1], -25, 25), 0).AnglesToVector());
+                    AimAtDirection("0 0 1");
+                }
+                return true;
+            }
+        }
+        if (m_PredateEliteAI && m_PredateRouteActive && m_PredateSimulationTime < m_PredateGlanceUntil)
+        {
+            vector towardClue = m_PredateGlancePoint - GetPosition();
+            float relativeClue = ExpansionMath.AngleDiff2(GetOrientation()[0], towardClue.VectorToAngles()[0]);
+            if (towardClue.LengthSq() > 1 && Math.AbsFloat(relativeClue) <= 100)
+            {
+                LookAtDirection(Vector(Math.Clamp(relativeClue, -75, 75), 0, 0).AnglesToVector());
+                AimAtDirection("0 0 1");
+                return true;
+            }
+        }
         if (m_PredateRouteActive)
         {
             vector toWaypoint = m_eAI_CommandMove.GetWaypoint() - GetPosition();
@@ -63,6 +103,7 @@ modded class eAIBase
         }
         float sideLook = 68;
         if (m_PredateRouteActive) sideLook = 46;
+        if (m_PredateRouteActive && m_PredateEliteAI) sideLook = 55;
         if (m_PredateLookStep == 1) heading -= sideLook;
         if (m_PredateLookStep == 3) heading += sideLook;
         vector gaze = Vector(Math.Clamp(heading, -75, 75), 0, 0);
@@ -80,21 +121,26 @@ modded class eAIBase
 
     void PredateReleaseRoute()
     {
+        if (m_PredateAppliedGoal >= 0)
+            Print("[PredateRoute] release; operator=" + m_PredateOperatorId + "; simulation=" + m_PredateSimulationTime + "; revision=" + m_PredateAppliedGoal);
         m_PredateStrategicControl = false;
         m_PredateRouteActive = false;
         m_PredateAppliedGoal = -1;
+        m_PredateWatchUntil = 0;
+        m_PredateGlanceUntil = 0;
         GetGroup().ClearWaypoints();
     }
 
     void PredateApplyRoute(PredateHunterState state)
     {
-        bool claim = !m_PredateStrategicControl;
         m_PredateStrategicControl = true;
         m_PredateRouteActive = state.HasGoal;
+        m_PredateWatchPoint = state.WatchPoint;
+        m_PredateWatchUntil = state.WatchUntil;
         // Observation stops need the same active perception as travel.
         if (GetIsSimulationDisabled()) DisableSimulation(false);
-        if (!claim && m_PredateAppliedGoal == state.GoalRevision) return;
-        m_PredateAppliedGoal = state.GoalRevision;
+        if (m_PredateAppliedGoal == state.GoalRevision) return;
+        int previousRevision = m_PredateAppliedGoal;
         m_PredateLookStep = 0;
         m_PredateNextLookAt = GetGame().GetTime() + Math.RandomIntInclusive(700, 1200);
         eAIGroup group = GetGroup();
@@ -104,7 +150,7 @@ modded class eAIBase
         eAI_LeaveCover();
         if (state.HasGoal)
         {
-            vector destination = state.Goal;
+            vector destination = state.RouteDestination();
             float size = GetGame().GetWorld().GetWorldSize();
             bool legal = destination[0] > 10 && destination[2] > 10 && destination[0] < size - 10 && destination[2] < size - 10;
             if (legal) legal = !GetGame().SurfaceIsSea(destination[0], destination[2]) && !GetGame().SurfaceIsPond(destination[0], destination[2]);
@@ -119,7 +165,7 @@ modded class eAIBase
             {
                 vector intermediate;
                 vector ownPosition = GetPosition();
-                if (PredateRoutePlanner.Plan(ownPosition, destination, intermediate))
+                if (PredateRoutePlanner.Plan(ownPosition, destination, intermediate, m_PredateEliteAI, state))
                 {
                     group.AddWaypoint(intermediate);
                     group.AddWaypoint(destination);
@@ -134,7 +180,10 @@ modded class eAIBase
                 PredateHunterBrain.Hold(state, "reassess", "Proposed route leaves traversable map terrain");
             }
         }
-        Print("[PredateHunter] " + state.Mode + "; reason=" + state.Reason + "; evidence=" + state.EvidenceKey + "; goalRevision=" + state.GoalRevision + "; goal=" + state.Goal + "; " + PredateRouteDiagnostic());
+        m_PredateAppliedGoal = state.GoalRevision;
+        string identityTrace;
+        if (m_PredateAITrace) identityTrace = "; actor=" + this;
+        Print("[PredateHunter] " + state.Mode + "; reason=" + state.Reason + "; evidence=" + state.EvidenceKey + "; goalRevision=" + state.GoalRevision + "; goal=" + state.Goal + "; operator=" + state.OwnerId + "; simulation=" + m_PredateSimulationTime + "; detour=" + state.HasDetour + "; previousRevision=" + previousRevision + identityTrace + "; " + PredateRouteDiagnostic());
     }
 }
 

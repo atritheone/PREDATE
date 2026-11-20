@@ -52,6 +52,33 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
         return false;
     }
 
+    float CheckHearing(eAIBase observer, PlayerBase target, vector heardAt, float now)
+    {
+        bool previousPreset = observer.m_PredateEliteAI;
+        observer.m_PredateEliteAI = true;
+        eAINoiseParams step = new eAINoiseParams("CfgVehicles SurvivorBase NoiseStepStand", eAINoiseType.SOUND);
+        step.m_Strength = 200;
+        int pending = observer.m_PredatePendingSounds.Count();
+        eAINoiseSystem.AddNoiseEx(target, heardAt, step, 0.001);
+        Check(observer.m_PredatePendingSounds.Count() == pending, "a footstep outside its audible radius produces no clue");
+        eAINoiseSystem.AddNoiseEx(target, heardAt, step);
+        Check(observer.m_PredatePendingSounds.Count() == pending + 1, "Expansion's footstep noise reaches the hearing queue");
+        observer.PredateAdvanceInformation(now + 1);
+        PredateObservation singleStep = observer.m_PredateMemory.Latest("", PredateObservationSource.FOOTSTEP, now + 1);
+        Check(singleStep && singleStep.Confidence < 0.4 && singleStep.Radius >= 5 && singleStep.SubjectId == "", "one step is a weak anonymous clue");
+        eAINoiseSystem.AddNoiseEx(target, heardAt, step);
+        observer.PredateAdvanceInformation(now + 2);
+        PredateObservation repeatedStep = observer.m_PredateMemory.Latest("", PredateObservationSource.FOOTSTEP, now + 2);
+        Check(repeatedStep && repeatedStep.Confidence >= 0.4 && observer.m_eAI_NoiseTargetInfo.GetSource() == null, "close repeated steps strengthen the area without revealing who made them");
+        eAINoiseParams shot = new eAINoiseParams("CfgWeapons M4A1 NoiseShoot", eAINoiseType.SHOT);
+        eAINoiseSystem.AddNoiseEx(target, heardAt, shot);
+        observer.PredateAdvanceInformation(now + 3);
+        PredateObservation report = observer.m_PredateMemory.Latest("", PredateObservationSource.AUDIBLE, now + 3);
+        Check(report && report.Confidence > 0.4 && report.ExpiresAt - report.ObservedAt > 12, "an audible muzzle report stays actionable longer than a footstep");
+        observer.m_PredateEliteAI = previousPreset;
+        return now + 3;
+    }
+
     void RunNative(PredateSession session)
     {
         eAIBase observer = session.m_HuntBot;
@@ -203,6 +230,7 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
         PredateObservation sound = observer.m_PredateMemory.Latest("", PredateObservationSource.IMPACT, soundTime);
         Check(sound && sound.SubjectId == "" && sound.Radius >= 5, "heard impact remains an uncertain unidentified event");
         Check(!observer.m_PredateMemory.Latest("contact-a", PredateObservationSource.IMPACT, soundTime), "a nearby impact does not identify the selected signature");
+        session.m_WorldState.SimulationSeconds = CheckHearing(observer, target, hiddenA, soundTime);
         Session = session;
         Observer = observer;
         Target = target;
@@ -274,6 +302,7 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
             State.UpdatePosition(false);
             vector actual = Target.GetPosition();
             Check(vector.Distance(State.m_LastKnownPosition, actual) < 0.1, "fresh visual observation updates the cached location");
+            CheckEliteRecognition();
         }
         else
         {
@@ -286,5 +315,23 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
         }
         Target.DisableSimulation(true);
         CheckSightRange();
+    }
+
+    void CheckEliteRecognition()
+    {
+        bool previousPolicy = Observer.m_PredateEliteAI;
+        float now = Observer.m_PredateSimulationTime;
+        State.m_PredateRecognition = null;
+        Observer.m_PredateEliteAI = true;
+        bool first = Observer.PredateRecognize(State, Target, 4);
+        bool duplicate = Observer.PredateRecognize(State, Target, 4);
+        PredateObservation clue = Observer.m_PredateMemory.Latest("", PredateObservationSource.GLIMPSE, now);
+        Check(!first && !duplicate && clue && clue.SubjectId == "" && clue.VisualContactKey == "" && clue.Radius >= 12, "the first glimpse yields an anonymous area regardless of repeated sensor callers");
+        Observer.m_PredateSimulationTime = now + 0.25;
+        Check(Observer.PredateRecognize(State, Target, 4), "a sustained second observation confirms the contact");
+        Check(!Observer.PredateRecognize(State, Target, 0), "occlusion denies visual permission in the same simulation tick");
+        Observer.m_PredateSimulationTime = now;
+        Observer.m_PredateEliteAI = previousPolicy;
+        State.m_PredateRecognition = null;
     }
 }

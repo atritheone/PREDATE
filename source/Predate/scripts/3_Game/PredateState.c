@@ -114,6 +114,7 @@ class PredateState
 class PredateConfig
 {
     static const float DEFAULT_THREAT_DISTANCE = 1000;
+    static const float DEFAULT_HEARING_DISTANCE = 600;
     int SchemaVersion;
     int StartHour = -1;
     int StartMinute;
@@ -142,6 +143,7 @@ class PredateConfig
     bool EnableFairInformation;
     bool EnableSharedSignals;
     bool EnableStrategicHunter;
+    bool EliteAI = true;
     bool EnableFootprints;
     bool EnableOperatorRespawns;
     float OperatorRespawnDelay = 120;

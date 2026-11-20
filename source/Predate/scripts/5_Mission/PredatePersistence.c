@@ -118,7 +118,7 @@ class PredatePersistence
         foreach (PredateObservation pendingSound : s.m_WorldState.PendingSounds)
         {
             if (!pendingSound || !pendingSound.Valid(record.Id, s.m_WorldState.SimulationSeconds + 3)) return Fail(s, "Invalid pending perception event");
-            if (pendingSound.Source != PredateObservationSource.AUDIBLE && pendingSound.Source != PredateObservationSource.IMPACT) return Fail(s, "Invalid pending perception source");
+            if (!pendingSound.IsAudible()) return Fail(s, "Invalid pending perception source");
         }
         if (record.Id != "raven-01" || record.StorageKey == "" || record.Deployment < 1)
             return Fail(s, "Invalid persistent operator identity");

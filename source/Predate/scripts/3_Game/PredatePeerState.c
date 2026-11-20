@@ -31,7 +31,7 @@ class PredatePeerState
         foreach (PredateObservation sound : PendingSounds)
         {
             if (!sound || !sound.Valid(Operator.Id, now + 3)) return false;
-            if (sound.Source != PredateObservationSource.AUDIBLE && sound.Source != PredateObservationSource.IMPACT) return false;
+            if (!sound.IsAudible()) return false;
         }
         return true;
     }

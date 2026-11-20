@@ -11,6 +11,87 @@ class PredateHunterTests
         Print("[PredateHunterTest] FAIL: " + label);
     }
 
+    void CheckEliteDecisions(vector own)
+    {
+        PredateVisualRecognition recognition = new PredateVisualRecognition;
+        Check(!recognition.Sample(1, 4) && !recognition.Sample(1, 4) && recognition.Score < 0.5, "the first glance and duplicate calls at one simulation time cannot confirm a contact");
+        Check(recognition.Sample(1.25, 4), "sustained clear exposure confirms a contact");
+        Check(recognition.PriorityOver(90000, 10000) && !recognition.PriorityOver(90000, 22500), "a confirmed near contact can interrupt a distant engagement");
+        Check(!recognition.Sample(1.25, 0) && !recognition.Sample(3, 0) && recognition.Score < 0.2, "hard cover cancels confirmation and confidence fades in simulation time");
+        PredateVisualRecognition distant = new PredateVisualRecognition;
+        distant.Sample(2, 0.75);
+        Check(!distant.Sample(2.25, 0.75), "partial distant exposure builds suspicion slowly");
+        Check(!distant.PriorityOver(90000, 100), "an unconfirmed second contact cannot steal an engagement");
+
+        PredateObservationMemory evidence = new PredateObservationMemory;
+        evidence.OwnerId = "raven-01";
+        PredateObservation visual = new PredateObservation;
+        visual.ObserverId = evidence.OwnerId;
+        visual.EventKey = "visual-1";
+        visual.VisualContactKey = "sighting-1";
+        visual.Source = PredateObservationSource.VISUAL;
+        visual.ObservedAt = 10;
+        visual.ExpiresAt = 100;
+        visual.Confidence = 0.9;
+        visual.HasPosition = true;
+        visual.Estimate = own + "50 0 0";
+        visual.Radius = 5;
+        evidence.Add(visual, 10);
+        PredateObservation glimpse = visual.Copy();
+        glimpse.EventKey = "glimpse-1";
+        glimpse.VisualContactKey = "";
+        glimpse.Source = PredateObservationSource.GLIMPSE;
+        glimpse.ObservedAt = 12;
+        glimpse.Confidence = 0.45;
+        glimpse.Estimate = own + "0 0 80";
+        glimpse.Radius = 25;
+        evidence.Add(glimpse, 12);
+        PredateObservation preferred = PredateHunterBrain.LatestContact(evidence, 12, -1, "", "", true);
+        Check(preferred && preferred.EventKey == visual.EventKey, "a new weak cue does not replace strong recent evidence");
+        evidence.Entries.Clear();
+        evidence.Add(glimpse, 12);
+        PredateHunterState inspect = new PredateHunterState;
+        PredateHunterBrain.Step(inspect, own, 12, evidence, null, false, false, false, -1, "", "", false, true);
+        Check(inspect.Mode == "observe" && !inspect.HasGoal && inspect.WatchPoint == glimpse.Estimate && inspect.WatchUntil > 12, "an anonymous glimpse produces a deliberate look and no pursuit goal");
+
+        inspect.SearchCenter = own;
+        inspect.SearchRadius = 40;
+        inspect.SearchObservedAt = 12;
+        inspect.CheckedSectors = 254;
+        vector next;
+        Check(PredateHunterBrain.NextSearchPosition(inspect, own, 12, next) && next == PredateHunterBrain.SearchSector(inspect, 0, 12), "a search excludes sectors already checked");
+        inspect.CheckedSectors = 255;
+        Check(!PredateHunterBrain.NextSearchPosition(inspect, own, 12, next), "a checked area supplies no repeat search position");
+
+        PredateHunterState wounded = new PredateHunterState;
+        wounded.SearchUntil = 100;
+        PredateHunterBrain.Goal(wounded, own, own + "200 0 0", 12, "approach", "Earlier bearing", "pulse-1");
+        evidence.Entries.Clear();
+        PredateHunterBrain.Step(wounded, own, 13, evidence, null, false, false, false, -1, "", "", false, true, true);
+        Check(!wounded.HasGoal && wounded.Mode == "hold", "an injured Operator drops a long pursuit when no current contact requires a response");
+
+        PredateHunterState listening = new PredateHunterState;
+        PredateObservation footstep = glimpse.Copy();
+        footstep.Source = PredateObservationSource.FOOTSTEP;
+        footstep.EventKey = "step-1";
+        footstep.Confidence = 0.25;
+        evidence.Add(footstep, 12);
+        PredateHunterBrain.Step(listening, own, 12, evidence, null, false, false, false, -1, "", "", false, true);
+        Check(listening.Mode == "observe" && !listening.HasGoal, "one footstep makes the hunter check the area without starting pursuit");
+        footstep.EventKey = "step-2";
+        footstep.ObservedAt = 14;
+        footstep.Confidence = 0.50;
+        evidence.Add(footstep, 14);
+        PredateHunterBrain.Step(listening, own, 14, evidence, null, false, false, false, -1, "", "", false, true);
+        Check(listening.Mode == "investigate" && listening.HasGoal, "corroborated footsteps can replace a brief look with investigation");
+        int stepRevision = listening.GoalRevision;
+        footstep.EventKey = "step-3";
+        footstep.ObservedAt = 16;
+        evidence.Add(footstep, 16);
+        PredateHunterBrain.Step(listening, own, 16, evidence, null, false, false, false, -1, "", "", false, true);
+        Check(listening.GoalRevision == stepRevision, "overlapping sounds preserve an active investigation route");
+    }
+
     void Run()
     {
         PredateHunterState state = new PredateHunterState;
@@ -18,6 +99,7 @@ class PredateHunterTests
         memory.OwnerId = "raven-01";
         PredateSignalTrack track = PredateSignalService.Track("raven-01", "player-01");
         vector own = "5000 0 5000";
+        CheckEliteDecisions(own);
         PredateHunterBrain.Step(state, own, 0, memory, track, false, false);
         Check(!state.HasGoal && state.Mode == "hold", "no evidence provides no invented destination");
         PredateConfig config = new PredateConfig;
@@ -83,9 +165,18 @@ class PredateHunterTests
         PredateHunterBrain.Goal(blocked, own, "5100 0 5000", 0, "observe", "fixture route", "fixture");
         PredateHunterBrain.Step(blocked, own, 21, memory, emptyTrack, false, false);
         Check(blocked.RouteFailures == 1 && blocked.GoalRevision == 2, "measured twenty-second stall requests one local route alternative");
-        Check(PredateHunterBrain.Distance(own, blocked.Goal) < 30, "detour is normalized and remains local");
-        PredateHunterBrain.Step(blocked, own, 42, memory, emptyTrack, false, false);
-        PredateHunterBrain.Step(blocked, own, 63, memory, emptyTrack, false, false);
+        vector originalGoal = blocked.Goal;
+        vector detour = blocked.RouteDestination();
+        Check(blocked.HasDetour && PredateHunterBrain.Distance(own, detour) < 30 && originalGoal == "5100 0 5000", "local detour preserves the original destination");
+        string detourError;
+        PredateHunterState resumedDetour = new PredateHunterState;
+        bool savedDetour = JsonFileLoader<PredateHunterState>.SaveFile("$profile:HunterRoundTrip.json", blocked, detourError);
+        bool loadedDetour = JsonFileLoader<PredateHunterState>.LoadFile("$profile:HunterRoundTrip.json", resumedDetour, detourError);
+        Check(savedDetour && loadedDetour && resumedDetour.Validate(21) && resumedDetour.RouteDestination() == detour && resumedDetour.Goal == originalGoal, "save and reopen retain both destinations");
+        PredateHunterBrain.Step(blocked, detour, 22, memory, emptyTrack, false, false);
+        Check(!blocked.HasDetour && blocked.HasGoal && blocked.RouteDestination() == originalGoal && blocked.RouteFailures == 1 && blocked.GoalRevision == 3, "detour arrival resumes the original goal");
+        PredateHunterBrain.Step(blocked, detour, 43, memory, emptyTrack, false, false);
+        PredateHunterBrain.Step(blocked, detour, 64, memory, emptyTrack, false, false);
         Check(blocked.RouteFailures == 3 && !blocked.HasGoal && blocked.Mode == "reassess", "repeated blockage safely holds without teleportation");
         PredateHunterState search = new PredateHunterState;
         search.SearchCenter = own;

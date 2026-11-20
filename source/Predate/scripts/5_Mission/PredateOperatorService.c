@@ -247,7 +247,7 @@ class PredateOperatorService
         s.m_HuntBot.PredateBindInformation(s.m_HuntConfig.EnableFairInformation, s.m_HuntProgress.Operator.Id, s.m_WorldState.Observations, s.m_WorldState.PendingSounds, s.m_WorldState.SimulationSeconds);
         s.m_HuntBot.eAI_SetAccuracy(s.m_HuntConfig.BotAccuracyMin, s.m_HuntConfig.BotAccuracyMax);
         s.m_HuntBot.eAI_SetThreatDistanceLimit(s.m_HuntConfig.ThreatDistance);
-        s.m_HuntBot.eAI_SetNoiseInvestigationDistanceLimit(600);
+        s.m_HuntBot.eAI_SetNoiseInvestigationDistanceLimit(PredateConfig.DEFAULT_HEARING_DISTANCE);
         s.m_HuntBot.eAI_SetDamageMultiplier(1);
         s.m_HuntBot.eAI_SetDamageReceivedMultiplier(1);
         s.m_HuntBot.eAI_SetUnlimitedReload(0);

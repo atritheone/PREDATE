@@ -29,7 +29,7 @@ class PredateRoutePlanner
         return Math.Min(8, cover);
     }
 
-    static float LegCost(vector from, vector to)
+    static float LegCost(vector from, vector to, bool countCover = true)
     {
         float distance = PredateHunterBrain.Distance(from, to);
         if (distance < 1) return 0;
@@ -46,12 +46,12 @@ class PredateRoutePlanner
             maximumGrade = Math.Max(maximumGrade, grade);
             previousHeight = height;
             point[1] = height;
-            cover += Cover(point);
+            if (countCover) cover += Cover(point);
         }
         return distance * 0.1 + maximumGrade * 60 - cover * 0.6;
     }
 
-    static bool Plan(vector ownPosition, vector goal, out vector intermediate)
+    static bool Plan(vector ownPosition, vector goal, out vector intermediate, bool elite = false, PredateHunterState state = null)
     {
         if (!Land(goal)) return false;
         vector forward = goal - ownPosition;
@@ -69,13 +69,54 @@ class PredateRoutePlanner
             vector sampled;
             if (!Snap(candidate, 8, sampled)) continue;
             candidate = sampled;
-            float first = LegCost(ownPosition, candidate);
-            float second = LegCost(candidate, goal);
+            float first = LegCost(ownPosition, candidate, !elite);
+            float second = LegCost(candidate, goal, !elite);
             float cost = first + second;
+            if (elite && cost < 1000000)
+            {
+                cost -= Cover(candidate) * 1.2;
+                if (state && (state.Mode == "search" || state.Mode == "investigate"))
+                {
+                    vector evidencePoint = state.SearchCenter;
+                    evidencePoint[1] = GetGame().SurfaceY(evidencePoint[0], evidencePoint[2]) + 1.25;
+                    PhxInteractionLayers terrain = PhxInteractionLayers.TERRAIN | PhxInteractionLayers.BUILDING | PhxInteractionLayers.ROADWAY;
+                    if (!DayZPhysics.RayCastBullet(candidate + "0 1.6 0", evidencePoint, terrain, null, null, null, null, null)) cost -= 12;
+                }
+            }
             if (cost >= bestCost) continue;
             bestCost = cost;
             intermediate = candidate;
         }
         return bestCost < 1000000;
+    }
+
+    static bool PartOfAreaVisible(vector start, vector point, Object observer)
+    {
+        vector hit, normal;
+        int component;
+        return !DayZPhysics.RaycastRV(start, point, hit, normal, component, null, null, observer, false, false, ObjIntersectView, 0);
+    }
+
+    static void RecordObservedSectors(eAIBase actor, PredateHunterState state, float now)
+    {
+        vector eyes = actor.GetBonePositionWS(actor.GetBoneIndexByName("Head"));
+        vector facing = actor.GetLookDirection();
+        if (eyes == vector.Zero || !PredateInformationMath.FiniteVector(eyes)) return;
+        float range = Math.Min(actor.m_eAI_ThreatDistanceLimit, actor.m_Expansion_Visibility * 1100);
+        for (int sector = 0; sector < 8; sector++)
+        {
+            int bit = 1 << sector;
+            if ((state.CheckedSectors & bit) != 0) continue;
+            vector point = PredateHunterBrain.SearchSector(state, sector, now);
+            if (!Land(point))
+            {
+                state.CheckedSectors |= bit;
+                continue;
+            }
+            point[1] = GetGame().SurfaceY(point[0], point[2]) + 1;
+            vector direction = point - eyes;
+            if (direction.Length() > range || vector.Dot(direction.Normalized(), facing) < 0.7) continue;
+            if (PartOfAreaVisible(eyes, point, actor)) state.CheckedSectors |= bit;
+        }
     }
 }
