@@ -67,7 +67,7 @@ class PredatePersistence
         if (!record) return Fail(s, "Missing persistent operator record");
         if (!PredateInformationMath.Finite(s.m_WorldState.SimulationSeconds) || s.m_WorldState.SimulationSeconds < 0)
             return Fail(s, "Invalid simulation clock");
-        if (s.m_WorldState.PlayerLife < 1 || !PredateInformationMath.Finite(s.m_WorldState.PlayerLastDeathAt) || s.m_WorldState.PlayerLastDeathAt < -1 || s.m_WorldState.PlayerLastDeathAt > s.m_WorldState.SimulationSeconds)
+        if (s.m_WorldState.PlayerLife < 1 || !PredateInformationMath.Finite(s.m_WorldState.PlayerLastDeathAt) || s.m_WorldState.PlayerLastDeathAt < -1 || s.m_WorldState.PlayerLastDeathAt > s.m_WorldState.SimulationSeconds || (s.m_WorldState.HasPlayerDeathPosition && !PredateInformationMath.FiniteVector(s.m_WorldState.PlayerDeathPosition)))
             return Fail(s, "Invalid player deployment record");
         if (!PredateInformationMath.Finite(s.m_WorldState.PlayerLifeStartedAt) || s.m_WorldState.PlayerLifeStartedAt < 0 || s.m_WorldState.PlayerLifeStartedAt > s.m_WorldState.SimulationSeconds)
             return Fail(s, "Invalid player deployment start time");

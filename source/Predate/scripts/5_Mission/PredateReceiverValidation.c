@@ -62,7 +62,7 @@ class PredateReceiverValidation
         result.Check(feed.m_Notices[0].Text == "You are KIA." && feed.m_Rows[0].GetColor() == PredateHuntFeed.DEATH && feed.m_Notices.Count() == noticeCount);
         feed.Show(false);
         feed.Update(player, state, 7);
-        result.Check(feed.m_Notices.Count() == noticeCount && HuntWarningVisible(feed), "notices remain queued behind a menu");
+        result.Check(feed.m_Notices.Count() == noticeCount - 1 && HuntWarningVisible(feed), "live notices remain queued and the death notice clears");
         feed.Show(true);
         feed.Update(player, state, 7);
         result.Check(!feed.m_Rows[0].IsVisible());
@@ -203,7 +203,9 @@ class PredateReceiverValidation
             player.PredateUpdateInteraction(0, true, true);
             interact.Update();
             result.Check(player.m_PredateInteractionTime > 0 && player.m_PredateInteractionTap && !interact.JustActivate(), "tap waits for the weapon to lower");
+            result.Check(!player.GetMeleeFightLogic().CanFight(), "a shared F press is reserved for interaction");
             player.PredateUpdateInteraction(1, false, false);
+            result.Check(player.GetMeleeFightLogic().CanFight(), "melee is available again when the input clears");
             interact.ActionsSelectReset();
         }
         if (barrel) GetGame().ObjectDelete(barrel);

@@ -1,6 +1,6 @@
 class PredateProtocol
 {
-    static const int VERSION = 16;
+    static const int VERSION = 17;
     static const int MAX_OPERATORS = 30;
     static const int ALL_OPERATORS = 1073741823;
     static const int MAX_BEARING_HISTORY = 4;
@@ -83,10 +83,6 @@ class PredateState
     int ConfirmedKills;
     bool SuppliesRefreshed;
     bool NeedsRedeploy;
-    int EndedLife;
-    int EndedLifeSeconds;
-    int EndedLifeBearings;
-    bool OperatorDefeated;
     bool DeploymentSpawnRejected;
     int AvailableOperators = -1;
     int FootprintClue;

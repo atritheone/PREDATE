@@ -26,6 +26,7 @@ The operation persists between sessions. Surviving Operators carry their injurie
 
 - First-person hunts across the full Chernarus map with a configurable roster of up to 30 AI enemies.
 - Operators carry rifles ready on patrol. Stamina never drains for the player or Operators, and bullet damage between them is doubled.
+- Weapons, suppressors, and wearable gear keep their condition for the player and Operators. Ammunition and single-use items are still consumed.
 - Scheduled bearing pulses on the operation map and compass, with one interception warning per continuous hunt.
 - Custom insertion points, loadouts, time of day, and respawn settings for each operation.
 - Persistent saves, redeployment, and backup restoration through the launcher.
@@ -37,7 +38,7 @@ The operation persists between sessions. Surviving Operators carry their injurie
 3. Select a contact to see its historical sectors on the terrain from where you took each reading. The receiver hands off to sight and sound when a scheduled pulse finds the target inside 200 metres. Earlier sectors stay on the map.
 4. Use **Save and Quit** to save the operation and stop the local server. Select **Continue** in the launcher to resume it.
 
-If you die, choose **Redeploy** to return with the operation's starting kit or save from the debrief and return later.
+If you die, choose **Redeploy** to return with the operation's starting kit. PREDATE looks across the map for safe ground at least 1.5 km from every living Operator. It favors sites with more Operators within the 5 km receiver range, then shorter approaches to those Operators. Your death location breaks ties. Operator and player corpses cannot be looted. You can also save and quit from the death screen.
 
 ## Controls
 

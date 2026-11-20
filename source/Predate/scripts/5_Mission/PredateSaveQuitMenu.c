@@ -9,15 +9,6 @@ modded class InGameMenu
     bool m_PredatePauseWordmarkLoaded;
     float m_PredatePauseBrandAspect;
     int m_PredatePauseSlayerSize;
-    Widget m_PredateDebrief;
-    TextWidget m_PredateDebriefTitle;
-    TextWidget m_PredateDebriefLife;
-    TextWidget m_PredateDebriefOutcome;
-    int m_PredateDebriefTextSize;
-    Widget m_PredateSpawnForm;
-    EditBoxWidget m_PredateSpawnX;
-    EditBoxWidget m_PredateSpawnZ;
-    TextWidget m_PredateSpawnStatus;
 
     static bool PredateNeedsRedeploy(PlayerBase player)
     {
@@ -34,21 +25,7 @@ modded class InGameMenu
             m_PredatePauseSlayer = TextWidget.Cast(m_PredatePauseBrand.FindAnyWidget("PredatePauseSlayer"));
             if (m_PredatePauseWordmark && LoadWidgetImageSet("Predate/gui/pause_brand.imageset"))
                 m_PredatePauseWordmarkLoaded = m_PredatePauseWordmark.LoadImageFile(0, "set:PredatePause image:Wordmark") && m_PredatePauseWordmark.SetImage(0);
-            UpdatePredatePauseBrand(true);
-        }
-        m_PredateDebrief = GetGame().GetWorkspace().CreateWidgets("Predate/gui/deployment-report.layout", root);
-        if (m_PredateDebrief)
-        {
-            m_PredateDebriefTitle = TextWidget.Cast(m_PredateDebrief.FindAnyWidget("DeploymentTitle"));
-            m_PredateDebriefLife = TextWidget.Cast(m_PredateDebrief.FindAnyWidget("DeploymentLife"));
-            m_PredateDebriefOutcome = TextWidget.Cast(m_PredateDebrief.FindAnyWidget("DeploymentOutcome"));
-        }
-        m_PredateSpawnForm = GetGame().GetWorkspace().CreateWidgets("Predate/gui/redeploy-spawn.layout", root);
-        if (m_PredateSpawnForm)
-        {
-            m_PredateSpawnX = EditBoxWidget.Cast(m_PredateSpawnForm.FindAnyWidget("RedeployX"));
-            m_PredateSpawnZ = EditBoxWidget.Cast(m_PredateSpawnForm.FindAnyWidget("RedeployZ"));
-            m_PredateSpawnStatus = TextWidget.Cast(m_PredateSpawnForm.FindAnyWidget("RedeploySpawnStatus"));
+            UpdatePredatePauseBrand(!PredateNeedsRedeploy(PlayerBase.Cast(GetGame().GetPlayer())));
         }
         string validation;
         m_PredateDeploymentTest = GetGame().CommandlineGetParam("predateDeploymentValidation", validation) && FileExist("$profile:PredateDeploymentValidation.txt");
@@ -94,15 +71,9 @@ modded class InGameMenu
         UpdatePredatePauseBrand(!PredateNeedsRedeploy(player));
         PredateState receiver;
         if (player) receiver = player.m_PredateState;
-        UpdatePredateDebrief(receiver);
-        if (m_PredateSpawnForm) m_PredateSpawnForm.Show(PredateNeedsRedeploy(player));
         if (PredateNeedsRedeploy(player))
         {
-            if (receiver && receiver.DeploymentSpawnRejected)
-            {
-                m_PredateRedeployPending = false;
-                if (m_PredateSpawnStatus) m_PredateSpawnStatus.SetText("Choose dry ground at least 1.5 km from other Operators.");
-            }
+            if (receiver && receiver.DeploymentSpawnRejected) m_PredateRedeployPending = false;
             m_PredateDeploymentScreen = true;
             m_ContinueButton.Show(false);
             m_RestartButton.Show(false);
@@ -112,22 +83,8 @@ modded class InGameMenu
             else ButtonSetText(m_RespawnButton, "Redeploy");
             if (m_PredateDeploymentTest && !m_PredateRedeployPending && receiver && receiver.NeedsRedeploy && FileExist("$profile:PredateRedeployClick.txt"))
             {
-                FileHandle selection = OpenFile("$profile:PredateRedeployClick.txt", FileMode.READ);
-                string coordinates;
-                if (selection)
-                {
-                    FGets(selection, coordinates);
-                    CloseFile(selection);
-                }
-                if (coordinates != "" && m_PredateSpawnX && m_PredateSpawnZ)
-                {
-                    vector point = coordinates.ToVector();
-                    m_PredateSpawnX.SetText(point[0].ToString());
-                    m_PredateSpawnZ.SetText(point[2].ToString());
-                }
                 DeleteFile("$profile:PredateRedeployClick.txt");
-                bool fits = m_PredateDebrief && m_PredateDebrief.IsVisible() && PredateReceiverValidation.Fits(m_PredateDebriefTitle) && PredateReceiverValidation.Fits(m_PredateDebriefLife) && PredateReceiverValidation.Fits(m_PredateDebriefOutcome);
-                Print("[PredateDeploymentTest] DEBRIEF: life=" + receiver.EndedLife + "; elapsed=" + receiver.EndedLifeSeconds + "; bearings=" + receiver.EndedLifeBearings + "; defeated=" + receiver.OperatorDefeated + "; fits=" + fits);
+                Print("[PredateDeploymentTest] Redeploy clicked; native body needed=" + !player.IsAlive());
                 OnClick(m_RespawnButton, 0, 0, 0);
             }
             return;
@@ -145,31 +102,6 @@ modded class InGameMenu
         m_RestartButton.Show(false);
         m_RespawnButton.Show(false);
         m_SeparatorPanel.Show(false);
-    }
-
-    void UpdatePredateDebrief(PredateState receiver)
-    {
-        if (!m_PredateDebrief) return;
-        bool show = receiver && receiver.NeedsRedeploy;
-        m_PredateDebrief.Show(show);
-        if (!show || !m_PredateDebriefLife || !m_PredateDebriefOutcome) return;
-        float width, height;
-        m_PredateDebrief.GetScreenSize(width, height);
-        int textSize = Math.Clamp(Math.Floor((height * 0.18 - 2) / 1.5), 10, 28);
-        if (textSize != m_PredateDebriefTextSize)
-        {
-            m_PredateDebriefTextSize = textSize;
-            if (m_PredateDebriefTitle) m_PredateDebriefTitle.SetTextExactSize(textSize + 3);
-            m_PredateDebriefLife.SetTextExactSize(textSize);
-            m_PredateDebriefOutcome.SetTextExactSize(textSize);
-        }
-        int minutes = receiver.EndedLifeSeconds / 60;
-        int seconds = receiver.EndedLifeSeconds % 60;
-        m_PredateDebriefLife.SetText("Life " + receiver.EndedLife + "   |   " + minutes + "m " + seconds + "s in operation");
-        string outcome = "Raven active";
-        if (receiver.OperatorDefeated) outcome = "Raven eliminated";
-        m_PredateDebriefOutcome.SetText(outcome + "   |   Recent bearings " + receiver.EndedLifeBearings);
-        m_PredateDebrief.Update();
     }
 
     void UpdatePredatePauseBrand(bool visible)
@@ -197,50 +129,16 @@ modded class InGameMenu
     {
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
         if (m_PredateRedeployPending || !PredateNeedsRedeploy(player)) return;
-        bool customSpawn;
-        vector point;
-        if (m_PredateSpawnX && m_PredateSpawnZ)
-        {
-            string x = m_PredateSpawnX.GetText();
-            string z = m_PredateSpawnZ.GetText();
-            customSpawn = x != "" || z != "";
-            float east, north;
-            if (customSpawn && (!ParsePredateCoordinate(x, east) || !ParsePredateCoordinate(z, north)))
-            {
-                if (m_PredateSpawnStatus) m_PredateSpawnStatus.SetText("Enter valid X and Z coordinates in metres.");
-                return;
-            }
-            point = Vector(east, 0, north);
-        }
         m_PredateRedeployPending = true;
         if (player.m_PredateState) player.m_PredateState.DeploymentSpawnRejected = false;
-        if (player.IsAlive())
-        {
-            player.PredateRequest(5, "raven-01", customSpawn, point);
-            return;
-        }
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
         if (agent)
         {
             agent.m_DeployAfterRespawn = true;
-            agent.m_CustomRedeploy = customSpawn;
-            agent.m_RedeployPoint = point;
+            agent.m_DeployRetryIn = 1;
         }
-        GameRespawn(true);
-    }
-
-    static bool ParsePredateCoordinate(string text, out float position)
-    {
-        if (text.Length() == 0 || text.Length() > 16) return false;
-        bool decimal;
-        for (int index = 0; index < text.Length(); index++)
-        {
-            string digit = text.Substring(index, 1);
-            if (digit == "." && !decimal) decimal = true;
-            else if ("0123456789".IndexOf(digit) == -1) return false;
-        }
-        position = text.ToFloat();
-        return position > 10 && position < 15350;
+        if (player.IsAlive()) player.PredateRequest(5);
+        else GameRespawn(true);
     }
 
     override bool OnKeyDown(Widget w, int x, int y, int key)
@@ -271,8 +169,15 @@ modded class MissionGameplay
 {
     override void Pause()
     {
-        super.Pause();
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
+        // A launch that finishes in the background should still join gameplay.
+        // Later Escape presses use the ordinary pause path.
+        if (agent && m_PauseQueued && GetTimeStamp() == 0 && !GetGame().IsAppActive() && !IsCLIParam("launchPaused"))
+        {
+            m_PauseQueued = false;
+            return;
+        }
+        super.Pause();
         if (InGameMenu.PredateNeedsRedeploy(PlayerBase.Cast(GetGame().GetPlayer()))) return;
         if (agent && IsPaused() && GetGame().GetGameState() == DayZGameState.IN_GAME)
             agent.RequestPause();

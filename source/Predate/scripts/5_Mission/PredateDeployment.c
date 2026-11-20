@@ -1,3 +1,18 @@
+class PredateInsertionScore
+{
+    int Operators = -1;
+    int ApproachBand;
+    float DistanceFromDeath;
+    vector Position;
+
+    bool ImprovesOn(int operators, int approachBand, float distanceFromDeath)
+    {
+        if (operators != Operators) return operators > Operators;
+        if (approachBand != ApproachBand) return approachBand < ApproachBand;
+        return distanceFromDeath < DistanceFromDeath;
+    }
+}
+
 // Player life changes are independent of the operation and its Raven record.
 class PredateDeployment
 {
@@ -10,6 +25,8 @@ class PredateDeployment
         if (state.PlayerAwaitingRedeploy) return;
         state.PlayerAwaitingRedeploy = true;
         state.PlayerLastDeathAt = state.SimulationSeconds;
+        state.PlayerDeathPosition = player.GetPosition();
+        state.HasPlayerDeathPosition = PredateInformationMath.FiniteVector(state.PlayerDeathPosition);
         GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).Call(session.PredateSave);
         Print("[Predate] Player life " + state.PlayerLife + " ended. Waiting for redeployment.");
     }
@@ -20,49 +37,130 @@ class PredateDeployment
         player.m_PredateStagedForDeployment = true;
         player.RemoveAllItems();
         player.SetAllowDamage(false);
-        player.DisableSimulation(true);
-    }
-
-    static bool ClearOfOperators(PredateSession session, vector position, float minimumDistance)
-    {
-        eAIBase raven = session.m_HuntBot;
-        if (raven && raven.IsAlive() && PredateHunterBrain.Distance(position, raven.GetPosition()) < minimumDistance) return false;
-        return !session.m_PeerRoster || session.m_PeerRoster.ClearOfActors(position, minimumDistance);
     }
 
     static const float MINIMUM_DISTANCE = 1500;
 
-    static void OperatorOccupancy(PredateSession session, PlayerBase player, array<vector> occupied)
+    static void LivingOperators(PredateSession session, array<vector> occupied)
     {
-        occupied.Insert(player.GetPosition());
         eAIBase raven = session.m_HuntBot;
         if (raven && raven.IsAlive()) occupied.Insert(raven.GetPosition());
         if (session.m_PeerRoster) session.m_PeerRoster.LivingPositions(occupied);
     }
 
-    static bool StartPosition(PredateSession session, bool customSpawn, vector point, out vector site)
+    static void OperatorOccupancy(PredateSession session, PlayerBase player, array<vector> occupied)
     {
-        vector configured = session.m_HuntConfig.PlayerStart;
-        if (customSpawn) configured = point;
-        if (PredateSpawnPlanner.PlayerTerrain(configured) && ClearOfOperators(session, configured, MINIMUM_DISTANCE))
+        occupied.Insert(player.GetPosition());
+        LivingOperators(session, occupied);
+    }
+
+    static bool RateSite(vector point, array<vector> occupied, float snapAllowance, out int operators, out int approachBand)
+    {
+        operators = 0;
+        approachBand = 0;
+        if (occupied.Count() == 0) return true;
+        float minRange = MINIMUM_DISTANCE - snapAllowance;
+        float maxRange = PredateBearingPulse.REACH + snapAllowance;
+        float totalDistance;
+        foreach (vector position : occupied)
         {
-            site = session.PredateGround(configured);
-            return true;
+            float east = point[0] - position[0];
+            float north = point[2] - position[2];
+            float squared = east * east + north * north;
+            if (squared < minRange * minRange) return false;
+            if (squared > maxRange * maxRange) continue;
+            operators++;
+            totalDistance += Math.Max(MINIMUM_DISTANCE, Math.Sqrt(squared) - snapAllowance);
         }
-        if (customSpawn) return false;
-        // Check increasingly distant insertion points without moving any opponent.
-        for (float radius = MINIMUM_DISTANCE; radius <= 2200; radius += 300)
+        if (operators == 0) return false;
+        // Use 25 m bands of average approach distance so near-equivalent
+        // insertions are resolved by proximity to the last life.
+        approachBand = Math.Floor(totalDistance / (operators * 25.0));
+        return true;
+    }
+
+    static void ConsiderSite(vector point, vector origin, array<vector> occupied, array<Object> exclusions, PredateInsertionScore best)
+    {
+        const float snapRadius = 8;
+        int operators, approachBand;
+        if (!RateSite(point, occupied, snapRadius, operators, approachBand)) return;
+        if (!best.ImprovesOn(operators, approachBand, PredateHunterBrain.Distance(point, origin) - snapRadius)) return;
+        if (!PredateSpawnPlanner.PlayerTerrain(point)) return;
+        float ground = GetGame().SurfaceY(point[0], point[2]);
+        vector sampled;
+        if (!PredateRoutePlanner.Snap(Vector(point[0], ground, point[2]), snapRadius, sampled)) return;
+        if (!RateSite(sampled, occupied, 0, operators, approachBand)) return;
+        float distance = PredateHunterBrain.Distance(sampled, origin);
+        if (!best.ImprovesOn(operators, approachBand, distance) || !PredateSpawnPlanner.PlayerTerrain(sampled)) return;
+        ground = GetGame().SurfaceY(sampled[0], sampled[2]);
+        if (Math.AbsFloat(sampled[1] - ground) > 0.8) return;
+        sampled[1] = Math.Max(ground, sampled[1]) + 0.15;
+        if (GetGame().IsBoxColliding(sampled + "0 0.95 0", vector.Zero, "0.65 1.7 0.65", exclusions)) return;
+        best.Operators = operators;
+        best.ApproachBand = approachBand;
+        best.DistanceFromDeath = distance;
+        best.Position = sampled;
+    }
+
+    static bool StartPosition(PredateSession session, PlayerBase staged, out vector site)
+    {
+        vector origin = session.m_HuntConfig.PlayerStart;
+        if (session.m_WorldState.HasPlayerDeathPosition) origin = session.m_WorldState.PlayerDeathPosition;
+        array<vector> occupied = {};
+        LivingOperators(session, occupied);
+        array<Object> exclusions = {};
+        if (staged) exclusions.Insert(staged);
+        PredateInsertionScore best = new PredateInsertionScore;
+        ConsiderSite(origin, origin, occupied, exclusions, best);
+        ConsiderSite(session.m_HuntConfig.PlayerStart, origin, occupied, exclusions, best);
+
+        // Search around every Operator, including areas far from the death.
+        array<float> radii = {MINIMUM_DISTANCE + 2, 1550, 1750, 2250, 3000, 4000, PredateBearingPulse.REACH - 2};
+        foreach (vector position : occupied)
         {
-            for (int index = 0; index < 8; index++)
+            float heading = PredateMath.Bearing(position, origin);
+            float direct = Math.Clamp(PredateHunterBrain.Distance(position, origin), MINIMUM_DISTANCE + 2, PredateBearingPulse.REACH - 2);
+            ConsiderSite(position + PredateInformationMath.BearingDirection(heading) * direct, origin, occupied, exclusions, best);
+            foreach (float radius : radii)
             {
-                vector offset = PredateInformationMath.BearingDirection(index * 45) * radius;
-                vector candidate = configured + offset;
-                if (!PredateSpawnPlanner.PlayerTerrain(candidate) || !ClearOfOperators(session, candidate, MINIMUM_DISTANCE)) continue;
-                site = session.PredateGround(candidate);
-                return true;
+                for (int sector = 0; sector < 24; sector++)
+                    ConsiderSite(position + PredateInformationMath.BearingDirection(heading + sector * 15) * radius, origin, occupied, exclusions, best);
             }
         }
-        return false;
+
+        // Fill gaps between the rings, where several receiver ranges overlap.
+        if (occupied.Count() > 1)
+        {
+            float worldSize = GetGame().GetWorld().GetWorldSize();
+            for (float east = 250; east < worldSize; east += 500)
+                for (float north = 250; north < worldSize; north += 500)
+                    ConsiderSite(Vector(east, 0, north), origin, occupied, exclusions, best);
+        }
+        else if (occupied.Count() == 0)
+        {
+            // With no living Operators, find safe terrain close to the death.
+            for (float ring = 25; ring <= PredateBearingPulse.REACH; ring += Math.Max(25, ring * 0.17))
+            {
+                if (best.Operators == 0 && ring >= best.DistanceFromDeath + 8) break;
+                for (int index = 0; index < 24; index++)
+                    ConsiderSite(origin + PredateInformationMath.BearingDirection(index * 15) * ring, origin, occupied, exclusions, best);
+            }
+        }
+        if (best.Operators < 0) return false;
+
+        for (float step = 200; step >= 1; step *= 0.25)
+        {
+            vector center = best.Position;
+            for (int pass = 0; pass < 4; pass++)
+            {
+                for (int direction = 0; direction < 8; direction++)
+                    ConsiderSite(center + PredateInformationMath.BearingDirection(direction * 45) * step, origin, occupied, exclusions, best);
+                if (best.Position == center) break;
+                center = best.Position;
+            }
+        }
+        site = best.Position;
+        return true;
     }
 
     static void RetireOldContact(PredateHunterState hunter, PredateObservationMemory memory, eAIBase actor, string playerId, float now, bool tracksOldLife)
@@ -95,12 +193,21 @@ class PredateDeployment
     static void Redeploy(PredateSession session, PlayerBase player)
     {
         PredateWorldState state = session.m_WorldState;
-        if (!state.PlayerAwaitingRedeploy || !player.IsAlive() || !player.m_PredateStagedForDeployment || session.m_HuntError != "") return;
+        if (!state.PlayerAwaitingRedeploy || !player.IsAlive() || !player.GetIdentity() || session.m_HuntError != "") return;
 
-        vector insertion;
-        player.m_PredateSpawnRejected = !StartPosition(session, player.m_PredateCustomRedeploy, player.m_PredateRedeployPoint, insertion);
-        if (player.m_PredateSpawnRejected) return;
-        player.SetPosition(insertion);
+        if (!player.m_PredateNativeInsertion)
+        {
+            vector insertion;
+            player.m_PredateSpawnRejected = !StartPosition(session, player, insertion);
+            if (player.m_PredateSpawnRejected)
+            {
+                Print("[Predate] Redeploy delayed: no safe insertion in receiver range.");
+                return;
+            }
+            player.DisableSimulation(false);
+            player.SetPosition(insertion);
+        }
+        player.RemoveAllItems();
         session.PredateEquip(player);
         if (session.m_HuntError != "") return;
         session.m_HuntProgress.PlayerPlacementRevision = 1;
@@ -123,6 +230,9 @@ class PredateDeployment
         state.PlayerLifeStartedAt = state.SimulationSeconds;
         state.PlayerSupplies = new PredateSupplyPlan;
         state.PlayerAwaitingRedeploy = false;
+        state.HasPlayerDeathPosition = false;
+        player.m_PredateNativeInsertion = false;
+        player.m_PredateSpawnRejected = false;
         player.Save();
         session.PredateSave();
         Print("[Predate] Player redeployed into life " + state.PlayerLife + "; operator state retained.");

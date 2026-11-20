@@ -56,7 +56,7 @@ export class Backend {
     mkdirSync(join(root, 'session-runtime'), { recursive: true })
     this.child = spawn(executable, args, {
       cwd: root,
-      env: { ...process.env, PREDATE_ROOT: root },
+      env: { ...process.env, PREDATE_ROOT: root, PREDATE_LAUNCHER_PID: String(process.pid) },
       windowsHide: true,
       stdio: 'pipe',
     })

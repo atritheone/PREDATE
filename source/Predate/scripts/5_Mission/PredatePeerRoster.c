@@ -202,6 +202,7 @@ class PredatePeerRoster
         PredateOperatorService.UpgradeRivalEquipment(session, actor, peer.Operator);
         actor.PredateBindInformation(true, peer.Operator.Id, peer.Memory, peer.PendingSounds, session.m_WorldState.SimulationSeconds);
         actor.m_PredateCombatEnabled = true;
+        actor.Expansion_SetCanBeLooted(false);
         actor.m_PredateSignatureRegistered = true;
         actor.eAI_SetAccuracy(session.m_HuntConfig.BotAccuracyMin, session.m_HuntConfig.BotAccuracyMax);
         actor.eAI_SetThreatDistanceLimit(session.m_HuntConfig.ThreatDistance);

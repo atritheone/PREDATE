@@ -1,7 +1,5 @@
 """Launch a fresh take of the PREDATE recording scenario."""
 
-import ctypes
-from ctypes import wintypes
 from datetime import datetime
 from pathlib import Path
 import re
@@ -11,6 +9,7 @@ import uuid
 
 from app_runtime import ROOT
 import build
+from client_window import ClientWindow
 import platform_win
 import session
 import session_store as store
@@ -36,7 +35,7 @@ def create_take():
     previous = store.preferences()['selected_world']
     stamp = datetime.now().strftime('%m%d-%H%M%S')
     profile = f'op-recording-{stamp}-{uuid.uuid4().hex[:4]}'
-    info = store.create_operation('Recording — 500 m hunt (live start)', profile=profile, extra_mods=[])
+    info = store.create_operation('Recording â€” 500 m hunt (live start)', profile=profile, extra_mods=[])
     info.update(recording=True, previous_operation=previous)
 
     config_file = world.PROFILE / 'PredateConfig.json'
@@ -81,68 +80,9 @@ def finish_previous_take():
     session.wait_result(session.request('quit'))
 
 
-class RecordingWindow:
-    """Hand the interactive CMD launch over to its own DayZ window."""
-
-    def __init__(self):
-        self.user = ctypes.WinDLL('user32', use_last_error=True)
-        self.callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
-        self.user.EnumWindows.argtypes = [self.callback_type, wintypes.LPARAM]
-        self.user.EnumWindows.restype = wintypes.BOOL
-        self.user.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
-        self.user.GetWindowThreadProcessId.restype = wintypes.DWORD
-        self.user.IsWindowVisible.argtypes = [wintypes.HWND]
-        self.user.IsWindowVisible.restype = wintypes.BOOL
-        self.user.IsIconic.argtypes = [wintypes.HWND]
-        self.user.IsIconic.restype = wintypes.BOOL
-        self.user.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
-        self.user.GetWindow.restype = wintypes.HWND
-        self.user.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
-        self.user.GetClientRect.restype = wintypes.BOOL
-        self.user.GetForegroundWindow.argtypes = []
-        self.user.GetForegroundWindow.restype = wintypes.HWND
-        self.user.ShowWindowAsync.argtypes = [wintypes.HWND, ctypes.c_int]
-        self.user.ShowWindowAsync.restype = wintypes.BOOL
-        self.user.SetForegroundWindow.argtypes = [wintypes.HWND]
-        self.user.SetForegroundWindow.restype = wintypes.BOOL
-
-    def owner_pid(self, handle):
-        process = wintypes.DWORD()
-        if handle:
-            self.user.GetWindowThreadProcessId(handle, ctypes.byref(process))
-        return process.value
-
-    def find(self, pid):
-        windows = []
-
-        @self.callback_type
-        def collect(handle, _):
-            if self.owner_pid(handle) != pid or not self.user.IsWindowVisible(handle):
-                return True
-            if self.user.GetWindow(handle, 4):  # GW_OWNER. Skip owned dialogs.
-                return True
-            rect = wintypes.RECT()
-            if self.user.GetClientRect(handle, ctypes.byref(rect)):
-                area = (rect.right - rect.left) * (rect.bottom - rect.top)
-                if area > 0:
-                    windows.append((area, handle))
-            return True
-
-        self.user.EnumWindows(collect, 0)
-        return max(windows)[1] if windows else None
-
-    def foreground(self, handle):
-        return self.user.GetForegroundWindow() == handle
-
-    def activate(self, handle):
-        if self.user.IsIconic(handle):
-            self.user.ShowWindowAsync(handle, 9)  # SW_RESTORE
-        self.user.SetForegroundWindow(handle)
-
-
 def wait_for_gameplay(profile):
     deadline = time.monotonic() + 185
-    window = RecordingWindow()
+    window = ClientWindow()
     client_path = store.world_path(profile) / 'client/PredateClientStatus.json'
     activated_while_loading = False
     ready_at = None

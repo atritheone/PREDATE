@@ -15,6 +15,7 @@ import mod_presets
 import session_store as store
 import world
 import world_pause
+from client_window import ClientWindow
 
 from app_runtime import ROOT, command as helper_command
 RUNTIME = ROOT / "session-runtime"
@@ -119,6 +120,10 @@ class Supervisor:
         self.pause_reconnect = False
         self.pause_retry_at = 0
         self.failed_server_exit_sent = False
+        self.launcher_pid = None
+        self.client_window = None
+        self.focus_attempt_at = 0
+        self.focused_while_loading = False
 
     def publish(self, phase=None, message=None, **values):
         with self.lock:
@@ -158,7 +163,7 @@ class Supervisor:
             "Action": action, "Port": world.PORT, "QueryPort": world.QUERY_PORT,
             "Password": world.settings()["join_password"] if action == "connect" else ""})
 
-    def start_operation(self, profile):
+    def start_operation(self, profile, launcher_pid=None):
         if self.profile and self.profile != profile:
             self.save_quit()
         if self.profile == profile and world.running() and self.client_alive():
@@ -185,6 +190,10 @@ class Supervisor:
         self.profile = profile
         self.session_id = uuid.uuid4().hex
         self.client = None
+        self.launcher_pid = launcher_pid
+        self.client_window = ClientWindow() if self.launcher_pid else None
+        self.focus_attempt_at = 0
+        self.focused_while_loading = False
         self.command_sequence = 0
         self.seen_connection = False
         self.disconnected_at = None
@@ -224,6 +233,7 @@ class Supervisor:
                     store.atomic_json(RUNTIME / "active-session.json", {
                         "profile": profile, "session_id": self.session_id, "client": identity,
                         "server": read_native(world.STATE)})
+                    self.handoff_client_focus()
                     self.publish("connecting", "Connecting to the restored world...")
                     return
             if not world.running(): raise RuntimeError("The server exited while the game was opening")
@@ -233,6 +243,22 @@ class Supervisor:
             time.sleep(0.25)
         self.stop_server("client-start-failed")
         raise RuntimeError("DayZ did not open. The world was saved and stopped; check Steam before retrying.")
+
+    def handoff_client_focus(self, connected=False):
+        if not self.client_window or not self.client_alive() or time.monotonic() < self.focus_attempt_at:
+            return
+        if self.focused_while_loading and not connected:
+            return
+        self.focus_attempt_at = time.monotonic() + 0.5
+        try:
+            handle = self.client_window.find(self.client["pid"])
+            if handle and self.client_window.handoff(handle, self.launcher_pid):
+                self.focused_while_loading = True
+                print("DayZ received foreground focus from the launcher.", flush=True)
+        except OSError as error:
+            self.client_window = None
+            print(f"DayZ window focus could not be checked: {error}", flush=True)
+        if connected: self.client_window = None
 
     def stop_server(self, reason):
         if not self.profile: return
@@ -311,14 +337,14 @@ class Supervisor:
     def run_job(self, command):
         try:
             action = command["action"]
-            if action == "continue": self.start_operation(command.get("profile") or store.preferences()["selected_world"])
+            if action == "continue": self.start_operation(command.get("profile") or store.preferences()["selected_world"], command.get("launcher_pid"))
             elif action == "quit": self.save_quit()
             elif action == "new":
                 info = store.create_operation(command.get("name", ""), player_loadout=command.get('loadout', 'm4a1'),
                                               opponent_count=command.get('opponents', 1),
                                               footprints=command.get('footprints', False), spawn=command.get('spawn'),
                                               setup=command.get('setup'))
-                self.start_operation(info["id"])
+                self.start_operation(info["id"], command.get("launcher_pid"))
             elif action == "restore":
                 store.validate_snapshot(ROOT / "backups" / command["backup"])
                 if self.profile and (self.client_alive() or world.running()): self.save_quit()
@@ -434,7 +460,10 @@ class Supervisor:
             return
         native = world.native_status()
         if native.get("SessionId") != self.session_id: return
-        client_error = self.client_status().get("Error")
+        client = self.client_status()
+        if self.client_window:
+            self.handoff_client_focus(client.get("Phase") == "connected")
+        client_error = client.get("Error")
         if client_error and not self.seen_connection:
             self.dispatch({"id": uuid.uuid4().hex, "action": "quit", "failure": client_error})
             return
@@ -442,7 +471,7 @@ class Supervisor:
             self.publish("error", native["Error"], error=native["Error"])
             return
         try:
-            if self.monitor_pause(native, self.client_status()): return
+            if self.monitor_pause(native, client): return
         except Exception as error:
             self.dispatch({'id': uuid.uuid4().hex, 'action': 'quit', 'failure': str(error)})
             return

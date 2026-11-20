@@ -4158,6 +4158,66 @@ font "gui/fonts/sdf_MetronBook24"
 "text halign" center
  {  }
 }
+FrameWidgetClass FinalApproachOutline {
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+priority 10
+ { PanelWidgetClass OutlineTop {
+ position 0 0
+ size 1 0.023
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.95 0.16 0.20 1
+style rover_sim_colorable
+ {  }
+}
+PanelWidgetClass OutlineBottom {
+ position 0 0.747
+ size 1 0.023
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.95 0.16 0.20 1
+style rover_sim_colorable
+ {  }
+}
+PanelWidgetClass OutlineLeft {
+ position 0 0.023
+ size 0.0028 0.724
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.95 0.16 0.20 1
+style rover_sim_colorable
+ {  }
+}
+PanelWidgetClass OutlineRight {
+ position 0.9972 0.023
+ size 0.0028 0.724
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0.95 0.16 0.20 1
+style rover_sim_colorable
+ {  }
+}
+ }
+}
  }
 }
 TextWidgetClass FootprintClue {

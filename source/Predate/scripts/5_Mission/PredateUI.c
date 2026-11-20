@@ -269,7 +269,6 @@ modded class MissionGameplay
     float m_PredateTestTime;
     int m_PredateTestBearing;
     PredateTrackerMenu m_PredateTestMenu;
-    bool m_PredateAutoRedeploySent;
 
     override void OnInit()
     {
@@ -330,41 +329,37 @@ modded class MissionGameplay
         super.OnUpdate(timeslice);
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
         bool needsRedeploy = InGameMenu.PredateNeedsRedeploy(player);
+        PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
+        PredateState state;
+        if (player) state = player.m_PredateState;
+        if (agent && agent.m_DeployAfterRespawn && player && player.IsAlive() && player.IsPlayerLoaded() && state && !IsPlayerRespawning())
+        {
+            if (!state.NeedsRedeploy || state.DeploymentSpawnRejected) agent.m_DeployAfterRespawn = false;
+            else
+            {
+                agent.m_DeployRetryIn -= timeslice;
+                if (agent.m_DeployRetryIn <= 0)
+                {
+                    player.PredateRequest(5);
+                    agent.m_DeployRetryIn = 1;
+                }
+            }
+        }
+        bool deploying = IsPlayerRespawning() || (agent && agent.m_DeployAfterRespawn);
         if (m_PredateHuntFeed)
         {
-            UIScriptedMenu menu = GetGame().GetUIManager().GetMenu();
-            m_PredateHuntFeed.Show(player && (!menu || (needsRedeploy && menu.GetID() == MENU_INGAME)));
-            PredateState feedState;
-            if (player) feedState = player.m_PredateState;
-            m_PredateHuntFeed.Update(player, feedState, timeslice);
+            m_PredateHuntFeed.Show(player && !needsRedeploy && !deploying && !GetGame().GetUIManager().GetMenu());
+            m_PredateHuntFeed.Update(player, state, timeslice);
         }
-        if (needsRedeploy)
+        if (needsRedeploy || deploying)
         {
             if (m_PredateHud) m_PredateHud.Show(false);
-            PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
-            if (agent && agent.m_DeployAfterRespawn && player.IsAlive() && player.m_PredateState)
-            {
-                if (!m_PredateAutoRedeploySent)
-                {
-                    m_PredateAutoRedeploySent = true;
-                    player.PredateRequest(5, "raven-01", agent.m_CustomRedeploy, agent.m_RedeployPoint);
-                }
-                if (!player.m_PredateState.DeploymentSpawnRejected) return;
-                agent.m_DeployAfterRespawn = false;
-                m_PredateAutoRedeploySent = false;
-            }
-            if (!IsPaused() && !IsPlayerRespawning() && player.IsPlayerLoaded() && !GetDayZGame().IsLoading())
+            if (needsRedeploy && !deploying && !IsPaused() && player.IsPlayerLoaded() && !GetDayZGame().IsLoading())
             {
                 Pause();
                 if (IsPaused()) Print("[Predate] Deployment menu opened.");
             }
             return;
-        }
-        if (m_PredateAutoRedeploySent && player && player.m_PredateState)
-        {
-            m_PredateAutoRedeploySent = false;
-            PredateClientAgent deploymentAgent = GetDayZGame().m_PredateClientAgent;
-            if (deploymentAgent) deploymentAgent.m_DeployAfterRespawn = false;
         }
         if (!player || !player.IsAlive()) { if (m_PredateHud) m_PredateHud.Show(false); return; }
         // Run after vanilla checks Pause, while the map was still the open menu.
@@ -378,7 +373,6 @@ modded class MissionGameplay
         }
         if (m_PredateHud) m_PredateHud.Show(!PredateTrackerMenu.Cast(GetGame().GetUIManager().GetMenu()));
         if (!m_PredateHudText) return;
-        PredateState state = player.m_PredateState;
         if (m_PredateCompass) m_PredateCompass.Update(player, state, timeslice);
         if (m_PredatePresentationTest && !m_PredatePresentationTest.Update(m_PredateHud, m_PredateCompass, timeslice))
             m_PredatePresentationTest = null;
@@ -399,8 +393,12 @@ modded class MissionGameplay
         if (m_PredateFootprintTest && !m_PredateFootprintTest.Update(state, m_PredateFootprintClue, m_PredateFootprintView.m_Image))
             m_PredateFootprintTest = null;
         string text = "Map  M";
-        if (state && state.Available && state.Locked && state.HasPulse && !state.CloseApproach)
-            text = PredateProtocol.DisplayName(state.OperatorId) + "   |   " + PredateBearingPulse.RangeText(state.Bearing) + "   |   Next pulse " + Math.Ceil(state.NextPulse).ToString() + "s";
+        if (state && state.Available && state.Locked)
+        {
+            if (state.CloseApproach) text = "Final Approach - Track by Sight";
+            else if (state.HasPulse)
+                text = PredateProtocol.DisplayName(state.OperatorId) + "   |   " + PredateBearingPulse.RangeText(state.Bearing) + "   |   Next pulse " + Math.Ceil(state.NextPulse).ToString() + "s";
+        }
         if (PredatePresentationOptions.Current().HighContrast) m_PredateHudText.SetColor(0xFFFFFFFF);
         else m_PredateHudText.SetColor(0xFFC4D4D9);
         m_PredateHudText.SetText(text);

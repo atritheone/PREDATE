@@ -126,6 +126,7 @@ class PredateOperatorService
         if (!s.m_HuntBot) return;
         UpgradeRivalEquipment(s, s.m_HuntBot, s.m_HuntProgress.Operator);
         s.m_HuntBot.m_PredateCombatEnabled = true;
+        s.m_HuntBot.Expansion_SetCanBeLooted(false);
         s.m_HuntBot.m_PredateSignatureRegistered = s.m_HuntConfig.EnableSharedSignals;
         s.m_HuntBot.PredateBindInformation(s.m_HuntConfig.EnableFairInformation, s.m_HuntProgress.Operator.Id, s.m_WorldState.Observations, s.m_WorldState.PendingSounds, s.m_WorldState.SimulationSeconds);
         s.m_HuntBot.eAI_SetAccuracy(s.m_HuntConfig.BotAccuracyMin, s.m_HuntConfig.BotAccuracyMax);

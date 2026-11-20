@@ -30,8 +30,7 @@ class PredateClientAgent
     bool m_ResumePending;
     bool m_ResumeAuthorized;
     bool m_DeployAfterRespawn;
-    bool m_CustomRedeploy;
-    vector m_RedeployPoint;
+    float m_DeployRetryIn;
 
     void PredateClientAgent(string id)
     {

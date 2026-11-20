@@ -27,19 +27,58 @@ modded class PlayerBase
     bool m_PredateSessionQuitRequested;
     bool m_PredateStagedForDeployment;
     bool m_PredateDeathRecorded;
-    bool m_PredateCustomRedeploy;
-    vector m_PredateRedeployPoint;
+    bool m_PredateNativeInsertion;
     bool m_PredateSpawnRejected;
     int m_PredateKillNotices;
     bool m_PredateSupplyNotice;
 
     override void EEKilled(Object killer)
     {
+        bool human = !eAIBase.Cast(this);
+        // Set the flag before Expansion processes death and drops the held item.
+        if (human) Expansion_SetCanBeLooted(false);
         if (GetGame().IsServer() && GetIdentity()) PredatePlayerLifeEvents.Death.Invoke(this);
         super.EEKilled(killer);
+        if (human && GetGame().IsServer()) PredateSealCorpseInventory();
     }
 
-    void PredateRequest(int request, string operatorId = "raven-01", bool customSpawn = false, vector point = "0 0 0")
+    bool PredateIsHumanCorpse()
+    {
+        return !IsAlive() && !eAIBase.Cast(this);
+    }
+
+    override bool IsInventoryVisible()
+    {
+        if (PredateIsHumanCorpse()) return false;
+        return super.IsInventoryVisible();
+    }
+
+    override bool CanBeSkinned()
+    {
+        if (PredateIsHumanCorpse()) return false;
+        return super.CanBeSkinned();
+    }
+
+    override void AfterStoreLoad()
+    {
+        super.AfterStoreLoad();
+        if (!PredateIsHumanCorpse()) return;
+        Expansion_SetCanBeLooted(false);
+        PredateSealCorpseInventory();
+    }
+
+    void PredateSealCorpseInventory()
+    {
+        // Also mark the items themselves, including contents of clothing.
+        // A direct item interaction must obey the same rule as the corpse UI.
+        array<EntityAI> items = {};
+        GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, items);
+        foreach (EntityAI item : items)
+            if (item && item != this) ExpansionItemBaseModule.SetLootable(item, false);
+        GetInventory().LockInventory(HIDE_INV_FROM_SCRIPT);
+    }
+
+    void PredateRequest(int request, string operatorId = "raven-01")
     {
         if (!GetGame().IsClient()) return;
         Print("[Predate] Sending receiver request " + request);
@@ -47,11 +86,6 @@ modded class PlayerBase
         rpc.Write(PredateProtocol.VERSION);
         rpc.Write(operatorId);
         rpc.Write(request);
-        if (request == 5)
-        {
-            rpc.Write(customSpawn);
-            if (customSpawn) rpc.Write(point);
-        }
         rpc.Send(this, PredateProtocol.REQUEST, true);
     }
 
@@ -89,14 +123,6 @@ modded class PlayerBase
             if (!ctx.Read(operatorId)) return;
             if (ctx.Read(request) && PredateProtocol.AcceptRequest(version, operatorId, request))
             {
-                if (request == 5)
-                {
-                    bool customSpawn;
-                    vector point;
-                    if (!ctx.Read(customSpawn) || (customSpawn && !ctx.Read(point))) return;
-                    m_PredateCustomRedeploy = customSpawn;
-                    m_PredateRedeployPoint = point;
-                }
                 m_PredateRequest = request;
                 m_PredateRequestedOperator = operatorId;
                 Print("[Predate] Received receiver request " + request);
@@ -129,11 +155,7 @@ modded class PlayerBase
             ok = ok && ctx.Read(state.ConfirmedKills) && state.ConfirmedKills >= 0 && state.ConfirmedKills <= PredateProtocol.ALL_OPERATORS;
             ok = ok && ctx.Read(state.SuppliesRefreshed);
             ok = ok && ctx.Read(state.NeedsRedeploy);
-            if (ok && state.NeedsRedeploy)
-            {
-                ok = ctx.Read(state.EndedLife) && ctx.Read(state.EndedLifeSeconds) && ctx.Read(state.EndedLifeBearings) && ctx.Read(state.OperatorDefeated) && ctx.Read(state.DeploymentSpawnRejected);
-                ok = ok && state.EndedLife > 0 && state.EndedLifeSeconds >= 0 && state.EndedLifeBearings >= 0 && state.EndedLifeBearings <= PredateProtocol.MAX_BEARING_HISTORY;
-            }
+            if (ok && state.NeedsRedeploy) ok = ctx.Read(state.DeploymentSpawnRejected);
             ok = ok && PredateReadBearingHistory(ctx, state);
             ok = ok && PredateReadPulses(ctx, state);
             ok = ok && ctx.Read(state.AvailableOperators);

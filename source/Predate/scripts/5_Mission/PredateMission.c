@@ -226,17 +226,7 @@ class PredateSession
         rpc.Write(player.m_PredateSupplyNotice);
         player.m_PredateSupplyNotice = false;
         rpc.Write(needsRedeploy);
-        if (needsRedeploy)
-        {
-            int elapsed = Math.Floor(Math.Max(0, m_WorldState.PlayerLastDeathAt - m_WorldState.PlayerLifeStartedAt));
-            int recentBearings;
-            if (receiverTrack) recentBearings = receiverTrack.History.Count();
-            rpc.Write(m_WorldState.PlayerLife);
-            rpc.Write(elapsed);
-            rpc.Write(recentBearings);
-            rpc.Write(m_HuntProgress.Defeated);
-            rpc.Write(player.m_PredateSpawnRejected);
-        }
+        if (needsRedeploy) rpc.Write(player.m_PredateSpawnRejected);
         // Only the sampled bearing and coarse distance band reach the receiver.
         PredateSignalService.WriteHistory(this, rpc, locked, receiverTrack);
         PredateSignalService.WriteMapPulses(this, rpc, !needsRedeploy && m_HuntReady && m_HuntError == "");

@@ -105,12 +105,6 @@ def layouts():
     panel = widget("PanelWidgetClass","Panel",.025,.035,.95,.93,
                    'color 0.025 0.045 0.06 1\nstyle UIDefaultPanel',children)
     release.write_changed(gui/"tracker.layout",widget("FrameWidgetClass","PredateTracker",0,0,1,1,children=panel))
-    report = label("DeploymentTitle", "Deployment ended", .045,.12,.91,.24,"0.5 0.85 0.7 1")
-    report += label("DeploymentLife", "", .045,.42,.91,.18)
-    report += label("DeploymentOutcome", "", .045,.66,.91,.18)
-    report = report.replace('font "gui/fonts/etelkatextpro22"', 'scaled 0\nfont "gui/fonts/sdf_MetronBook24"\n"exact text" 1\n"exact text size" 12')
-    release.write_changed(gui/"deployment-report.layout", widget("PanelWidgetClass", "DeploymentReport", .06,.13,.42,.16,
-        'ignorepointer 1\nvisible 0\ncolor 0.025 0.045 0.06 0.97\nstyle UIDefaultPanel', report))
     directions={0:"N",45:"NE",90:"E",135:"SE",180:"S",225:"SW",270:"W",315:"NW"}
     ticks=""
     for i in range(144):
@@ -139,7 +133,16 @@ def layouts():
     receiver=receiver.replace('"text valign" center','"text valign" center\n"text halign" center')
     backdrop=widget("PanelWidgetClass","CompassBackdrop",0,0,1,.77,
                     'ignorepointer 1\ncolor 0.02 0.03 0.04 0.40\nstyle UIDefaultPanel')
-    compass_parts=backdrop+heading+tape+notch+receiver
+    border_style = 'ignorepointer 1\ncolor 0.95 0.16 0.20 1\nstyle rover_sim_colorable'
+    border = ""
+    for name, x, y, width, height in (
+        ("Top", 0, 0, 1, .023), ("Bottom", 0, .747, 1, .023),
+        ("Left", 0, .023, .0028, .724), ("Right", .9972, .023, .0028, .724),
+    ):
+        border += widget("PanelWidgetClass", f"Outline{name}", x,y,width,height, border_style)
+    outline = widget("FrameWidgetClass", "FinalApproachOutline", 0,0,1,1,
+                     'ignorepointer 1\nvisible 0\npriority 10', border)
+    compass_parts=backdrop+heading+tape+notch+receiver+outline
     compass_parts=compass_parts.replace('font "gui/fonts/etelkatextpro22"', 'font "gui/fonts/etelkatextpro22"\n"exact text" 1\n"exact text size" 11')
     compass_parts=compass_parts.replace('font "gui/fonts/etelkatextpro22"', 'scaled 0\nfont "gui/fonts/sdf_MetronBook24"')
     compass=widget("FrameWidgetClass","Compass",.36,.018,.28,.06,"ignorepointer 1",compass_parts)

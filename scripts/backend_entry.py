@@ -1,6 +1,7 @@
 """Packaged launcher backend and line-delimited JSON bridge."""
 from contextlib import redirect_stdout
 import json
+import os
 from pathlib import Path
 import sys
 import traceback
@@ -78,6 +79,9 @@ def dispatch(method, params):
             operation_setup.config(values['setup'])
         if "profile" in values: store.world_path(values["profile"])
         if "backup" in values and Path(values["backup"]).name != values["backup"]: raise ValueError("Invalid backup")
+        launcher_pid = os.environ.get("PREDATE_LAUNCHER_PID", "")
+        if action in {"continue", "new"} and launcher_pid.isdecimal():
+            values["launcher_pid"] = int(launcher_pid)
         return {"requestId": session.request(action, **values)}
     if method == "result":
         identifier = params.get("requestId", "")

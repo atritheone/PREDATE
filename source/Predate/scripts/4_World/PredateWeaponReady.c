@@ -5,6 +5,7 @@ modded class PlayerBase
     float m_PredateInteractionTime;
     bool m_PredateInteractionTap;
     bool m_PredateInteractionPreview;
+    bool m_PredateInteractInputDown;
     float m_PredateRaiseDiagnosticTimer;
     bool m_PredateOwnSpeedOverride;
     bool m_PredateWalkToggled;
@@ -19,6 +20,7 @@ modded class PlayerBase
     override void CommandHandler(float pDt, int pCurrentCommandID, bool pCurrentCommandFinished)
     {
         bool autoRaise;
+        m_PredateInteractInputDown = false;
         // Run on the owning client and server. Expansion retains control of AI.
         if (!eAIBase.Cast(this) && (GetGame().IsServer() || GetGame().GetPlayer() == this))
         {
@@ -107,6 +109,7 @@ modded class PlayerBase
 
     void PredateUpdateInteraction(float seconds, bool pressed, bool clicked)
     {
+        m_PredateInteractInputDown = pressed || clicked;
         if (pressed || clicked) m_PredateInteractionTime = 0.65;
         else m_PredateInteractionTime = Math.Max(0, m_PredateInteractionTime - seconds);
         if (clicked) m_PredateInteractionTap = true;
@@ -157,5 +160,16 @@ modded class PlayerBase
         // Lower for sprint input so the raised stance cannot prevent sprinting.
         if (GetInputInterface().SyncedValue_ID(UATurbo) > 0) return false;
         return true;
+    }
+}
+
+modded class DayZPlayerMeleeFightLogic_LightHeavy
+{
+    override bool CanFight()
+    {
+        // The default interact and firearm-melee bindings both use F. Give
+        // the interact input this command frame so the rifle can lower.
+        if (m_Player.m_PredateInteractInputDown) return false;
+        return super.CanFight();
     }
 }

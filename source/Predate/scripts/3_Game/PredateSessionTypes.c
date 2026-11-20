@@ -87,6 +87,8 @@ class PredateWorldState
     ref PredateSupplyPlan PlayerSupplies = new PredateSupplyPlan;
     bool PlayerAwaitingRedeploy;
     float PlayerLastDeathAt = -1;
+    bool HasPlayerDeathPosition;
+    vector PlayerDeathPosition;
     int InformationSchema;
     int SignalSchema;
     int HunterSchema;

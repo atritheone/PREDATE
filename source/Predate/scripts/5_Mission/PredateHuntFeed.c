@@ -18,7 +18,6 @@ class PredateHuntFeed
     PlayerBase m_Player;
     bool m_WasHunted;
     string m_Target;
-    bool m_WasClose;
     bool m_HadBearing;
     bool m_DeathObserved;
     bool m_Visible = true;
@@ -70,6 +69,11 @@ class PredateHuntFeed
         }
         bool dead = !player.IsAlive() || (state && state.NeedsRedeploy);
         if (dead && !m_DeathObserved) Post("You are KIA.", DEATH);
+        if (!dead && state && m_DeathObserved)
+        {
+            for (int notice = m_Notices.Count() - 1; notice >= 0; notice--)
+                if (m_Notices[notice].Color == DEATH) m_Notices.RemoveOrdered(notice);
+        }
         if (state || dead) m_DeathObserved = dead;
         if (dead || !state) return;
         string target;
@@ -77,12 +81,10 @@ class PredateHuntFeed
         if (target != "")
         {
             string name = PredateProtocol.DisplayName(target);
-            if (state.CloseApproach && (!m_WasClose || target != m_Target)) Post(name + " close. Hunt by sight and sound.");
-            else if (target != m_Target) Post("Tracking " + name + ".");
+            if (target != m_Target) Post("Tracking " + name + ".");
             else if (!state.CloseApproach && !state.HasPulse && m_HadBearing) Post("Lost " + name + "’s trail.");
         }
         m_Target = target;
-        m_WasClose = state.CloseApproach;
         m_HadBearing = state.HasPulse;
         if (state.Intercepted && !m_WasHunted) Post("You are being hunted.", HUNTED);
         m_WasHunted = state.Intercepted;

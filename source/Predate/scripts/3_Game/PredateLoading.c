@@ -180,11 +180,17 @@ modded class DayZGame
         if (m_PredateRestoreJoinInput) PredateRestoreJoinInput();
     }
 
+    override void OnActivateMessage()
+    {
+        super.OnActivateMessage();
+        if (m_PredateRestoreJoinInput) m_PredateJoinInputAfter = GetTickTime() + 0.2;
+    }
+
     override void OnEvent(EventType eventTypeId, Param params)
     {
         if (eventTypeId == MPSessionPlayerReadyEventTypeID || eventTypeId == MPSessionFailEventTypeID || eventTypeId == MPSessionEndEventTypeID)
         {
-            m_PredateRestoreJoinInput = eventTypeId == MPSessionPlayerReadyEventTypeID && m_loading && m_loading.m_PredateJoining;
+            m_PredateRestoreJoinInput = eventTypeId == MPSessionPlayerReadyEventTypeID && (m_PredateClientAgent || (m_loading && m_loading.m_PredateJoining));
             // DayZ schedules its device check 100 ms after player-ready.
             if (m_PredateRestoreJoinInput) m_PredateJoinInputAfter = GetTickTime() + 0.2;
             if (m_loading) m_loading.PredateFinishJoin();
@@ -198,7 +204,11 @@ modded class DayZGame
         UIManager ui = GetUIManager();
         if (!ui || ui.GetMenu() || ui.IsDialogVisible()) return;
         Mission mission = GetMission();
-        if (!mission || mission.IsPaused() || mission.IsControlDisabled()) return;
+        if (!mission || mission.IsPaused()) return;
+        // A loading or pause menu may already be gone while its exclusion is
+        // still active. Use the native close path to release that exclusion.
+        if (mission.IsInputExcludeActive("menu")) mission.Continue();
+        if (mission.IsControlDisabled()) return;
 
         m_PredateRestoreJoinInput = false;
         Input input = GetInput();

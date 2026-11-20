@@ -6,6 +6,7 @@ class PredateCompass
     TextWidget m_Heading;
     TextWidget m_Marker;
     Widget m_Sector;
+    Widget m_FinalApproachOutline;
     ref array<Widget> m_Ticks = new array<Widget>;
     ref array<int> m_LabelColors = new array<int>;
     ref array<int> m_MarkColors = new array<int>;
@@ -27,6 +28,7 @@ class PredateCompass
         m_Heading = TextWidget.Cast(hud.FindAnyWidget("Heading"));
         m_Marker = TextWidget.Cast(hud.FindAnyWidget("PulseMarker"));
         m_Sector = hud.FindAnyWidget("PulseSector");
+        m_FinalApproachOutline = hud.FindAnyWidget("FinalApproachOutline");
         m_Scroll = hud.FindAnyWidget("CompassScroll");
         for (int i = 0; i < 144; i++) m_Ticks.Insert(hud.FindAnyWidget("Tick" + i));
         m_Ready = true;
@@ -34,6 +36,7 @@ class PredateCompass
         if (!m_Heading) m_Ready = false;
         if (!m_Marker) m_Ready = false;
         if (!m_Sector) m_Ready = false;
+        if (!m_FinalApproachOutline) m_Ready = false;
         if (!m_Scroll) m_Ready = false;
         foreach (Widget tick : m_Ticks) { if (!tick) m_Ready = false; }
         if (m_Ready)
@@ -169,12 +172,10 @@ class PredateCompass
         m_Scroll.SetPos(scrollX, 0, true);
         m_Scroll.Update();
 
-        bool showSample;
-        if (state)
-        {
-            if (state.Available && state.Locked && state.HasPulse && !state.CloseApproach)
-                showSample = true;
-        }
+        bool hasTrack = state && state.Available && state.Locked;
+        bool finalApproach = hasTrack && state.CloseApproach;
+        bool showSample = hasTrack && state.HasPulse && !finalApproach;
+        m_FinalApproachOutline.Show(finalApproach);
         m_Marker.Show(false);
         if (m_Sector) m_Sector.Show(false);
         if (showSample)
@@ -220,6 +221,7 @@ class PredateCompass
         sample.Bearing = 90;
         sample.Age = 1;
         Render(97.5, sample, 0);
+        passed = passed && !m_FinalApproachOutline.IsVisible();
         float x, y;
         m_Marker.GetPos(x, y);
         passed = passed && Math.AbsFloat(x - 0.47) < 0.001;
@@ -229,8 +231,9 @@ class PredateCompass
         passed = passed && sample.Bearing == 90;
         sample.CloseApproach = true;
         Render(90, sample, 0);
-        passed = passed && !m_Marker.IsVisible() && m_Sector && !m_Sector.IsVisible();
+        passed = passed && !m_Marker.IsVisible() && !m_Sector.IsVisible() && m_FinalApproachOutline.IsVisible();
         Render(0, null, 0);
+        passed = passed && !m_FinalApproachOutline.IsVisible();
         if (passed) Print("[Predate] COMPASS SELFTEST PASS: north wrap, headings, marker rotation, frozen sample and close-range cutoff.");
         else Print("[Predate] COMPASS SELFTEST FAIL: heading or marker projection mismatch.");
     }
