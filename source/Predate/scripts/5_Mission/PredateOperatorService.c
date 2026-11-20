@@ -67,6 +67,8 @@ class PredateOperatorService
         }
         else
         {
+            if (outfit.Mask != "" && !player.GetInventory().CreateAttachment(outfit.Mask))
+                PredatePersistence.Fail(s, "Starting-kit balaclava could not be equipped");
             if (outfit.Vest != "") vestClass = outfit.Vest;
             if (outfit.Pouches != "") pouchClass = outfit.Pouches;
             if (outfit.Gloves != "") glovesClass = outfit.Gloves;

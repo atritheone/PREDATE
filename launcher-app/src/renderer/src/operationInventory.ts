@@ -261,6 +261,7 @@ interface ClothingPreset {
   Body: string
   Legs: string
   Feet: string
+  Mask?: string
   Vest?: string
   Pouches?: string
   Gloves?: string
@@ -360,6 +361,10 @@ export function changeOutfit(
   if (outfit.Headgear || outfit.Eyewear || previousOutfit.Headgear || previousOutfit.Eyewear)
     Object.assign(worn, issuedPlayerGear(outfit, kitId))
   const updated = { ...inventory }
+  if (!inventory.Mask || inventory.Mask.id === previousOutfit.Mask) {
+    if (outfit.Mask) updated.Mask = newItem(outfit.Mask)
+    else delete updated.Mask
+  }
   const displaced: InventoryItem[] = []
   const [mountSlot] = outfitMount(outfit)
   const [oldMountSlot, oldMountClass] = outfitMount(previousOutfit)
@@ -415,6 +420,7 @@ export function starterInventory(id: string, outfitId: string): Inventory {
     ...issuedPlayerGear(outfit, id),
     Hands: newItem(preset.FirearmClass),
   }
+  if (outfit.Mask) root.Mask = newItem(outfit.Mask)
   const weapon = gearById.get(preset.FirearmClass)
   const parts = [...preset.Attachments, preset.SuppressorClass]
   if (modern) parts.push(modernLoadouts.Equipment.ModuleClass)
