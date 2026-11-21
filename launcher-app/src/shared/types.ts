@@ -76,9 +76,10 @@ export interface LoadoutPresetInput {
 export interface LoadoutPreset extends LoadoutPresetInput {
   id: string
 }
-export const weaponSlots: readonly string[] = ['Hands', 'Shoulder', 'Melee']
+export const weaponSlots: readonly string[] = ['Hands', 'Sidearm', 'Shoulder', 'Melee']
 export const equipment = [
   ['Hands', 'Hands'],
+  ['Sidearm', 'Sidearm'],
   ['Shoulder', 'Shoulder'],
   ['Melee', 'Second Shoulder'],
   ['Headgear', 'Head'],

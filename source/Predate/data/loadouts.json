@@ -38,6 +38,17 @@
     {"Id": "green-tee", "Name": "Olive T-shirt", "Body": "TShirt_Green", "Legs": "CanvasPants_Grey", "Feet": "WorkingBoots_Brown", "Mask": "BalaclavaMask_Black", "InRotation": false, "Legacy": true}
   ],
   "NightVisionMount": "NVGHeadstrap",
+  "Sidearm": {
+    "FirearmClass": "Glock19",
+    "MagazineClass": "Mag_Glock_15Rnd",
+    "WorkshopFirearmClass": "BC_FNFiveSeven_Black",
+    "WorkshopMagazineClass": "BC_FNFiveSeven_Magazine",
+    "SuppressorClass": "PistolSuppressor",
+    "LightClass": "TLRLight",
+    "HolsterClass": "PlateCarrierHolster",
+    "MagazinePouchClass": "HipPack_Black",
+    "SpareMagazines": 3
+  },
   "Kits": [
     {
       "Id": "m4a1",

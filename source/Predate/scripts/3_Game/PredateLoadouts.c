@@ -32,6 +32,31 @@ class PredateModernKitCatalog
     ref array<ref PredateStartingKit> Kits = {};
 }
 
+class PredateStartingSidearm
+{
+    string FirearmClass;
+    string MagazineClass;
+    string WorkshopFirearmClass;
+    string WorkshopMagazineClass;
+    string SuppressorClass;
+    string LightClass;
+    string HolsterClass;
+    string MagazinePouchClass;
+    int SpareMagazines;
+
+    bool HasWorkshopSidearm()
+    {
+        if (WorkshopFirearmClass == "" || WorkshopMagazineClass == "") return false;
+        return PredateLoadoutCatalog.ClassExists(WorkshopFirearmClass) && PredateLoadoutCatalog.ClassExists(WorkshopMagazineClass);
+    }
+
+    string IssuedMagazineClass()
+    {
+        if (HasWorkshopSidearm()) return WorkshopMagazineClass;
+        return MagazineClass;
+    }
+}
+
 class PredateOutfit
 {
     string Id;
@@ -57,6 +82,7 @@ class PredateLoadoutCatalog
     ref array<ref PredateOutfit> Outfits = new array<ref PredateOutfit>;
     string DefaultOutfit;
     string NightVisionMount;
+    ref PredateStartingSidearm Sidearm;
     ref array<ref PredateStartingKit> Kits = new array<ref PredateStartingKit>;
     ref array<ref PredateStartingKit> OperatorKits = new array<ref PredateStartingKit>;
     ref array<ref PredateStartingKit> ModernOperatorKits = {};
@@ -150,6 +176,10 @@ class PredateLoadoutCatalog
         if (Schema != 1 || !Kits || Kits.Count() < 1 || Kits.Count() > 16) return Invalid("Invalid schema or kit count");
         if (!OperatorKits || OperatorKits.Count() < 1 || OperatorKits.Count() > 16) return Invalid("Invalid operator kit count");
         if (!Outfits || !FindOutfit(DefaultOutfit) || !ClassExists(NightVisionMount)) return Invalid("Missing starting outfits or night vision mount");
+        if (!Sidearm || Sidearm.SpareMagazines < 1 || Sidearm.SpareMagazines > 12) return Invalid("Invalid starting sidearm");
+        array<string> sidearmEquipment = {Sidearm.FirearmClass, Sidearm.MagazineClass, Sidearm.SuppressorClass, Sidearm.LightClass, Sidearm.HolsterClass, Sidearm.MagazinePouchClass};
+        foreach (string sidearmItem : sidearmEquipment)
+            if (sidearmItem == "" || !ClassExists(sidearmItem)) return Invalid("Missing starting sidearm item: " + sidearmItem);
         array<string> outfitIds = {};
         bool hasRotation;
         foreach (PredateOutfit outfit : Outfits)

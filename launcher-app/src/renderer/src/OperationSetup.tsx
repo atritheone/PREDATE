@@ -22,6 +22,7 @@ import {
   inventoryEntries,
   removeEpinephrine,
   starterInventory,
+  stowSidearm,
   upgradeDraftOutfitMount,
   type Inventory,
 } from './operationInventory'
@@ -279,6 +280,11 @@ export function OperationSetup({
   }
   const submit = (): void => {
     if (!valid || busy) return
+    const packed = stowSidearm(loadout)
+    if (!packed) {
+      showError('Make room for the sidearm in a holster or worn container.')
+      return
+    }
     const [startHour, startMinute] = draft.time.split(':').map(Number)
     void create({
       action: 'new',
@@ -293,7 +299,7 @@ export function OperationSetup({
         respawnDelay: draft.enemyRespawns ? delay : 120,
         playerOutfit,
         operatorOutfit,
-        inventory: inventoryEntries(loadout),
+        inventory: inventoryEntries(packed),
       },
     })
   }

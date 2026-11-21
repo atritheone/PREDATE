@@ -211,6 +211,7 @@ export function slotLabel(slot: string): string {
 
 export function compatibleGear(slot: string, host?: Gear): Gear[] {
   if (slot === 'Hands') return gear
+  if (slot === 'Sidearm') return slotOptions.get('pistol') ?? []
   if (slot === '@magazine') {
     return (
       host?.magazines.flatMap((id) => {
@@ -275,6 +276,45 @@ export function placeInCargo(
       }
     }
   }
+  return null
+}
+
+export function stowSidearm(inventory: Inventory): Inventory | null {
+  const { Sidearm: sidearm, ...worn } = inventory
+  if (!sidearm) return worn
+
+  for (const slot of ['Hips', 'Vest']) {
+    const carrier = worn[slot]
+    if (!carrier) continue
+    const fits = (item: InventoryItem): boolean =>
+      !!gearById.get(item.id)?.accepts.includes('Pistol') && !item.attachments.Pistol
+    if (fits(carrier)) return { ...worn, [slot]: updateAttachment(carrier, 'Pistol', sidearm) }
+    const mount = Object.entries(carrier.attachments).find(([, item]) => fits(item))
+    if (mount) {
+      const [mountSlot, holster] = mount
+      const equippedHolster = updateAttachment(holster, 'Pistol', sidearm)
+      return { ...worn, [slot]: updateAttachment(carrier, mountSlot, equippedHolster) }
+    }
+  }
+
+  const vest = worn.Vest
+  if (
+    vest &&
+    !vest.attachments.VestHolster &&
+    gearById.get(vest.id)?.accepts.includes('VestHolster')
+  ) {
+    const holster = updateAttachment(newItem(presets.Sidearm.HolsterClass), 'Pistol', sidearm)
+    return { ...worn, Vest: updateAttachment(vest, 'VestHolster', holster) }
+  }
+  for (const slot of ['Hips', 'Back', 'Body', 'Legs', 'Vest']) {
+    const container = worn[slot]
+    if (!container) continue
+    const host = gearById.get(container.id)
+    const placement = host && placeInCargo(host, container.cargo, sidearm)
+    if (placement)
+      return { ...worn, [slot]: { ...container, cargo: [...container.cargo, placement] } }
+  }
+  if (!vest) return { ...worn, Vest: updateAttachment(newItem('ChestHolster'), 'Pistol', sidearm) }
   return null
 }
 
@@ -438,10 +478,20 @@ export function starterInventory(id: string, outfitId: string): Inventory {
   const preset = modern ?? [...presets.Kits, ...presets.OperatorKits].find((kit) => kit.Id === id)
   if (!preset) return {}
   const outfit = clothingPreset(outfitId)
+  const sidearm = presets.Sidearm
+  const buca =
+    modern ||
+    ('WorkshopItems' in preset &&
+      Array.isArray(preset.WorkshopItems) &&
+      preset.WorkshopItems.includes('3092251597'))
+  const sidearmClass = buca ? sidearm.WorkshopFirearmClass : sidearm.FirearmClass
+  const sidearmMagazineClass = buca ? sidearm.WorkshopMagazineClass : sidearm.MagazineClass
   const root: Inventory = {
     ...wornClothing(outfit),
     ...issuedPlayerGear(outfit, id),
     Hands: newItem(preset.FirearmClass),
+    Sidearm: newItem(sidearmClass),
+    Hips: newItem(sidearm.MagazinePouchClass),
   }
   if (outfit.Mask) root.Mask = newItem(outfit.Mask)
   const weapon = gearById.get(preset.FirearmClass)
@@ -455,6 +505,18 @@ export function starterInventory(id: string, outfitId: string): Inventory {
   }
   const pouches = root.Vest.attachments.VestPouch
   root.Hands.attachments['@magazine'] = newItem(preset.MagazineClass)
+  root.Sidearm.attachments['@magazine'] = newItem(sidearmMagazineClass)
+  root.Sidearm.attachments.pistolMuzzle = newItem(sidearm.SuppressorClass)
+  root.Sidearm.attachments.pistolFlashlight = newItem(sidearm.LightClass)
+  const magazine = gearById.get(sidearmMagazineClass)
+  const magazinePouch = gearById.get(sidearm.MagazinePouchClass)
+  if (magazine && magazinePouch) {
+    for (let index = 0; index < sidearm.SpareMagazines; index++) {
+      const item = { ...newItem(magazine.id), amount: magazine.capacity }
+      const placement = placeInCargo(magazinePouch, root.Hips.cargo, item)
+      if (placement) root.Hips.cargo.push(placement)
+    }
+  }
   const supplies = [
     ...Array<string>(4).fill('BandageDressing'),
     'Morphine',

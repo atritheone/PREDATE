@@ -153,6 +153,8 @@
     }
   ],
   "Catalog": [
+    {"id":"BC_FNFiveSeven_Black","name":"FN Five-seveN | Black","kind":"weapon","width":3,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":0,"slots":["Pistol"],"accepts":["BC_BucaLogo","pistolOptics","pistolMuzzle","pistolFlashlight"],"magazines":["BC_FNFiveSeven_Magazine"]},
+    {"id":"BC_FNFiveSeven_Magazine","name":"20rd FN Five-seveN Magazine","kind":"magazine","width":1,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":20,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
     {"id":"BC_HKG28_Magazine","name":"20Rd .308 HK-G28 Magazine","kind":"magazine","width":1,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":20,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
     {"id":"BC_HK417_Magazine","name":"20rd HK-417 Magazine","kind":"magazine","width":1,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":20,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},
     {"id":"BC_PMAG_SR25_RSASS_Magazine","name":"20Rd KAC SR-25 Magazine","kind":"magazine","width":1,"height":2,"cargoWidth":0,"cargoHeight":0,"capacity":20,"slots":["magazine","magazine2","magazine3"],"accepts":[],"magazines":[]},

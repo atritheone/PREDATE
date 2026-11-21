@@ -425,8 +425,8 @@ class PredateSession
             activeParticipant = player;
             PredateDeployment.RememberCharacter(m_WorldState, player);
             if (!m_WorldState.PlayerPrimaryAssigned && player.IsPlayerLoaded())
-                PredateOperatorService.AssignPrimary(this, player);
-            player.PredateSyncPrimarySlot();
+                PredateOperatorService.AssignStartingWeapons(this, player);
+            player.PredateSyncWeaponSlots();
             PredateMemoryPersistence.RestoreContact(this, player);
             int request = player.m_PredateRequest;
             string requestedOperator = player.m_PredateRequestedOperator;

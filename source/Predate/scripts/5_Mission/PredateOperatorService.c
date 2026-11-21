@@ -23,7 +23,7 @@ class PredateOperatorService
             foreach (EntityAI entity : issued)
                 SetDefaultFireMode(Weapon_Base.Cast(entity));
             s.m_WorldState.PlayerPrimaryAssigned = false;
-            AssignPrimary(s, player);
+            AssignStartingWeapons(s, player);
             s.SoloApplyCombatRules(player);
             return;
         }
@@ -119,10 +119,12 @@ class PredateOperatorService
         if (rival) player.GetInventory().CreateInInventory("SalineBagIV");
         for (int i = 0; i < kit.SpareMagazines; i++)
             if (!player.GetInventory().CreateInInventory(kit.MagazineClass)) break;
+        if (!EquipSidearm(player, vest, s.m_Loadouts.Sidearm))
+            PredatePersistence.Fail(s, "Starting-kit sidearm could not be equipped");
         if (!rival)
         {
             s.m_WorldState.PlayerPrimaryAssigned = false;
-            AssignPrimary(s, player);
+            AssignStartingWeapons(s, player);
         }
         s.SoloApplyCombatRules(player);
     }
@@ -133,30 +135,76 @@ class PredateOperatorService
             weapon.Expansion_SetFireMode(ExpansionFireMode.Single);
     }
 
-    static void AssignPrimary(PredateSession session, PlayerBase player)
+    static bool EquipSidearm(PlayerBase player, EntityAI vest, PredateStartingSidearm kit)
+    {
+        if (!vest) return false;
+        EntityAI holster = vest.FindAttachmentBySlotName("VestHolster");
+        if (!holster) holster = vest.GetInventory().CreateAttachment(kit.HolsterClass);
+        if (!holster) return false;
+        string firearmClass = kit.FirearmClass;
+        string magazineClass = kit.MagazineClass;
+        if (kit.HasWorkshopSidearm())
+        {
+            firearmClass = kit.WorkshopFirearmClass;
+            magazineClass = kit.WorkshopMagazineClass;
+        }
+        EntityAI carried = holster.FindAttachmentBySlotName("Pistol");
+        if (!carried) carried = holster.GetInventory().CreateAttachment(firearmClass);
+        Weapon_Base pistol = Weapon_Base.Cast(carried);
+        if (!pistol || pistol.GetType() != firearmClass) return false;
+        if (!pistol.GetAttachedSuppressor() && !pistol.GetInventory().CreateAttachment(kit.SuppressorClass)) return false;
+        EntityAI light = pistol.FindAttachmentBySlotName("pistolFlashlight");
+        if (!light) light = pistol.GetInventory().CreateAttachment(kit.LightClass);
+        if (!InstallBattery(light)) return false;
+        if (!pistol.GetMagazine(pistol.GetCurrentMuzzle())) pistol.SpawnAttachedMagazine(magazineClass);
+        if (!pistol.GetMagazine(pistol.GetCurrentMuzzle())) return false;
+        SetDefaultFireMode(pistol);
+        EntityAI pouch = player.FindAttachmentBySlotName("Hips");
+        if (!pouch) pouch = player.GetInventory().CreateAttachment(kit.MagazinePouchClass);
+        if (!pouch) return false;
+        CargoBase cargo = pouch.GetInventory().GetCargo();
+        if (!cargo) return false;
+        int spares;
+        for (int index = 0; index < cargo.GetItemCount(); index++)
+        {
+            EntityAI item = cargo.GetItem(index);
+            if (item && item.GetType() == magazineClass) spares++;
+        }
+        for (int i = spares; i < kit.SpareMagazines; i++)
+        {
+            Magazine magazine = Magazine.Cast(pouch.GetInventory().CreateEntityInCargo(magazineClass));
+            if (!magazine) return false;
+            magazine.ServerSetAmmoCount(magazine.GetAmmoMax());
+        }
+        return true;
+    }
+
+    static void AssignStartingWeapons(PredateSession session, PlayerBase player)
     {
         if (!player.GetIdentity()) return;
         Weapon_Base primary = Weapon_Base.Cast(player.GetEntityInHands());
-        if (!primary || primary.IsKindOf("Pistol_Base"))
+        Weapon_Base sidearm;
+        if (primary && primary.IsKindOf("Pistol_Base"))
         {
-            Weapon_Base shoulder = Weapon_Base.Cast(player.FindAttachmentBySlotName("Shoulder"));
-            if (shoulder) primary = shoulder;
-            else
-            {
-                array<EntityAI> inventory = {};
-                player.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
-                foreach (EntityAI entity : inventory)
-                {
-                    Weapon_Base weapon = Weapon_Base.Cast(entity);
-                    if (!weapon) continue;
-                    if (!primary) primary = weapon;
-                    if (weapon.IsKindOf("Pistol_Base")) continue;
-                    primary = weapon;
-                    break;
-                }
-            }
+            sidearm = primary;
+            primary = null;
         }
-        if (primary && player.GetQuickBarEntity(0) != primary) player.PredateAssignPrimarySlot(primary);
+        if (!primary) primary = Weapon_Base.Cast(player.FindAttachmentBySlotName("Shoulder"));
+        array<EntityAI> inventory = {};
+        player.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
+        foreach (EntityAI entity : inventory)
+        {
+            Weapon_Base weapon = Weapon_Base.Cast(entity);
+            if (!weapon) continue;
+            if (weapon.IsKindOf("Pistol_Base"))
+            {
+                if (!sidearm) sidearm = weapon;
+            }
+            else if (!primary) primary = weapon;
+            if (primary && sidearm) break;
+        }
+        if (primary && player.GetQuickBarEntity(0) != primary) player.PredateAssignWeaponSlot(primary, 0);
+        if (sidearm && player.GetQuickBarEntity(1) != sidearm) player.PredateAssignWeaponSlot(sidearm, 1);
         session.m_WorldState.PlayerPrimaryAssigned = true;
     }
 
@@ -183,8 +231,8 @@ class PredateOperatorService
         PredateEquip(session, actor, kitId, RivalOutfit(session, record, slot), slot % 2 == 1);
         if (session.m_HuntError != "") return false;
         record.RifleKit = kitId;
-        if (UpgradeRivalEquipment(session, actor, record)) return true;
-        return PredatePersistence.Fail(session, "Cannot equip rifle suppressor, night vision or medical kit for " + record.Id);
+        if (UpgradeRivalEquipment(session, actor, record, true)) return true;
+        return PredatePersistence.Fail(session, "Cannot equip starting gear for " + record.Id);
     }
 
     static PredateOutfit RivalOutfit(PredateSession session, PredateOperatorRecord record, int slot)
@@ -195,10 +243,22 @@ class PredateOperatorService
         return session.m_Loadouts.RotatingOutfit(slot + deploymentOffset);
     }
 
-    static bool UpgradeRivalEquipment(PredateSession session, eAIBase actor, PredateOperatorRecord record)
+    static bool UpgradeRivalEquipment(PredateSession session, eAIBase actor, PredateOperatorRecord record, bool sidearmIssued = false)
     {
         PredateSupplyService.RemoveEpinephrine(actor, record.Supplies);
-        if (record.EquipmentRevision >= 1) return true;
+        if (record.EquipmentRevision < 1 && !UpgradeRivalProtection(session, actor, record)) return false;
+        if (record.EquipmentRevision >= 2) return true;
+        PredateStartingSidearm sidearm = session.m_Loadouts.Sidearm;
+        if (!sidearmIssued && !EquipSidearm(actor, actor.FindAttachmentBySlotName("Vest"), sidearm)) return false;
+        string magazineClass = sidearm.IssuedMagazineClass();
+        if (record.Supplies.NextAt > 0 && !record.Supplies.Find(magazineClass))
+            PredateSupplyService.AddConfigured(record.Supplies, magazineClass, sidearm.SpareMagazines + 1);
+        record.EquipmentRevision = 2;
+        return true;
+    }
+
+    static bool UpgradeRivalProtection(PredateSession session, eAIBase actor, PredateOperatorRecord record)
+    {
         array<EntityAI> inventory = {};
         actor.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
         Weapon_Base rifle;

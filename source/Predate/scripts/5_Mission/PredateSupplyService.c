@@ -101,6 +101,8 @@ class PredateSupplyService
         {
             PredateStartingKit kit = session.m_Loadouts.Find(kitId);
             if (kit) AddConfigured(starting, kit.MagazineClass, kit.SpareMagazines + 1);
+            PredateStartingSidearm sidearm = session.m_Loadouts.Sidearm;
+            AddConfigured(starting, sidearm.IssuedMagazineClass(), sidearm.SpareMagazines + 1);
             AddConfigured(starting, "BandageDressing", 4);
             AddConfigured(starting, "Morphine", 1);
             if (eAIBase.Cast(actor)) AddConfigured(starting, "SalineBagIV", 1);

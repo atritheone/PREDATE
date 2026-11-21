@@ -394,7 +394,7 @@ async function createWindow(): Promise<void> {
               check.defaultOperatorOutfit === 'varied' &&
               check.defaultOperatorOutfitLabel === 'Default' &&
               check.operatorOutfitByCount === true &&
-              check.equipmentSlots === 14 &&
+              check.equipmentSlots === 15 &&
               (check.attachments ?? 0) > 0 &&
               check.itemPicker === true &&
               check.setupSections?.join(',') === 'Game,Spawn,Loadout' &&
