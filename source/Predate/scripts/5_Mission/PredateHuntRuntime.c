@@ -40,15 +40,21 @@ class PredateHuntRuntime
         array<ref PredateSignalTrack> order = {};
         array<ref PredateObservation> readings = {};
         array<float> ranges = {};
+        map<string, PredateSignalTrack> existingTracks = new map<string, PredateSignalTrack>;
+        foreach (PredateSignalTrack existingTrack : receiver.Tracks)
+            existingTracks.Insert(existingTrack.SubjectId, existingTrack);
         vector origin = observer.Position;
         foreach (PredateHuntParticipant contact : participants)
         {
             if (contact.Id == observer.Id) continue;
-            PredateSignalTrack track = receiver.Find(contact.Id);
+            int reception = PredateSignalRules.Reception(origin, contact.Position, true);
+            PredateSignalTrack track;
+            existingTracks.Find(contact.Id, track);
             bool existing = track != null;
+            if (!existing && reception != PredatePulseReception.BEARING) continue;
             if (!track) track = PredateSignalService.Track(observer.Id, contact.Id);
             vector samplePosition = contact.Position;
-            track.Reception = PredateSignalRules.Reception(origin, samplePosition, true);
+            track.Reception = reception;
             PredateObservation sample;
             if (track.Reception == PredatePulseReception.BEARING)
                 sample = PredateSignalRules.ReceiverReading(track, origin, samplePosition, now, config);
@@ -123,10 +129,18 @@ class PredateHuntRuntime
             Scan(observer, participants, session.m_HuntConfig, now);
         }
         int routeBudget = 3;
-        foreach (PredateHuntParticipant hunter : participants)
+        int count = participants.Count();
+        int routeCursor = session.m_PredateRouteCursor % count;
+        for (int offset = 0; offset < count; offset++)
         {
+            int routeSlot = (routeCursor + offset) % count;
+            PredateHuntParticipant hunter = participants[routeSlot];
             if (!hunter.Receiver) continue;
-            if (Think(session, hunter, live, playerId, now, routeBudget > 0)) routeBudget--;
+            if (Think(session, hunter, live, playerId, now, routeBudget > 0))
+            {
+                routeBudget--;
+                if (routeBudget == 0) session.m_PredateRouteCursor = routeSlot + 1;
+            }
         }
     }
 
@@ -142,11 +156,6 @@ class PredateHuntRuntime
     {
         eAIBase actor = eAIBase.Cast(hunter.Actor);
         if (!actor || !actor.IsAlive()) return false;
-        if (!actor.m_PredateAIConfigured)
-        {
-            actor.m_PredateAITrace = FileExist("$profile:PredateAITrace.txt");
-            actor.m_PredateAIConfigured = true;
-        }
         bool combat = actor.PredateTacticalPriority(now);
         bool recover = actor.PredateOwnActionPriority();
         bool limited = actor.GetHealth01("", "Health") <= 0.5 || actor.GetHealth01("", "Blood") < 0.7;
@@ -178,16 +187,19 @@ class PredateHuntRuntime
         }
         else
         {
-            if (!limited && !hunter.Hunter.HasGoal && receiver.TargetId == "" && now >= hunter.Hunter.ScoutAt && now >= hunter.Hunter.WatchUntil)
+            if (canPlan && !limited && !hunter.Hunter.HasGoal && receiver.TargetId == "" && now >= hunter.Hunter.ScoutAt && now >= hunter.Hunter.WatchUntil)
+            {
                 Scout(hunter.Hunter, position, now);
+                planned = true;
+            }
             bool needsPath = hunter.Hunter.HasGoal && actor.m_PredateAppliedGoal != hunter.Hunter.GoalRevision;
             if (!needsPath || canPlan)
             {
                 actor.PredateApplyRoute(hunter.Hunter);
-                planned = needsPath;
+                planned = planned || needsPath;
             }
         }
-        if (previousMode != hunter.Hunter.Mode && actor.m_PredateAITrace)
+        if (PredateServerDiagnostics.TraceOperators && previousMode != hunter.Hunter.Mode)
             Print("[PredateIntent] operator=" + hunter.Id + "; simulation=" + now + "; previous=" + previousMode + "; next=" + hunter.Hunter.Mode + "; evidence=" + hunter.Hunter.EvidenceKey + "; revision=" + hunter.Hunter.GoalRevision + "; reason=" + hunter.Hunter.Reason);
         return planned;
     }

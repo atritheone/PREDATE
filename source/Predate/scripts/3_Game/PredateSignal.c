@@ -252,8 +252,11 @@ class PredateSignalRules
     static int Reception(vector origin, vector subject, bool transmitting)
     {
         if (!transmitting) return PredatePulseReception.UNAVAILABLE;
-        if (FinalApproach(origin, subject)) return PredatePulseReception.CLOSE;
-        if (PredateHunterBrain.Distance(origin, subject) > PredateBearingPulse.REACH) return PredatePulseReception.OUT_OF_RANGE;
+        vector offset = subject - origin;
+        offset[1] = 0;
+        float distanceSquared = offset.LengthSq();
+        if (distanceSquared <= FINAL_APPROACH_METRES * FINAL_APPROACH_METRES) return PredatePulseReception.CLOSE;
+        if (distanceSquared > PredateBearingPulse.REACH * PredateBearingPulse.REACH) return PredatePulseReception.OUT_OF_RANGE;
         return PredatePulseReception.BEARING;
     }
 

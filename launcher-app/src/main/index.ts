@@ -11,12 +11,14 @@ let backend: Backend
 let polling = false
 let timer: NodeJS.Timeout | undefined
 let rendererURL = ''
+let serverDiagnostics = process.argv.includes('--server-diagnostics')
 const windowSize = { width: 596, height: 486, minWidth: 480, minHeight: 440 }
 const setupSize = { width: 1420, height: 820, minWidth: 960, minHeight: 680 }
 
 function validateAction(value: unknown): SessionAction {
   if (!value || typeof value !== 'object') throw new Error('Invalid session action')
   const action = value as Record<string, unknown>
+  if ('diagnostics' in action) throw new Error('Server diagnostics require a launcher flag')
   if (!['continue', 'quit', 'new', 'restore', 'backup'].includes(String(action.action)))
     throw new Error('Unknown session action')
   if (
@@ -117,7 +119,7 @@ async function createWindow(): Promise<void> {
   })
   ipcMain.handle('predate:perform', (event, value: unknown) => {
     trusted(event)
-    return backend.perform(validateAction(value))
+    return backend.perform(validateAction(value), serverDiagnostics)
   })
   ipcMain.handle('predate:preferences', (event, values: unknown) => {
     trusted(event)
@@ -436,7 +438,10 @@ async function createWindow(): Promise<void> {
   if (process.argv.includes('--continue')) {
     const overview = await backend.overview()
     void backend
-      .perform({ action: 'continue', profile: overview.preferences.selected_world })
+      .perform(
+        { action: 'continue', profile: overview.preferences.selected_world },
+        serverDiagnostics,
+      )
       .catch((error) => {
         window?.webContents.send('predate:status', { phase: 'error', message: String(error) })
       })
@@ -446,6 +451,7 @@ async function createWindow(): Promise<void> {
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
   app.on('second-instance', (_event, argv) => {
+    if (argv.includes('--server-diagnostics')) serverDiagnostics = true
     if (window?.isMinimized()) window.restore()
     window?.show()
     window?.focus()
@@ -453,7 +459,10 @@ else {
       void backend
         .overview()
         .then((info) =>
-          backend.perform({ action: 'continue', profile: info.preferences.selected_world }),
+          backend.perform(
+            { action: 'continue', profile: info.preferences.selected_world },
+            serverDiagnostics,
+          ),
         )
         .catch((error) =>
           window?.webContents.send('predate:status', { phase: 'error', message: String(error) }),

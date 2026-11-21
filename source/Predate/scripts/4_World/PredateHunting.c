@@ -134,7 +134,7 @@ modded class eAIBase
 
     void PredateReleaseRoute()
     {
-        if (m_PredateAppliedGoal >= 0)
+        if (PredateServerDiagnostics.TraceOperators && m_PredateAppliedGoal >= 0)
             Print("[PredateRoute] release; operator=" + m_PredateOperatorId + "; simulation=" + m_PredateSimulationTime + "; revision=" + m_PredateAppliedGoal);
         m_PredateStrategicControl = false;
         m_PredateRouteActive = false;
@@ -194,9 +194,8 @@ modded class eAIBase
             }
         }
         m_PredateAppliedGoal = state.GoalRevision;
-        string identityTrace;
-        if (m_PredateAITrace) identityTrace = "; actor=" + this;
-        Print("[PredateHunter] " + state.Mode + "; reason=" + state.Reason + "; evidence=" + state.EvidenceKey + "; goalRevision=" + state.GoalRevision + "; goal=" + state.Goal + "; operator=" + state.OwnerId + "; simulation=" + m_PredateSimulationTime + "; detour=" + state.HasDetour + "; previousRevision=" + previousRevision + identityTrace + "; " + PredateRouteDiagnostic());
+        if (PredateServerDiagnostics.TraceOperators)
+            Print("[PredateHunter] " + state.Mode + "; reason=" + state.Reason + "; evidence=" + state.EvidenceKey + "; goalRevision=" + state.GoalRevision + "; goal=" + state.Goal + "; operator=" + state.OwnerId + "; simulation=" + m_PredateSimulationTime + "; detour=" + state.HasDetour + "; previousRevision=" + previousRevision + "; actor=" + this + "; " + PredateRouteDiagnostic());
     }
 }
 

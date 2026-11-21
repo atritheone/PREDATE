@@ -117,8 +117,13 @@ export class Backend {
     return this.request('preferences', values)
   }
 
-  async perform(action: SessionAction): Promise<void> {
-    const { requestId } = await this.request<{ requestId: string }>('action', action)
+  async perform(action: SessionAction, diagnostics = false): Promise<void> {
+    const { requestId } = await this.request<{ requestId: string }>(
+      'action',
+      diagnostics && (action.action === 'new' || action.action === 'continue')
+        ? { ...action, diagnostics: true }
+        : action,
+    )
     const deadline = Date.now() + 300_000
     while (Date.now() < deadline) {
       const result = await this.request<{ ok: boolean; error?: string } | null>('result', {

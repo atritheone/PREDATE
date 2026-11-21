@@ -156,7 +156,7 @@ class Supervisor:
             "Action": action, "Port": world.PORT, "QueryPort": world.QUERY_PORT,
             "Password": world.settings()["join_password"] if action in ("connect", "server-ready") else ""})
 
-    def start_operation(self, profile, launcher_pid=None):
+    def start_operation(self, profile, launcher_pid=None, diagnostics=None):
         if self.profile and self.profile != profile:
             self.save_quit()
         if self.profile == profile and world.running() and self.client_alive():
@@ -218,7 +218,7 @@ class Supervisor:
 
         try:
             world.start(self.session_id, prefs["offline"], progress=loading_progress,
-                        cancelled=self.cancel.is_set, on_started=open_client)
+                        cancelled=self.cancel.is_set, on_started=open_client, diagnostics=diagnostics)
             if self.cancel.is_set():
                 return
             if launched_at is None:
@@ -351,14 +351,16 @@ class Supervisor:
     def run_job(self, command):
         try:
             action = command["action"]
-            if action == "continue": self.start_operation(command.get("profile") or store.preferences()["selected_world"], command.get("launcher_pid"))
+            if action == "continue":
+                self.start_operation(command.get("profile") or store.preferences()["selected_world"],
+                                     command.get("launcher_pid"), command.get("diagnostics"))
             elif action == "quit": self.save_quit()
             elif action == "new":
                 info = store.create_operation(command.get("name", ""), player_loadout=command.get('loadout', 'm4a1'),
                                               opponent_count=command.get('opponents', store.DEFAULT_OPPONENT_COUNT),
                                               footprints=command.get('footprints', False), spawn=command.get('spawn'),
                                               setup=command.get('setup'), require_modern_gear=True)
-                self.start_operation(info["id"], command.get("launcher_pid"))
+                self.start_operation(info["id"], command.get("launcher_pid"), command.get("diagnostics"))
             elif action == "restore":
                 store.validate_snapshot(ROOT / "backups" / command["backup"])
                 if self.profile and (self.client_alive() or world.running()): self.save_quit()
@@ -542,6 +544,7 @@ def main():
     parser.add_argument("--profile")
     parser.add_argument("--name")
     parser.add_argument("--backup")
+    parser.add_argument("--server-diagnostics", dest="diagnostics", action="store_true", default=None)
     args = parser.parse_args()
     if args.action == "serve": Supervisor().serve(); return
     if args.action == "status": print(json.dumps(state(), indent=2)); return

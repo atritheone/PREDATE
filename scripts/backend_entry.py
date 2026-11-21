@@ -90,6 +90,8 @@ def dispatch(method, params):
             operation_setup.config(values['setup'])
         if "profile" in values: store.world_path(values["profile"])
         if "backup" in values and Path(values["backup"]).name != values["backup"]: raise ValueError("Invalid backup")
+        if "diagnostics" in values and (action not in {"continue", "new"} or type(values["diagnostics"]) is not bool):
+            raise ValueError("Server diagnostics apply only when opening a hunt")
         launcher_pid = os.environ.get("PREDATE_LAUNCHER_PID", "")
         if action in {"continue", "new"} and launcher_pid.isdecimal():
             values["launcher_pid"] = int(launcher_pid)

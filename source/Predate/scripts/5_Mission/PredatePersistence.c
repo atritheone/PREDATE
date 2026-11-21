@@ -159,9 +159,13 @@ class PredatePersistence
         return true;
     }
 
-    static void Save(PredateSession s)
+    static bool CanSave(PredateSession s)
     {
-        if (!s.m_HuntSchemaValid || !s.m_HuntReady || s.m_HuntError != "") return;
+        return s.m_HuntSchemaValid && s.m_HuntReady && s.m_HuntError == "";
+    }
+
+    static void SaveRaven(PredateSession s)
+    {
         // A quit can arrive between a lethal hit and the next simulation tick.
         if (!s.m_HuntProgress.Defeated && (PredateOperatorDeaths.Contains(s.m_HuntProgress.Operator.StorageKey) || (s.m_HuntBot && !s.m_HuntBot.IsAlive())))
         {
@@ -171,20 +175,31 @@ class PredatePersistence
             s.m_HuntProgress.HasPulse = false;
         }
         if (s.m_HuntGroup && s.m_HuntBot && s.m_HuntBot.IsAlive()) s.m_HuntGroup.Save(true);
+    }
+
+    static bool SaveState(PredateSession s, bool saveActors = false)
+    {
         PredateSignalService.Capture(s);
         PredateMemoryPersistence.Capture(s);
         string error;
-        if (s.m_PeerRoster && !s.m_PeerRoster.Save(s, error))
+        if (s.m_PeerRoster)
         {
-            Fail(s, "Cannot save operator roster: " + error);
-            return;
+            bool saved;
+            if (saveActors) saved = s.m_PeerRoster.Save(s, error);
+            else saved = s.m_PeerRoster.SaveState(error);
+            if (!saved) return Fail(s, "Cannot save operator roster: " + error);
         }
         if (!JsonFileLoader<PredateWorldState>.SaveFile("$profile:PredateWorldState.json", s.m_WorldState, error))
-        {
-            Fail(s, "Cannot save session state: " + error);
-            return;
-        }
+            return Fail(s, "Cannot save session state: " + error);
         if (!JsonFileLoader<PredateProgress>.SaveFile("$profile:PredateProgress.json", s.m_HuntProgress, error))
-            Fail(s, "Cannot save progress: " + error);
+            return Fail(s, "Cannot save progress: " + error);
+        return true;
+    }
+
+    static bool Save(PredateSession s)
+    {
+        if (!CanSave(s)) return false;
+        SaveRaven(s);
+        return SaveState(s, true);
     }
 }

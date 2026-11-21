@@ -333,7 +333,8 @@ def first_person_config(config):
     return config
 
 
-def start(session_id=None, offline=False, progress=None, cancelled=None, on_started=None):
+def start(session_id=None, offline=False, progress=None, cancelled=None, on_started=None,
+          diagnostics=None):
     import release
     import workshop_lasers
     release.verify()
@@ -353,21 +354,29 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
     for port in [PORT, QUERY_PORT, RCON_PORT]:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
             probe.bind(("127.0.0.1", port))
-    log = PROFILE / ("console-" + timestamp() + ".log")
+    if diagnostics is None:
+        diagnostics = PROFILE_NAME == "development" or PROFILE_NAME.startswith("validation-")
     args = [str(SERVER / "DayZServer_x64.exe"), f"-config={CONFIG}",
             "-ip=127.0.0.1", f"-port={PORT}", f"-profiles={PROFILE}",
             f"-mission={MISSION}", f"-storage={STORAGE}", f"-BEpath={WORLD / 'battleye'}",
-            "-doLogs", "-adminLog", "-freezeCheck", "-limitFPS=60"]
+            "-freezeCheck", "-limitFPS=60"]
+    if diagnostics:
+        args += ["-doLogs", "-adminLog", "-predateServerDiagnostics"]
     args.append("-mod=" + ";".join(str(p) for p in MODS))
     if session_id: args.append("-predateSessionId=" + session_id)
     if PROFILE_NAME == "development":
         args.append("-predateDevelopment")
         if SCENARIO: args.append("-predateScenario=" + SCENARIO)
-    with log.open("wb") as output:
-        process = launch_hidden(args, SERVER, output)
+    log = PROFILE / ("console-" + timestamp() + ".log") if diagnostics else None
+    if log:
+        with log.open("wb") as output:
+            process = launch_hidden(args, SERVER, output)
+    else:
+        process = launch_hidden(args, SERVER)
+    log_hint = str(log or PROFILE)
     identity = process_identity(process.pid)
     if identity is None:
-        raise RuntimeError(f"Server exited during startup. Inspect {log}")
+        raise RuntimeError(f"Server exited during startup. Inspect {log_hint}")
     if session_id: identity["session_id"] = session_id
     from session_store import atomic_json
     atomic_json(STATE, identity)
@@ -381,7 +390,7 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
         if failure:
             raise RuntimeError(f"DayZ {failure['kind']} error: {failure['message']} (failed process closed; log: {failure['log']})")
         if not running():
-            raise RuntimeError(f"Server exited. Inspect {log}")
+            raise RuntimeError(f"Server exited. Inspect {log_hint}")
         if cancelled and cancelled():
             stop()
             raise RuntimeError("Launch cancelled; the server was stopped")
@@ -393,16 +402,6 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
                     print(f"PREDATE mission and operator are ready ({PROFILE_NAME}).", flush=True)
                     return
             if progress: progress("Loading the world and restoring its operator...")
-            recent = sorted(PROFILE.glob("script*.log"), key=lambda p: p.stat().st_mtime_ns)
-            if recent:
-                script = recent[-1]
-                if script.stat().st_mtime >= log.stat().st_mtime:
-                    tail = script.read_text(errors="replace")[-6000:]
-                    if "can't compile" in tail.lower():
-                        # No world can have initialized after a script compilation failure.
-                        process.terminate()
-                        process.wait(timeout=10)
-                        raise RuntimeError(f"DayZ script compilation failed. Inspect {script}")
             time.sleep(0.5)
             continue
         try:
@@ -561,6 +560,8 @@ def main():
     parser.add_argument("action", choices=["setup", "start", "stop", "play", "status", "backup", "test"])
     parser.add_argument("--profile", default="main", help="main, development, or a new named world")
     parser.add_argument("--scenario", choices=["registry", "defeat", "deployment"], help="development server checks")
+    parser.add_argument("--server-diagnostics", action="store_true", default=None,
+                        help="Enable server performance, console and admin logs for start")
     args = parser.parse_args()
     select_profile(args.profile)
     if args.scenario and args.profile != "development":
@@ -571,7 +572,8 @@ def main():
         if session.manager_alive() and session.state().get("phase") not in {"idle", "suspended"}:
             session.wait_result(session.request("quit"))
             return
-    globals()[args.action]()
+    if args.action == "start": start(diagnostics=args.server_diagnostics)
+    else: globals()[args.action]()
 
 
 if __name__ == "__main__":

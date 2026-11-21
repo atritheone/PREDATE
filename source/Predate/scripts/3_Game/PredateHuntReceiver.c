@@ -85,16 +85,12 @@ class PredateHuntSelection
         return PredateBearingPulse.BAND_METRES / 2.0 + outer * Math.Sin(sample.BearingError * Math.DEG2RAD) + (now - sample.ObservedAt) * 1.5;
     }
 
-    static void Offer(map<string, ref PredateHuntLead> leads, string id, PredateObservation evidence, vector own, float now)
+    static void Score(PredateHuntLead lead, string id, PredateObservation evidence, vector own, float now)
     {
-        PredateHuntLead previous;
-        if (leads.Find(id, previous) && previous.Evidence.ObservedAt > evidence.ObservedAt) return;
-        PredateHuntLead lead = new PredateHuntLead;
         lead.Id = id;
         lead.Evidence = evidence;
         lead.Distance = PredateHunterBrain.Distance(own, SectorCenter(evidence));
         lead.Uncertainty = SectorRadius(evidence, now);
-        leads.Set(id, lead);
     }
 
     static bool Closer(PredateHuntLead candidate, PredateHuntLead other, string current)
@@ -134,15 +130,13 @@ class PredateHuntSelection
         bool searchExhausted = (!finalApproach || hunter.FinalApproach) && hunter.Reason == "Bounded search exhausted; no new knowledge";
         if (finalApproach && !searchExhausted && now - receiver.ProgressAt < 2 * PredateBearingPulse.INTERVAL)
             return null;
-        map<string, ref PredateHuntLead> leads = new map<string, ref PredateHuntLead>;
-        foreach (PredateSignalTrack track : receiver.Tracks)
-        {
-            if (finalApproach && track.SubjectId == receiver.TargetId) continue;
-            PredateObservation sample = track.LastSample;
-            if (sample && !sample.Expired(now)) Offer(leads, track.SubjectId, sample, own, now);
-        }
         PredateHuntLead current;
-        leads.Find(receiver.TargetId, current);
+        PredateSignalTrack tracked = receiver.Find(receiver.TargetId);
+        if (!finalApproach && tracked && tracked.LastSample && !tracked.LastSample.Expired(now))
+        {
+            current = new PredateHuntLead;
+            Score(current, tracked.SubjectId, tracked.LastSample, own, now);
+        }
         bool searchActive = (hunter.Mode == "search" || hunter.Mode == "investigate" || hunter.Mode == "approach") && hunter.HasGoal && hunter.SearchUntil > now;
         if (current && (current.Distance + 50 < receiver.BestDistance || current.Uncertainty + 50 < receiver.BestUncertainty))
         {
@@ -154,11 +148,22 @@ class PredateHuntSelection
         float stalledFor = now - receiver.ProgressAt;
         bool stalled = receiver.TargetId != "" && (stalledFor >= 2 * PredateBearingPulse.INTERVAL || searchExhausted);
         PredateHuntLead chosen;
-        foreach (string subject, PredateHuntLead lead : leads)
+        PredateHuntLead candidate;
+        foreach (PredateSignalTrack track : receiver.Tracks)
         {
-            if (stalled && subject == receiver.TargetId) continue;
+            string subject = track.SubjectId;
+            if ((stalled || finalApproach) && subject == receiver.TargetId) continue;
             if (subject == receiver.DeferredId && now < receiver.DeferredUntil) continue;
-            if (Closer(lead, chosen, receiver.TargetId)) chosen = lead;
+            PredateObservation sample = track.LastSample;
+            if (!sample || sample.Expired(now)) continue;
+            if (!candidate) candidate = new PredateHuntLead;
+            Score(candidate, subject, sample, own, now);
+            if (Closer(candidate, chosen, receiver.TargetId))
+            {
+                PredateHuntLead previous = chosen;
+                chosen = candidate;
+                candidate = previous;
+            }
         }
         if (!chosen && finalApproach) return null;
         if (!chosen && (searchActive || current))

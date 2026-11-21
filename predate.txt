@@ -6,8 +6,6 @@ add signs of movement.
 
 add other maps.
 
-add music.
-
 make ai not use flashlight or ir flashlight in open spaces.
 
 server optimisation.

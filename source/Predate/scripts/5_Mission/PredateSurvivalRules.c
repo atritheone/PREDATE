@@ -60,7 +60,7 @@ class PredateSurvivalRules
                 if (!s.SoloIsSurvivalModifier(id))
                     continue;
                 ModifierBase modifier = manager.GetModifier(id);
-                if (!modifier)
+                if (!modifier || (modifier.IsLocked() && !modifier.IsActive() && !modifier.m_ShouldBeActive))
                     continue;
                 modifier.Deactivate();
                 modifier.m_ShouldBeActive = false;

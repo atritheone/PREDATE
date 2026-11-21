@@ -1,6 +1,8 @@
 // Session coordinator: simulation lifecycle, services and engine callbacks.
 class PredateSession
 {
+    static const float CHECKPOINT_INTERVAL = 30;
+    static const float CHECKPOINT_MAX_DEFER = 0.1;
     ref PredateConfig m_HuntConfig;
     ref PredateLoadoutCatalog m_Loadouts;
     ref PredateProgress m_HuntProgress;
@@ -8,7 +10,15 @@ class PredateSession
     eAIBase m_HuntBot;
     float m_HuntStateTimer;
     float m_HuntSaveTimer;
+    int m_CheckpointPeer = -1;
+    float m_CheckpointWait;
+    float m_CheckpointActorMillis;
+    float m_DiagnosticElapsed;
+    float m_DiagnosticWorstFrame;
+    int m_DiagnosticFrames;
+    int m_DiagnosticSlowFrames;
     float m_PredateNextLightScan;
+    int m_PredateRouteCursor;
     bool m_HuntReady;
     bool m_HuntSentState;
     bool m_HuntSentCloseApproach;
@@ -18,12 +28,12 @@ class PredateSession
     ref PredateOperatorRegistry m_Operators;
     ref PredatePeerRoster m_PeerRoster;
     float m_SoloCombatTimer;
-    float m_SoloCombatReportTimer;
     ref PredateServerBridge m_Bridge;
     ref PredateWorldState m_WorldState;
     bool m_MemoryRestored;
     bool m_ActorsActive;
     bool m_Suspending;
+    bool m_SuspendSaved;
     bool m_Paused;
     bool m_PauseReady;
     bool m_DiscardResumeStep;
@@ -38,6 +48,8 @@ class PredateSession
         m_Bridge = new PredateServerBridge(this);
         string flag;
         m_Development = GetGame().CommandlineGetParam("predateDevelopment", flag) && FileExist("$profile:PredateDevelopment.txt");
+        PredateServerDiagnostics.Enabled = GetGame().CommandlineGetParam("predateServerDiagnostics", flag);
+        PredateServerDiagnostics.TraceOperators = FileExist("$profile:PredateAITrace.txt");
         PredateInit();
     }
 
@@ -54,7 +66,77 @@ class PredateSession
         GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(PredateStart, 6000, false);
     }
 
-    void PredateSave() { PredatePersistence.Save(this); }
+    void PredateSave()
+    {
+        if (m_SuspendSaved) return;
+        m_CheckpointPeer = -1;
+        m_CheckpointWait = 0;
+        m_HuntSaveTimer = 0;
+        if (PredatePersistence.Save(this) && m_Suspending) m_SuspendSaved = true;
+    }
+
+    void PredateRequestCheckpoint()
+    {
+        if (m_CheckpointPeer < 0) m_HuntSaveTimer = CHECKPOINT_INTERVAL;
+    }
+
+    void PredateUpdateCheckpoint(float timeslice, bool updatedHunt)
+    {
+        if (!m_ActorsActive || m_Paused || m_Suspending || !PredatePersistence.CanSave(this)) return;
+        m_HuntSaveTimer += timeslice;
+        if (m_CheckpointPeer < 0)
+        {
+            if (m_HuntSaveTimer < CHECKPOINT_INTERVAL) return;
+            m_CheckpointPeer = 0;
+            m_HuntSaveTimer = 0;
+            m_CheckpointActorMillis = 0;
+        }
+        m_CheckpointWait += timeslice;
+        // Give a busy frame room to recover while keeping the checkpoint moving.
+        if (m_CheckpointWait < CHECKPOINT_MAX_DEFER && (updatedHunt || timeslice > 0.022)) return;
+        m_CheckpointWait = 0;
+        int started;
+        if (PredateServerDiagnostics.Enabled) started = TickCount(0);
+        int peerCount;
+        if (m_PeerRoster) peerCount = m_PeerRoster.m_Bindings.Count();
+        // Limit periodic checkpoints to one native actor per frame. Explicit
+        // saves cancel the pass and capture the complete current world.
+        if (m_CheckpointPeer < peerCount)
+        {
+            string error;
+            if (!m_PeerRoster.SaveActor(this, m_PeerRoster.m_Bindings[m_CheckpointPeer], error))
+            {
+                PredatePersistence.Fail(this, "Cannot checkpoint operator roster: " + error);
+                return;
+            }
+        }
+        else if (m_CheckpointPeer == peerCount) PredatePersistence.SaveRaven(this);
+        else
+        {
+            PredatePersistence.SaveState(this);
+            if (PredateServerDiagnostics.Enabled)
+                Print("[PredatePerf] checkpoint actors_ms=" + m_CheckpointActorMillis + "; state_ms=" + TickCount(started) * 0.0001 + "; roster=" + (peerCount + 1));
+            m_CheckpointPeer = -1;
+            return;
+        }
+        if (PredateServerDiagnostics.Enabled) m_CheckpointActorMillis += TickCount(started) * 0.0001;
+        m_CheckpointPeer++;
+    }
+
+    void PredateReportFrames(float timeslice)
+    {
+        if (!PredateServerDiagnostics.Enabled || !m_ActorsActive || m_Paused || m_Suspending) return;
+        m_DiagnosticElapsed += timeslice;
+        m_DiagnosticFrames++;
+        m_DiagnosticWorstFrame = Math.Max(m_DiagnosticWorstFrame, timeslice);
+        if (timeslice > 0.033) m_DiagnosticSlowFrames++;
+        if (m_DiagnosticElapsed < 60) return;
+        Print("[PredatePerf] active_frames=" + m_DiagnosticFrames + "; mean_ms=" + (m_DiagnosticElapsed * 1000 / m_DiagnosticFrames) + "; max_ms=" + m_DiagnosticWorstFrame * 1000 + "; over_33ms=" + m_DiagnosticSlowFrames);
+        m_DiagnosticFrames = 0;
+        m_DiagnosticSlowFrames = 0;
+        m_DiagnosticWorstFrame = 0;
+        m_DiagnosticElapsed = 0;
+    }
 
     bool AttachPeerRoster(vector lynxStart, vector rookStart, out string error)
     {
@@ -178,6 +260,7 @@ class PredateSession
         PredatePeerBinding chosen;
         if (m_PeerRoster)
         {
+            availableOperators = 0;
             chosen = m_PeerRoster.PlayerLock();
             if (chosen)
             {
@@ -365,7 +448,9 @@ class PredateSession
         string registryError;
         eAIBase resolvedActor;
         eAIGroup resolvedGroup;
-        if (!m_Operators.Resolve("raven-01", resolvedActor, resolvedGroup, registryError))
+        PredateOperatorIndex index;
+        if (m_PeerRoster) index = PredateOperatorIndex.Capture();
+        if (!m_Operators.Resolve("raven-01", resolvedActor, resolvedGroup, registryError, index))
         {
             PredatePersistence.Fail(this, registryError);
             return;
@@ -403,7 +488,7 @@ class PredateSession
             m_HuntProgress.Selected = false;
             m_HuntProgress.HasPulse = false;
             Print("[Predate] RAVEN-01 eliminated.");
-            PredateSave();
+            PredateRequestCheckpoint();
         }
         SoloApplyCombatRules(m_HuntBot);
         array<Man> players = new array<Man>;
@@ -452,7 +537,7 @@ class PredateSession
             {
                 string selection;
                 if (request == 1) selection = requestedOperator;
-                if (m_PeerRoster.SelectPlayerTarget(this, selection)) PredateSave();
+                if (m_PeerRoster.SelectPlayerTarget(this, selection)) PredateRequestCheckpoint();
             }
             else if (request == 1 && requestedOperator == "raven-01" && m_WorldState.PlayerSignal.Reception != PredatePulseReception.UNAVAILABLE)
             {
@@ -482,7 +567,7 @@ class PredateSession
             {
                 bool confirmedKill = player.m_PredateKillNotices.Count() > 0;
                 PredateSend(player);
-                if (confirmedKill) PredateSave();
+                if (confirmedKill) PredateRequestCheckpoint();
             }
         }
         if (activePlayer && m_WorldState)
@@ -511,7 +596,7 @@ class PredateSession
                 else m_HuntBot.SetMovementSpeedLimits(0, 0);
             }
         }
-        if (m_PeerRoster && !m_PeerRoster.Advance(this, activeParticipant, registryError))
+        if (m_PeerRoster && !m_PeerRoster.Advance(this, activeParticipant, registryError, index))
         {
             PredatePersistence.Fail(this, registryError);
             return;
@@ -523,8 +608,6 @@ class PredateSession
         }
         m_HuntStateTimer += seconds;
         if (m_HuntStateTimer >= 1.25) m_HuntStateTimer = 0;
-        m_HuntSaveTimer += seconds;
-        if (m_HuntSaveTimer >= 30) { m_HuntSaveTimer = 0; PredateSave(); }
     }
 
     void Update(float timeslice)
@@ -537,25 +620,23 @@ class PredateSession
             return;
         }
         m_SoloCombatTimer += timeslice;
-        m_SoloCombatReportTimer += timeslice;
-        if (m_SoloCombatTimer < 0.25)
-            return;
-        float elapsed = m_SoloCombatTimer;
-        m_SoloCombatTimer = 0;
-        PredateTick(elapsed);
-        array<Man> players = new array<Man>;
-        GetGame().GetPlayers(players);
-        foreach (Man man : players)
+        bool updatedHunt = m_SoloCombatTimer >= 0.25;
+        if (updatedHunt)
         {
-            PlayerBase player = PlayerBase.Cast(man);
-            SoloApplyCombatRules(player);
-            if (player) player.PredateUpdateVitalHud();
+            float elapsed = m_SoloCombatTimer;
+            m_SoloCombatTimer = 0;
+            PredateTick(elapsed);
+            array<Man> players = new array<Man>;
+            GetGame().GetPlayers(players);
+            foreach (Man man : players)
+            {
+                PlayerBase player = PlayerBase.Cast(man);
+                SoloApplyCombatRules(player);
+                if (player) player.PredateUpdateVitalHud();
+            }
         }
-        if (m_SoloCombatReportTimer >= 60)
-        {
-            m_SoloCombatReportTimer = 0;
-            Print("[SoloCombat] Rules applied to connected players: " + players.Count());
-        }
+        PredateReportFrames(timeslice);
+        PredateUpdateCheckpoint(timeslice, updatedHunt);
     }
 
     void Finish()

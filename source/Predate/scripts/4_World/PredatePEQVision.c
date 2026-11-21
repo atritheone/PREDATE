@@ -9,6 +9,7 @@ class PredatePEQSample
     bool Laser;
     bool Infrared;
     bool HasSplash;
+    protected bool m_Traced;
 
     void PredatePEQSample(PlayerBase holder, vector start, vector direction, float reach, float coneAngle, bool laser, bool infrared)
     {
@@ -19,12 +20,18 @@ class PredatePEQSample
         ConeCosine = Math.Cos(coneAngle * Math.DEG2RAD);
         Laser = laser;
         Infrared = infrared;
-        End = start + direction * reach;
+        End = Start + Direction * Reach;
+    }
+
+    protected void Trace()
+    {
+        if (m_Traced) return;
+        m_Traced = true;
         vector contact, normal;
         int component;
-        if (DayZPhysics.RaycastRV(start, End, contact, normal, component, null, null, holder, false, false, ObjIntersectView, 0))
+        if (DayZPhysics.RaycastRV(Start, End, contact, normal, component, null, null, Holder, false, false, ObjIntersectView, 0))
         {
-            End = contact - direction * 0.10;
+            End = contact - Direction * 0.10;
             HasSplash = true;
         }
     }
@@ -32,8 +39,8 @@ class PredatePEQSample
     bool Illuminates(PlayerBase target, vector point)
     {
         vector offset = point - Start;
-        float distance = offset.Length();
-        if (target == Holder || distance < 0.1 || distance > Reach || vector.Dot(offset.Normalized(), Direction) < ConeCosine) return false;
+        float distanceSquared = offset.LengthSq();
+        if (target == Holder || distanceSquared < 0.01 || distanceSquared > Reach * Reach || vector.Dot(offset.Normalized(), Direction) < ConeCosine) return false;
         vector contact, normal;
         int component;
         set<Object> hits = new set<Object>;
@@ -47,6 +54,9 @@ class PredatePEQSample
     {
         float viewRange = 120;
         if (Laser && !Infrared && !dark) viewRange = 65;
+        float possibleRange = Reach + viewRange + 0.1;
+        if (vector.DistanceSq(eyes, Start) > possibleRange * possibleRange) return false;
+        Trace();
         if (HasSplash && PredatePEQVision.SeesPoint(observer, eyes, End, viewRange))
         {
             area = End;

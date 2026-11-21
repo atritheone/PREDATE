@@ -351,7 +351,10 @@ class PredatePeerRoster
             binding.State = fresh;
             m_State.Peers[index] = fresh;
             if (!BindNative(session, binding, error)) return false;
-            session.PredateSave();
+            // A checkpoint already in progress may have passed this slot.
+            // The new deployment must have native storage before publishing it.
+            if (!SaveActor(session, binding, error)) return false;
+            session.PredateRequestCheckpoint();
         }
         return true;
     }
@@ -373,9 +376,8 @@ class PredatePeerRoster
         }
     }
 
-    bool UpdateBindings(PredateSession session, bool active, out string error)
+    bool UpdateBindings(PredateSession session, bool active, out string error, PredateOperatorIndex index)
     {
-        PredateOperatorIndex index = PredateOperatorIndex.Capture();
         foreach (PredatePeerBinding binding : m_Bindings)
         {
             eAIBase actor;
@@ -420,11 +422,11 @@ class PredatePeerRoster
         }
     }
 
-    bool Advance(PredateSession session, PlayerBase player, out string error)
+    bool Advance(PredateSession session, PlayerBase player, out string error, PredateOperatorIndex index)
     {
         float now = session.m_WorldState.SimulationSeconds;
         bool active = session.m_ActorsActive && !session.m_Paused && !session.m_Suspending;
-        if (!UpdateBindings(session, active, error)) return false;
+        if (!UpdateBindings(session, active, error, index)) return false;
         if (!active || !player || now <= m_LastTick) return true;
         if (!RespawnDefeated(session, player, now, error)) return false;
         float elapsed = now - m_LastTick;
@@ -442,40 +444,65 @@ class PredatePeerRoster
         return true;
     }
 
+    bool SaveActor(PredateSession session, PredatePeerBinding binding, out string error, PredateOperatorIndex index = null)
+    {
+        PredatePeerState peer = binding.State;
+        PredateOperatorRecord record = peer.Operator;
+        eAIBase actor = binding.Actor;
+        eAIGroup group = binding.Group;
+        // Tick keeps the binding current. Re-resolve if it changed between
+        // that tick and this checkpoint frame, or when saving explicitly.
+        if (index || !actor || !actor.IsAlive() || !group || actor.GetGroup() != group || group.m_BaseName != record.StorageKey)
+        {
+            if (!session.m_Operators.Resolve(record.Id, actor, group, error, index)) return false;
+        }
+        if (record.LifeState == "defeated")
+        {
+            if (binding.Group)
+            {
+                binding.Group.m_Persist = false;
+                eAIGroup.s_PersistentGroups.RemoveItem(binding.Group);
+            }
+            binding.Actor = null;
+            binding.Group = null;
+            return true;
+        }
+        if (!group || !actor)
+        {
+            error = "Cannot checkpoint peer " + record.Id;
+            return false;
+        }
+        // Keep vitals in step with the native snapshot of gear and position.
+        PredateSignalService.CaptureActor(actor, peer.SignatureActivity);
+        group.Save(true);
+        peer.Health = actor.GetHealth("", "Health");
+        peer.Blood = actor.GetHealth("", "Blood");
+        peer.Shock = actor.GetHealth("", "Shock");
+        peer.HasVitals = true;
+        return true;
+    }
+
     bool Save(PredateSession session, out string error)
     {
         PredateOperatorIndex index = PredateOperatorIndex.Capture();
         foreach (PredatePeerBinding binding : m_Bindings)
+            if (!SaveActor(session, binding, error, index)) return false;
+        return SaveState(error);
+    }
+
+    bool SaveState(out string error)
+    {
+        // Keep the existing schema while avoiding millions of padding bytes.
+        string data;
+        if (!JsonFileLoader<PredatePeerRosterSave>.MakeData(m_State, data, error, false)) return false;
+        FileHandle file = OpenFile(SAVE_PATH, FileMode.WRITE);
+        if (!file)
         {
-            PredatePeerState peer = binding.State;
-            PredateOperatorRecord record = peer.Operator;
-            eAIBase actor;
-            eAIGroup group;
-            if (!session.m_Operators.Resolve(record.Id, actor, group, error, index)) return false;
-            if (record.LifeState == "defeated")
-            {
-                if (binding.Group)
-                {
-                    binding.Group.m_Persist = false;
-                    eAIGroup.s_PersistentGroups.RemoveItem(binding.Group);
-                }
-                binding.Actor = null;
-                binding.Group = null;
-                continue;
-            }
-            if (!group || !actor)
-            {
-                error = "Cannot checkpoint peer " + record.Id;
-                return false;
-            }
-            // Store the bound native actor, including weapons and clothing.
-            PredateSignalService.CaptureActor(actor, peer.SignatureActivity);
-            group.Save(true);
-            peer.Health = actor.GetHealth("", "Health");
-            peer.Blood = actor.GetHealth("", "Blood");
-            peer.Shock = actor.GetHealth("", "Shock");
-            peer.HasVitals = true;
+            error = "Cannot open " + SAVE_PATH + " for writing";
+            return false;
         }
-        return JsonFileLoader<PredatePeerRosterSave>.SaveFile(SAVE_PATH, m_State, error);
+        FPrint(file, data);
+        CloseFile(file);
+        return true;
     }
 }

@@ -4,8 +4,6 @@ modded class eAIBase
 {
     protected static const float PREDATE_NVG_RANGE = 800.0;
     bool m_PredateCombatEnabled;
-    bool m_PredateAIConfigured;
-    bool m_PredateAITrace;
     bool m_PredateKnowledgeEnabled;
     string m_PredateOperatorId;
     ref PredateObservationMemory m_PredateMemory;
@@ -120,7 +118,7 @@ modded class eAIBase
                 if (sound.Source == PredateObservationSource.FOOTSTEP && sound.Confidence < 0.4) threat = 0.2;
                 m_eAI_NoiseTargetInfo.SetNoiseParams(null, sound.Estimate, sound.Magnitude, Math.Max(0, sound.ExpiresAt - now), threat);
                 eAI_AddNoiseTarget(threat);
-                if (m_PredateAITrace) PredateTraceAI("heard source=" + sound.Source + "; confidence=" + sound.Confidence + "; radius=" + sound.Radius);
+                if (PredateServerDiagnostics.TraceOperators) PredateTraceAI("heard source=" + sound.Source + "; confidence=" + sound.Confidence + "; radius=" + sound.Radius);
             }
             m_PredatePendingSounds.Remove(i);
         }
@@ -324,7 +322,7 @@ modded class eAIBase
 
     void PredateTraceAI(string action)
     {
-        if (m_PredateAITrace)
+        if (PredateServerDiagnostics.TraceOperators)
             Print("[PredateAI] operator=" + m_PredateOperatorId + "; simulation=" + m_PredateSimulationTime + "; action=" + action);
     }
 

@@ -117,4 +117,8 @@ New hunts also require both gear packs for the modern AI rifle roster, even if t
 
 The AN/PEQ-15 Laser / Light Module comes from [MutatedMods Lasers](https://steamcommunity.com/sharedfiles/filedetails/?id=3704871552) (item `3704871552`) and requires PREDATE's signed local compatibility addon. The companion supplies the controls above and disables the Workshop pack's automatic Discord usage report. PREDATE verifies the pair before starting a hunt.
 
+### Developer server diagnostics
+
+Launch `PREDATE.exe --server-diagnostics`, then start or continue a hunt to capture server FPS, memory, checkpoint timings, and console and admin logs. The flag applies the next time a server starts. Logs are under the operation's `profile` directory. For per-Operator route and perception traces, add `PredateAITrace.txt` to that profile before starting the server. Regular play uses DayZ's built-in crash and error files for recovery.
+
 Once setup is complete, keep Steam signed in online and open `PREDATE.exe` or `scripts/Play PREDATE.cmd`. Choose **New Hunt** to start fresh or **Continue** to resume an existing save. The portable launcher bundles its Python backend.

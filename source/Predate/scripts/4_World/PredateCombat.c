@@ -350,7 +350,7 @@ modded class eAIBase
         m_PredateNextShotTime = GetGame().GetTickTime() + interval;
         m_PredateAimSince = 0;
         m_PredateAimPauseUntil = 0;
-        if (m_PredateFiredShots <= 10 || m_PredateFiredShots % 20 == 0)
+        if (PredateServerDiagnostics.TraceOperators && (m_PredateFiredShots <= 10 || m_PredateFiredShots % 20 == 0))
             Print("[Predate] Deliberate shot " + m_PredateFiredShots + "; range=" + Math.Round(distance) + "m; minimum pause=" + interval + "s.");
     }
 }
