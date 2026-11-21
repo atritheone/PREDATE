@@ -45,7 +45,7 @@ class PredateReceiverValidation
         player.SetIsInThirdPerson(true);
         result.Check(player.CameraHandler(0) == DayZPlayerCameras.DAYZCAMERA_1ST && !player.IsInThirdPerson());
         result.Check(state.HasPulseOrigin && state.PulseOrigin[0] == 4500 && state.PulseOrigin[2] == 6500 && state.BearingError > 0 && state.Intercepted);
-        result.Check(Fits(mission.m_PredateHudText) && mission.m_PredateReceiverContents.Contains("Raven") && mission.m_PredateReceiverContents.Contains("Next"));
+        result.Check(Fits(mission.m_PredateHudText) && mission.m_PredateReceiverContents.Contains("Raven") && mission.m_PredateReceiverContents.Contains("250–500 m") && mission.m_PredateReceiverContents.Contains("Next"), "the compass readout fits the tracked pulse range");
         PredateHuntFeed feed = mission.m_PredateHuntFeed;
         result.Check(HuntWarningVisible(feed));
         player.m_PredateKillNotices.Insert(0);
@@ -228,7 +228,80 @@ class PredateReceiverValidation
         overlay.Draw(player, example, menu.m_MapScale);
         result.Check(overlay.m_ArcRadii[0] > overlay.m_ArcRadii[1] && overlay.m_ArcRadii[1] > overlay.m_ArcRadii[2] && overlay.m_ArcRadii[2] > 0);
         vector click = overlay.RadialPoint(2, overlay.m_ArcRadii[0]);
-        result.Check(overlay.HitPulse(click[0] + overlay.m_Left, click[1] + overlay.m_Top, example) == example.Pulses[0].OperatorId);
+        array<string> hits = {};
+        overlay.HitPulses(click[0] + overlay.m_Left, click[1] + overlay.m_Top, example, hits);
+        result.Check(hits.Count() == 1 && hits[0] == example.Pulses[0].OperatorId);
+        int readableNames;
+        foreach (int placed : overlay.m_PlacedSlots)
+        {
+            TextWidget nameplate = overlay.m_Labels[placed];
+            vector namePoint = overlay.m_LabelPositions[placed];
+            vector anchorOffset = overlay.m_LabelAnchors[placed] - overlay.m_PlayerPoint;
+            overlay.PreviewPulse(namePoint[0] + overlay.m_Left, namePoint[1] + overlay.m_Top, example);
+            bool clear = true;
+            foreach (int shown : overlay.m_ActiveSlots)
+            {
+                if (overlay.ArcInBox(shown, namePoint, overlay.m_LabelHalfWidths[placed], overlay.m_LabelHeight / 2)) clear = false;
+            }
+            bool correctPreview = overlay.m_HoveredPulse && overlay.m_HoveredPulse.OperatorId == PredateProtocol.OperatorAt(placed);
+            float anchorBearing = PredateMath.WrapHeading(Math.Atan2(anchorOffset[0], -anchorOffset[1]) * Math.RAD2DEG);
+            bool correctAnchor = Math.AbsFloat(anchorOffset.Length() - overlay.m_ArcRadii[placed]) < 0.01 && PredateBearingPulse.Contains(overlay.m_ArcStarts[placed], anchorBearing);
+            result.Check(clear && Fits(nameplate) && nameplate.GetColor() == 0xFFFFFFFF && correctPreview && correctAnchor, "a white nameplate clears all pulse strokes and highlights the arc its leader touches");
+            readableNames++;
+        }
+        result.Check(readableNames >= 2, "nearby bearings still get distinct attached names");
+        overlay.PreviewPulse(click[0] + overlay.m_Left, click[1] + overlay.m_Top, example);
+        result.Check(overlay.m_HoveredPulse && overlay.m_HoveredPulse.OperatorId == example.Pulses[0].OperatorId, "hovering an arc identifies its Operator");
+
+        example.Pulses.Clear();
+        int crowdedBearing = 82;
+        if (overlay.m_PlayerPoint[0] > overlay.m_Width / 2) crowdedBearing = 262;
+        for (int slot = 0; slot < PredateProtocol.MAX_OPERATORS; slot++)
+        {
+            PredateBearingPulse dense = new PredateBearingPulse;
+            dense.OperatorId = PredateProtocol.OperatorAt(slot);
+            dense.Start = crowdedBearing;
+            dense.DistanceBand = 20 - slot / 5;
+            example.Pulses.Insert(dense);
+        }
+        example.Locked = true;
+        example.OperatorId = example.Pulses[0].OperatorId;
+        overlay.Draw(player, example, menu.m_MapScale);
+        int last = example.Pulses.Count() - 1;
+        result.Check(overlay.m_ArcRadii[0] - overlay.m_ArcRadii[1] >= PredateMapOverlay.MIN_LANE_SPACING * menu.m_MapScale - 0.1, "a dense stack retains readable lane spacing");
+        result.Check(overlay.m_ArcRadii[last] >= PredateMapOverlay.INNER_CLEARANCE * menu.m_MapScale - 0.1, "the dense stack leaves room for the player arrow");
+        result.Check(overlay.m_Labels[0].IsVisible() && overlay.m_Labels[0].GetColor() == PredateMapOverlay.SELECTED_COLOR, "the tracked pulse has a white label");
+        vector inside = overlay.RadialPoint(crowdedBearing + 7.5, overlay.m_ArcRadii[last]);
+        overlay.HitPulses(inside[0] + overlay.m_Left, inside[1] + overlay.m_Top, example, hits);
+        result.Check(hits.Count() > 1 && hits.Find(example.Pulses[last].OperatorId) >= 0 && hits.Find(example.Pulses[0].OperatorId) < 0, "overlapping contacts on the shared lane are selectable");
+        overlay.PreviewPulse(inside[0] + overlay.m_Left, inside[1] + overlay.m_Top, example);
+        result.Check(!overlay.m_HoveredPulse && overlay.m_HoverHits.Count() == hits.Count(), "shared arcs preview the group instead of implying a single Operator");
+        menu.ShowPulsePicker(example, hits);
+        result.Check(menu.m_PulsePicker.IsVisible() && menu.m_PulseRows.GetNumItems() == hits.Count() && menu.m_PulseChoices[0] == example.Pulses[last].OperatorId, "the crowded lane opens a nearest-first list of every matching contact");
+        result.Check(menu.m_Events.OnItemSelected(menu.m_PulseRows, 0, 0, 0, 0, -1, -1) && !menu.m_PulsePicker.IsVisible(), "choosing a list row dismisses the picker");
+        bool everyNameSelectable = overlay.m_PlacedSlots.Count() == example.Pulses.Count();
+        foreach (int named : overlay.m_PlacedSlots)
+        {
+            vector nameCenter = overlay.m_LabelPositions[named];
+            overlay.HitPulses(nameCenter[0] + overlay.m_Left, nameCenter[1] + overlay.m_Top, example, hits);
+            if (hits.Count() != 1 || hits[0] != PredateProtocol.OperatorAt(named) || !Fits(overlay.m_Labels[named])) everyNameSelectable = false;
+        }
+        result.Check(everyNameSelectable, "all 100 map nameplates fit and each can be clicked directly");
+
+        example.Pulses.Clear();
+        array<int> bearings = {337, 337, 302, 302, 57, 57, 82, 269, 243, 243, 245, 351, 204, 195, 12, 14, 101, 102, 103, 105, 114, 327, 321, 320, 2, 8, 166, 177};
+        for (int exampleSlot = 0; exampleSlot < bearings.Count(); exampleSlot++)
+        {
+            PredateBearingPulse typical = new PredateBearingPulse;
+            typical.OperatorId = PredateProtocol.OperatorAt(exampleSlot);
+            typical.Start = bearings[exampleSlot];
+            typical.DistanceBand = 20 - exampleSlot / 2;
+            example.Pulses.Insert(typical);
+        }
+        overlay.Draw(player, example, menu.m_MapScale, false);
+        int displayed = overlay.m_PlacedSlots.Count();
+        Print("[PredateMapTest] attached nameplates " + displayed + "/" + bearings.Count());
+        result.Check(displayed == bearings.Count(), "the representative spread places every name directly on the map");
     }
 
     static void Finish(PredateReceiverValidationResult result, MissionGameplay mission)

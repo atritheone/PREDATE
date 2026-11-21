@@ -1,0 +1,65 @@
+PanelWidgetClass PredateDeath {
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+priority 9999
+color 1 0 0 1
+style rover_sim_colorable
+ { TextWidgetClass DeathTitle {
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 0 0 0 1
+text "Death"
+scaled 0
+font "gui/fonts/sdf_MetronBook24"
+"text valign" center
+"text halign" center
+"exact text" 1
+"exact text size" 48
+ {  }
+}
+FrameWidgetClass DeathChoices {
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ visible 0
+ignorepointer 1
+priority 10
+ { ButtonWidgetClass DeathRedeploy {
+ position 0.4 0.595
+ size 0.2 0.052
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ style Default
+text "Redeploy"
+ {  }
+}
+ButtonWidgetClass DeathSaveQuit {
+ position 0.4 0.66
+ size 0.2 0.052
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ style Default
+text "Save and Quit"
+ {  }
+}
+ }
+}
+ }
+}

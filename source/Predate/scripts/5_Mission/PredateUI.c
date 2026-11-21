@@ -21,6 +21,12 @@ class PredateReceiverEvents : ScriptedWidgetEventHandler
             m_Menu.EndMapPress(w == m_Menu.m_Map, x, y);
         return false;
     }
+
+    override bool OnItemSelected(Widget w, int x, int y, int row, int column, int oldRow, int oldColumn)
+    {
+        if (!m_Menu || w != m_Menu.m_PulseRows || !m_Menu.m_PulsePicker || !m_Menu.m_PulsePicker.IsVisible()) return false;
+        return m_Menu.SelectPulseChoice(row);
+    }
 }
 
 class PredateTrackerMenu : UIScriptedMenu
@@ -32,6 +38,9 @@ class PredateTrackerMenu : UIScriptedMenu
     TextWidget m_Origin;
     Widget m_HistoryTitle;
     TextWidget m_InterceptionStatus;
+    Widget m_PulsePicker;
+    TextListboxWidget m_PulseRows;
+    ref array<string> m_PulseChoices = {};
     ref array<TextWidget> m_HistoryRows = new array<TextWidget>;
     ref array<TextWidget> m_MapLabels = new array<TextWidget>;
     ButtonWidget m_Select;
@@ -59,12 +68,16 @@ class PredateTrackerMenu : UIScriptedMenu
         m_Origin = TextWidget.Cast(layoutRoot.FindAnyWidget("Hint"));
         m_HistoryTitle = layoutRoot.FindAnyWidget("HistoryTitle");
         m_InterceptionStatus = TextWidget.Cast(layoutRoot.FindAnyWidget("InterceptionStatus"));
+        m_PulsePicker = layoutRoot.FindAnyWidget("PulsePicker");
+        m_PulseRows = TextListboxWidget.Cast(layoutRoot.FindAnyWidget("PulseChoices"));
+        if (m_PulseRows) m_PulseRows.SetHandler(m_Events);
         for (int index = 0; index < PredateProtocol.MAX_BEARING_HISTORY; index++)
             m_HistoryRows.Insert(TextWidget.Cast(layoutRoot.FindAnyWidget("History" + index)));
         m_MapLabels = {m_Status, m_Bearing, m_Timing, m_Origin};
         m_MapLabels.Insert(TextWidget.Cast(m_HistoryTitle));
         m_MapLabels.Insert(m_InterceptionStatus);
         m_MapLabels.Insert(TextWidget.Cast(layoutRoot.FindAnyWidget("TrackingTitle")));
+        m_MapLabels.Insert(TextWidget.Cast(layoutRoot.FindAnyWidget("PulsePickerTitle")));
         foreach (TextWidget historyLabel : m_HistoryRows) m_MapLabels.Insert(historyLabel);
         m_Select = ButtonWidget.Cast(layoutRoot.FindAnyWidget("Select"));
         m_Select.SetHandler(m_Events);
@@ -108,6 +121,7 @@ class PredateTrackerMenu : UIScriptedMenu
         m_PredateOwnAimExclude = false;
         m_ConfirmReplacement = false;
         m_MapPressed = false;
+        HidePulsePicker();
         super.OnHide();
     }
 
@@ -118,7 +132,7 @@ class PredateTrackerMenu : UIScriptedMenu
         if (!player) return;
         PredateState state = player.m_PredateState;
         UpdateMapScale();
-        if (m_MapOverlay) m_MapOverlay.Draw(player, state, m_MapScale);
+        if (m_MapOverlay) m_MapOverlay.Draw(player, state, m_MapScale, !m_MapPressed);
         if (!state) return;
         if (!state.CanDeploy) m_ConfirmReplacement = false;
         layoutRoot.FindAnyWidget("NewHunt").Show(state.Development && !m_ConfirmReplacement);
@@ -138,23 +152,31 @@ class PredateTrackerMenu : UIScriptedMenu
         else if (available == 0) m_Bearing.SetText("OPERATION COMPLETE");
         else if (state.Locked && !state.Available) m_Bearing.SetText("Signal ended");
         else if (PredateReceiverText.LostContact(state)) m_Bearing.SetText("CONTACT LOST");
-        else m_Bearing.SetText("No pulse");
+        else if (state.Pulses.Count() == 0) m_Bearing.SetText("No pulse");
+        else m_Bearing.SetText("");
         if (state.Locked && !state.CanDeploy)
             m_Timing.SetText("Sample age " + Math.Floor(state.Age).ToString() + "s    |    Next pulse " + Math.Ceil(state.NextPulse).ToString() + "s");
         else if (m_ConfirmReplacement) m_Timing.SetText("Keep your gear for the next hunt?");
         else if (state.CanDeploy) m_Timing.SetText("Start another hunt to bring in an Operator.");
         else m_Timing.SetText("");
         m_Origin.SetText("No Operator pulses in range");
-        if (state.Pulses.Count() > 0) m_Origin.SetText("Select an Operator’s bearing arc");
+        if (state.Pulses.Count() > 0) m_Origin.SetText("Hover over a name to find its arc");
         PredateBearingPulse tracked = state.TrackedPulse();
         if (tracked) m_Origin.SetText("Pulse range " + tracked.DistanceText());
+        if (m_MapOverlay && m_MapOverlay.m_HoveredPulse)
+        {
+            PredateBearingPulse hover = m_MapOverlay.m_HoveredPulse;
+            m_Origin.SetText(PredateProtocol.DisplayName(hover.OperatorId) + "  |  " + hover.DistanceText());
+        }
+        else if (m_MapOverlay && m_MapOverlay.m_HoverHits.Count() > 1)
+            m_Origin.SetText("Click to choose among " + m_MapOverlay.m_HoverHits.Count().ToString() + " pulses");
         ShowHistory(state);
     }
 
     void ShowHistory(PredateState state)
     {
         int count;
-        if (state && state.CanShowHistory()) count = state.History.Count();
+        if (state && state.CanShowHistory() && (!m_PulsePicker || !m_PulsePicker.IsVisible())) count = state.History.Count();
         if (m_HistoryTitle) m_HistoryTitle.Show(count > 0);
         for (int index = 0; index < m_HistoryRows.Count(); index++)
         {
@@ -208,8 +230,58 @@ class PredateTrackerMenu : UIScriptedMenu
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
         if (!player || !player.m_PredateState) return;
         PredateState state = player.m_PredateState;
-        string id = m_MapOverlay.HitPulse(x, y, state);
-        if (id != "" && (!state.Locked || id != state.OperatorId)) player.PredateRequest(1, id);
+        array<string> hits = {};
+        m_MapOverlay.HitPulses(x, y, state, hits);
+        HidePulsePicker();
+        if (hits.Count() == 1) SelectPulse(player, state, hits[0]);
+        else if (hits.Count() > 1) ShowPulsePicker(state, hits);
+    }
+
+    void ShowPulsePicker(PredateState state, array<string> hits)
+    {
+        if (!m_PulsePicker || !m_PulseRows) return;
+        m_PulseRows.ClearItems();
+        m_PulseChoices.Clear();
+        // Display near to far so the tightest nearby leads are at the top.
+        for (int index = state.Pulses.Count() - 1; index >= 0; index--)
+        {
+            PredateBearingPulse pulse = state.Pulses[index];
+            if (hits.Find(pulse.OperatorId) < 0) continue;
+            int row = m_PulseRows.AddItem(PredateProtocol.DisplayName(pulse.OperatorId) + "  |  " + pulse.DistanceText(), null, 0);
+            if (row >= 0) m_PulseChoices.Insert(pulse.OperatorId);
+        }
+        m_PulsePicker.Show(m_PulseChoices.Count() > 0);
+        m_PulseRows.Update();
+        ShowHistory(state);
+    }
+
+    void HidePulsePicker()
+    {
+        if (m_PulsePicker) m_PulsePicker.Show(false);
+    }
+
+    bool SelectPulseChoice(int row)
+    {
+        if (row < 0 || row >= m_PulseChoices.Count()) return false;
+        HidePulsePicker();
+        PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+        if (player && player.m_PredateState)
+        {
+            SelectPulse(player, player.m_PredateState, m_PulseChoices[row]);
+            ShowHistory(player.m_PredateState);
+        }
+        return true;
+    }
+
+    void SelectPulse(PlayerBase player, PredateState state, string id)
+    {
+        if (state.Locked && id == state.OperatorId) return;
+        foreach (PredateBearingPulse pulse : state.Pulses)
+        {
+            if (pulse.OperatorId != id) continue;
+            player.PredateRequest(1, id);
+            return;
+        }
     }
 
     override bool OnClick(Widget w, int x, int y, int button)
@@ -218,8 +290,8 @@ class PredateTrackerMenu : UIScriptedMenu
         Print("[Predate] Receiver click: " + w.GetName());
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
         if (w.GetName() == "Close") { Close(); return true; }
-        if (w.GetName() == "Overview") { ShowOverview(); return true; }
-        if (w.GetName() == "CenterPlayer" && player) { CenterOn(player.GetPosition()); return true; }
+        if (w.GetName() == "Overview") { HidePulsePicker(); ShowOverview(); return true; }
+        if (w.GetName() == "CenterPlayer" && player) { HidePulsePicker(); CenterOn(player.GetPosition()); return true; }
         if (!player || !player.m_PredateState) return false;
         PredateState state = player.m_PredateState;
         if (w.GetName() == "Select")
@@ -261,6 +333,8 @@ modded class MissionGameplay
     bool m_PredateReceiverValidation;
 #ifndef SERVER
     ref PredateScopeValidation m_PredateScopeTest;
+    bool m_PredateNightScopeActive;
+    bool m_PredateScopeUsedGoggles;
 #endif
     ref PredatePresentationValidation m_PredatePresentationTest;
     ref PredateRosterReceiverValidation m_PredateRosterReceiverTest;
@@ -273,6 +347,8 @@ modded class MissionGameplay
     override void OnInit()
     {
         super.OnInit();
+        m_PredateDeathCard = GetGame().GetWorkspace().CreateWidgets("Predate/gui/death.layout");
+        PredatePlayerLifeEvents.LocalDeath.Insert(PredateBeginDeathCard);
         m_PredateHud = GetGame().GetWorkspace().CreateWidgets("Predate/gui/hud.layout");
         if (m_PredateHud) m_PredateHudText = TextWidget.Cast(m_PredateHud.FindAnyWidget("Receiver"));
         if (m_PredateHud) m_PredateFootprintClue = TextWidget.Cast(m_PredateHud.FindAnyWidget("FootprintClue"));
@@ -282,6 +358,7 @@ modded class MissionGameplay
         m_PredateCompass.SelfTest();
         Print("[Predate] Operation map ready. Press M to open it.");
         string testValue;
+        m_PredateDeathValidation = GetGame().CommandlineGetParam("predateDeploymentValidation", testValue) && FileExist("$profile:PredateDeploymentValidation.txt");
         m_PredateTesting = GetGame().CommandlineGetParam("predateUITest", testValue) && GetGame().CommandlineGetParam("predateDevelopment", testValue);
         m_PredateReceiverValidation = GetGame().CommandlineGetParam("predateReceiverValidation", testValue) && FileExist("$profile:PredateReceiverValidation.txt");
 #ifndef SERVER
@@ -325,11 +402,19 @@ modded class MissionGameplay
 
     override void OnUpdate(float timeslice)
     {
+        PlayerBase beforeUpdate = PlayerBase.Cast(GetGame().GetPlayer());
+        if (beforeUpdate && !beforeUpdate.IsAlive()) PredateBeginDeathCard(beforeUpdate);
         UIScriptedMenu previousMenu = GetGame().GetUIManager().GetMenu();
         super.OnUpdate(timeslice);
+        if (PredateDeathCardWaiting())
+        {
+            if (m_PredateHud) m_PredateHud.Show(false);
+            return;
+        }
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
 #ifndef SERVER
         PredateScopedNightVision.UpdateBlur(player);
+        PredateUpdateNightScopeSound(player);
 #endif
         bool needsRedeploy = InGameMenu.PredateNeedsRedeploy(player);
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
@@ -362,9 +447,13 @@ modded class MissionGameplay
                 Pause();
                 if (IsPaused()) Print("[Predate] Deployment menu opened.");
             }
+            if (needsRedeploy && !deploying && IsPaused())
+                PredateRevealDeathOptions(InGameMenu.Cast(GetGame().GetUIManager().GetMenu()));
             return;
         }
         if (!player || !player.IsAlive()) { if (m_PredateHud) m_PredateHud.Show(false); return; }
+        PredateHideDeathCard();
+        m_PredateDeathMenuAt = 0;
         // Run after vanilla checks Pause, while the map was still the open menu.
         if (GetGame().GetUIManager().GetMenu() == previousMenu && !GetGame().GetUIManager().IsDialogVisible())
         {
@@ -400,7 +489,12 @@ modded class MissionGameplay
         {
             if (state.CloseApproach) text = "Final Approach - Track by Sight";
             else if (state.HasPulse)
-                text = PredateProtocol.DisplayName(state.OperatorId) + "   |   " + PredateBearingPulse.RangeText(state.Bearing) + "   |   Next pulse " + Math.Ceil(state.NextPulse).ToString() + "s";
+            {
+                text = PredateProtocol.DisplayName(state.OperatorId) + "  |  " + PredateBearingPulse.RangeText(state.Bearing);
+                PredateBearingPulse tracked = state.TrackedPulse();
+                if (tracked) text += "  |  " + tracked.DistanceText();
+                text += "  |  Next pulse " + Math.Ceil(state.NextPulse).ToString() + "s";
+            }
         }
         if (PredatePresentationOptions.Current().HighContrast) m_PredateHudText.SetColor(0xFFFFFFFF);
         else m_PredateHudText.SetColor(0xFFC4D4D9);
@@ -512,10 +606,39 @@ modded class MissionGameplay
         GetGame().RequestExit(0);
     }
 
+#ifndef SERVER
+    protected void PredateUpdateNightScopeSound(PlayerBase player)
+    {
+        if (!player || !player.IsAlive() || player.IsUnconscious())
+        {
+            m_PredateNightScopeActive = false;
+            m_PredateScopeUsedGoggles = false;
+            return;
+        }
+        bool nightScope = PredateScopedNightVision.UsesNightScope(player);
+        if (nightScope == m_PredateNightScopeActive) return;
+        m_PredateNightScopeActive = nightScope;
+        bool gogglesActive = PredateScopedNightVision.ActiveGoggleType(player) != NVTypes.NONE;
+        if (nightScope)
+        {
+            m_PredateScopeUsedGoggles = gogglesActive;
+            if (gogglesActive) PredateScopedNightVision.PlayGoggleHandoff(player, false);
+        }
+        else
+        {
+            if (m_PredateScopeUsedGoggles && gogglesActive) PredateScopedNightVision.PlayGoggleHandoff(player, true);
+            m_PredateScopeUsedGoggles = false;
+        }
+    }
+#endif
+
     override void OnMissionFinish()
     {
+        PredatePlayerLifeEvents.LocalDeath.Remove(PredateBeginDeathCard);
+        if (m_PredateDeathCard) m_PredateDeathCard.Unlink();
         if (m_PredateHuntFeed) m_PredateHuntFeed.Close();
         if (m_PredateHud) m_PredateHud.Unlink();
         super.OnMissionFinish();
     }
+
 }

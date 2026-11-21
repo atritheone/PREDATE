@@ -1,8 +1,20 @@
+class PredateDeathPresentation
+{
+    static void FitTitle(Widget card)
+    {
+        TextWidget title = TextWidget.Cast(card.FindAnyWidget("DeathTitle"));
+        float width, height;
+        card.GetScreenSize(width, height);
+        if (title) title.SetTextExactSize(Math.Round(Math.Clamp(height * 0.067, 38, 132)));
+    }
+}
+
 modded class InGameMenu
 {
     bool m_PredateDeploymentScreen;
     bool m_PredateRedeployPending;
     bool m_PredateDeploymentTest;
+    Widget m_PredateDeathOptions;
     Widget m_PredatePauseBrand;
     ImageWidget m_PredatePauseWordmark;
     TextWidget m_PredatePauseSlayer;
@@ -73,6 +85,8 @@ modded class InGameMenu
         if (player) receiver = player.m_PredateState;
         if (PredateNeedsRedeploy(player))
         {
+            bool choicesWereVisible = PredateDeathOptionsVisible();
+            PredateShowDeathOptions();
             if (receiver && receiver.DeploymentSpawnRejected) m_PredateRedeployPending = false;
             m_PredateDeploymentScreen = true;
             m_ContinueButton.Show(false);
@@ -81,7 +95,7 @@ modded class InGameMenu
             m_RespawnButton.Enable(!m_PredateRedeployPending);
             if (m_PredateRedeployPending) ButtonSetText(m_RespawnButton, "Deploying...");
             else ButtonSetText(m_RespawnButton, "Redeploy");
-            if (m_PredateDeploymentTest && !m_PredateRedeployPending && receiver && receiver.NeedsRedeploy && FileExist("$profile:PredateRedeployClick.txt"))
+            if (m_PredateDeploymentTest && choicesWereVisible && !m_PredateRedeployPending && receiver && receiver.NeedsRedeploy && FileExist("$profile:PredateRedeployClick.txt"))
             {
                 DeleteFile("$profile:PredateRedeployClick.txt");
                 Print("[PredateDeploymentTest] Redeploy clicked; native body needed=" + !player.IsAlive());
@@ -102,6 +116,35 @@ modded class InGameMenu
         m_RestartButton.Show(false);
         m_RespawnButton.Show(false);
         m_SeparatorPanel.Show(false);
+    }
+
+    void PredateShowDeathOptions()
+    {
+        if (m_PredateDeathOptions) return;
+        Widget card = GetGame().GetWorkspace().CreateWidgets("Predate/gui/death.layout", layoutRoot);
+        if (!card) return;
+        m_PredateDeathOptions = card.FindAnyWidget("DeathChoices");
+        Widget deploy = card.FindAnyWidget("DeathRedeploy");
+        Widget quit = card.FindAnyWidget("DeathSaveQuit");
+        if (!m_PredateDeathOptions || !deploy || !quit)
+        {
+            m_PredateDeathOptions = null;
+            card.Unlink();
+            return;
+        }
+        Widget nativeOptions = layoutRoot.FindAnyWidget("play_panel_root");
+        if (nativeOptions) nativeOptions.Show(false);
+        m_RespawnButton = deploy;
+        m_ExitButton = quit;
+        PredateDeathPresentation.FitTitle(card);
+        card.Show(true);
+        m_PredateDeathOptions.Show(true);
+        SetFocus(m_RespawnButton);
+    }
+
+    bool PredateDeathOptionsVisible()
+    {
+        return m_PredateDeathOptions && m_PredateDeathOptions.IsVisible();
     }
 
     void UpdatePredatePauseBrand(bool visible)
@@ -167,8 +210,64 @@ modded class InGameMenu
 
 modded class MissionGameplay
 {
+    static const int PREDATE_DEATH_CARD_MS = 2000;
+    Widget m_PredateDeathCard;
+    int m_PredateDeathMenuAt;
+    bool m_PredateDeathValidation;
+
+    void PredateBeginDeathCard(DayZPlayerImplement player)
+    {
+        if (!m_PredateDeathCard || m_PredateDeathMenuAt > 0 || player != GetGame().GetPlayer() || IsPlayerRespawning() || GetDayZGame().IsLoading()) return;
+        m_PredateDeathMenuAt = GetGame().GetTime() + PREDATE_DEATH_CARD_MS;
+        CloseAllMenus();
+        PredateDeathPresentation.FitTitle(m_PredateDeathCard);
+        TextWidget title = TextWidget.Cast(m_PredateDeathCard.FindAnyWidget("DeathTitle"));
+        float width, height;
+        m_PredateDeathCard.GetScreenSize(width, height);
+        m_PredateDeathCard.Show(true);
+        if (!m_PredateDeathValidation) return;
+        int screenWidth, screenHeight;
+        GetScreenSize(screenWidth, screenHeight);
+        float x, y;
+        m_PredateDeathCard.GetScreenPos(x, y);
+        bool fullscreen = Math.AbsFloat(x) < 1 && Math.AbsFloat(y) < 1 && Math.AbsFloat(screenWidth - width) < 1 && Math.AbsFloat(screenHeight - height) < 1;
+        bool styled = fullscreen && title && title.GetColor() == 0xFF000000 && m_PredateDeathCard.GetColor() == 0xFFFF0000;
+        Print("[PredateDeploymentTest] Death card shown; styled=" + styled);
+    }
+
+    bool PredateDeathCardWaiting()
+    {
+        return m_PredateDeathMenuAt > GetGame().GetTime();
+    }
+
+    void PredateHideDeathCard()
+    {
+        if (!m_PredateDeathCard || !m_PredateDeathCard.IsVisible()) return;
+        m_PredateDeathCard.Show(false);
+    }
+
+    void PredateRevealDeathOptions(InGameMenu menu)
+    {
+        if (!menu || !menu.PredateDeathOptionsVisible() || !m_PredateDeathCard || !m_PredateDeathCard.IsVisible()) return;
+        PredateHideDeathCard();
+        if (m_PredateDeathValidation)
+        {
+            int elapsed = GetGame().GetTime() - m_PredateDeathMenuAt + PREDATE_DEATH_CARD_MS;
+            DayZPlayerImplement player = DayZPlayerImplement.Cast(GetGame().GetPlayer());
+            bool animated = player && player.GetCommand_Death() != null;
+            Widget red = menu.m_PredateDeathOptions.GetParent();
+            bool backdrop = red.IsVisible() && red.GetColor() == 0xFFFF0000;
+            Print("[PredateDeploymentTest] Death options revealed; elapsed=" + elapsed + "; animation=" + animated + "; red=" + backdrop);
+        }
+    }
+
     override void Pause()
     {
+        if (PredateDeathCardWaiting())
+        {
+            m_PauseQueued = false;
+            return;
+        }
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
         // A launch that finishes in the background should still join gameplay.
         // Later Escape presses use the ordinary pause path.

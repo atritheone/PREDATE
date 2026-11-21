@@ -517,12 +517,7 @@ export function starterInventory(id: string, outfitId: string): Inventory {
       if (placement) root.Hips.cargo.push(placement)
     }
   }
-  const supplies = [
-    ...Array<string>(4).fill('BandageDressing'),
-    'Morphine',
-    'Compass',
-    'ChernarusMap',
-  ]
+  const supplies = [...Array<string>(presets.StartingBandages).fill('BandageDressing'), 'Morphine']
   const containers = [pouches, root.Legs, root.Body]
   const spareLimit = modern ? modernLoadouts.Equipment.SpareMagazines : playerSpareMagazines
   for (let count = spareLimit; count >= 0; count--) {

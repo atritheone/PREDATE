@@ -114,11 +114,9 @@ class PredateOperatorService
         EntityAI goggles;
         if (nightVisionMount) goggles = nightVisionMount.GetInventory().CreateAttachment(gogglesClass);
         if (!InstallBattery(goggles)) PredatePersistence.Fail(s, "Starting-kit goggles could not be mounted and powered: " + gogglesClass);
-        for (int j = 0; j < 4; j++)
+        for (int j = 0; j < s.m_Loadouts.StartingBandages; j++)
             player.GetInventory().CreateInInventory("BandageDressing");
         player.GetInventory().CreateInInventory("Morphine");
-        player.GetInventory().CreateInInventory("Compass");
-        player.GetInventory().CreateInInventory("ChernarusMap");
         if (rival) player.GetInventory().CreateInInventory("SalineBagIV");
         for (int i = 0; i < kit.SpareMagazines; i++)
             if (!player.GetInventory().CreateInInventory(kit.MagazineClass)) break;
@@ -341,22 +339,26 @@ class PredateOperatorService
                 PredateSupplyService.AddConfigured(record.Supplies, magazineClass, sidearm.SpareMagazines + 1);
             record.EquipmentRevision = 2;
         }
-        if (record.EquipmentRevision >= 4) return true;
+        if (record.EquipmentRevision >= 5) return true;
         if (!freshDeployment)
         {
-            bool night = RivalUsesNightScopes(session);
-            array<EntityAI> inventory = {};
-            actor.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
-            foreach (EntityAI entity : inventory)
+            if (record.EquipmentRevision < 4)
             {
-                Weapon_Base rifle = Weapon_Base.Cast(entity);
-                if (!rifle || rifle.IsKindOf("Pistol_Base")) continue;
-                PredateStartingKit kit = session.m_Loadouts.Find(record.RifleKit);
-                if (!kit || kit.FirearmClass != rifle.GetType()) kit = session.m_Loadouts.FindRifle(rifle.GetType());
-                if (!EquipRivalScope(rifle, kit, night)) return false;
+                bool night = RivalUsesNightScopes(session);
+                array<EntityAI> inventory = {};
+                actor.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
+                foreach (EntityAI entity : inventory)
+                {
+                    Weapon_Base rifle = Weapon_Base.Cast(entity);
+                    if (!rifle || rifle.IsKindOf("Pistol_Base")) continue;
+                    PredateStartingKit kit = session.m_Loadouts.Find(record.RifleKit);
+                    if (!kit || kit.FirearmClass != rifle.GetType()) kit = session.m_Loadouts.FindRifle(rifle.GetType());
+                    if (!EquipRivalScope(rifle, kit, night)) return false;
+                }
             }
+            PredateSupplyService.UpdateRivalSupplies(actor, record.Supplies, session.m_Loadouts.StartingBandages);
         }
-        record.EquipmentRevision = 4;
+        record.EquipmentRevision = 5;
         return true;
     }
 

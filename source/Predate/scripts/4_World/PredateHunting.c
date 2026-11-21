@@ -7,6 +7,9 @@ modded class eAIBase
     int m_PredateNextLookAt;
     vector m_PredateWatchPoint;
     float m_PredateWatchUntil;
+    protected bool m_PredateFinalApproachPace;
+    protected int m_PredateTravelLimit;
+    protected int m_PredateThreatLimit;
 
     override float GetThreatToSelf(bool ignoreLOS = false)
     {
@@ -23,8 +26,24 @@ modded class eAIBase
         // without waiting for the next strategic/session update.
         eAITarget target = GetTarget();
         if (visible && target && m_PredateVisualTarget && target.GetEntity() == m_PredateVisualTarget)
+        {
             m_PredateStrategicControl = false;
+            PredateSetFinalApproach(false);
+        }
         return visible;
+    }
+
+    void PredateSetFinalApproach(bool careful)
+    {
+        if (careful == m_PredateFinalApproachPace && (!careful || m_eAI_SpeedLimitPreference <= 1)) return;
+        m_PredateFinalApproachPace = careful;
+        if (careful)
+        {
+            m_PredateTravelLimit = m_eAI_SpeedLimitPreference;
+            m_PredateThreatLimit = GetMovementSpeedLimitUnderThreat();
+            SetMovementSpeedLimits(Math.Min(m_PredateTravelLimit, 1), Math.Min(m_PredateThreatLimit, 1));
+        }
+        else SetMovementSpeedLimits(m_PredateTravelLimit, m_PredateThreatLimit);
     }
 
     bool PredateTacticalPriority(float now)

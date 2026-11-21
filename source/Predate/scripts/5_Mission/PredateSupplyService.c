@@ -16,6 +16,38 @@ class PredateSupplyService
             if (IsEpinephrine(plan.Entries[i].ClassName)) plan.Entries.RemoveOrdered(i);
     }
 
+    static bool IsNavigationGear(string name)
+    {
+        if (GetGame().IsKindOf(name, "Compass") || GetGame().IsKindOf(name, "OrienteeringCompass")) return true;
+        return GetGame().IsKindOf(name, "ChernarusMap") || GetGame().IsKindOf(name, "ChernarusMap_Open");
+    }
+
+    static void UpdateRivalSupplies(eAIBase actor, PredateSupplyPlan plan, int maxBandages)
+    {
+        array<EntityAI> inventory = {};
+        actor.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
+        int bandages;
+        foreach (EntityAI entity : inventory)
+        {
+            if (!entity) continue;
+            string name = entity.GetType();
+            if (IsNavigationGear(name)) GetGame().ObjectDelete(entity);
+            else if (name == "BandageDressing")
+            {
+                bandages++;
+                if (bandages > maxBandages) GetGame().ObjectDelete(entity);
+            }
+        }
+        for (int i = plan.Entries.Count() - 1; i >= 0; i--)
+            if (IsNavigationGear(plan.Entries[i].ClassName)) plan.Entries.RemoveOrdered(i);
+        PredateSupplyEntry bandageEntry = plan.Find("BandageDressing");
+        if (bandageEntry && bandageEntry.Kind == PredateSupplyKind.QUANTITY)
+        {
+            float stackSize = GetGame().ConfigGetFloat("CfgVehicles BandageDressing varQuantityMax");
+            bandageEntry.Units = Math.Min(bandageEntry.Units, stackSize * maxBandages);
+        }
+    }
+
     static int Kind(ItemBase item)
     {
         if (IsEpinephrine(item.GetType())) return PredateSupplyKind.NONE;
@@ -103,7 +135,7 @@ class PredateSupplyService
             if (kit) AddConfigured(starting, kit.MagazineClass, kit.SpareMagazines + 1);
             PredateStartingSidearm sidearm = session.m_Loadouts.Sidearm;
             AddConfigured(starting, sidearm.IssuedMagazineClass(), sidearm.SpareMagazines + 1);
-            AddConfigured(starting, "BandageDressing", 4);
+            AddConfigured(starting, "BandageDressing", session.m_Loadouts.StartingBandages);
             AddConfigured(starting, "Morphine", 1);
             if (eAIBase.Cast(actor)) AddConfigured(starting, "SalineBagIV", 1);
         }

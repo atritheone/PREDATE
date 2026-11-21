@@ -30,6 +30,7 @@ class PredateHunterState
     float ScoutHeading;
     vector WatchPoint;
     float WatchUntil;
+    bool FinalApproach;
 
     bool Validate(float now, string expectedOwner = "raven-01")
     {
@@ -186,15 +187,54 @@ class PredateHunterBrain
         return best < 1000000;
     }
 
-    static void Step(PredateHunterState state, vector ownPosition, float now, PredateObservationMemory memory, PredateSignalTrack track, bool combat, bool recover, bool beingTracked = false, float retiredLifeAt = -1, string retiredSubject = "", string selectedSubject = "", bool replan = false, bool limited = false)
+    static void BeginFinalSearch(PredateHunterState state, vector own, PredateSignalTrack track, float now)
+    {
+        Hold(state, "observe", "Final Approach: stop, look and listen");
+        state.EvidenceKey = "";
+        state.SearchCenter = own;
+        state.SearchRadius = 30;
+        state.SearchObservedAt = now;
+        state.SearchUntil = now + PredateBearingPulse.INTERVAL;
+        state.CheckedSectors = 0;
+        state.SearchStep = 0;
+        state.WatchPoint = own + PredateInformationMath.BearingDirection(state.ScoutHeading) * 30;
+        if (track && track.History.Count() > 0)
+        {
+            PredateObservation last = track.History[track.History.Count() - 1];
+            if (!last.Expired(now))
+            {
+                vector toward = PredateHuntSelection.SectorCenter(last) - own;
+                toward[1] = 0;
+                if (toward.LengthSq() > 1)
+                {
+                    state.SearchCenter = own + toward.Normalized() * Math.Min(45, toward.Length());
+                    state.WatchPoint = state.SearchCenter;
+                }
+                state.EvidenceKey = last.EventKey;
+            }
+        }
+        state.WatchUntil = now + 3;
+    }
+
+    static void Step(PredateHunterState state, vector ownPosition, float now, PredateObservationMemory memory, PredateSignalTrack track, bool combat, bool recover, bool beingTracked = false, float retiredLifeAt = -1, string retiredSubject = "", string selectedSubject = "", bool replan = false, bool limited = false, bool finalApproach = false)
     {
         if (!state || !memory || memory.OwnerId != state.OwnerId || (track && track.OwnerId != state.OwnerId)) return;
         if (!beingTracked) state.InterceptionHandled = false;
         if (recover) { Hold(state, "recover", "Own medical or action priority"); return; }
         if (combat) { Hold(state, "combat", "Native tactical control after a lawful contact"); return; }
-        if (now < state.NextDecisionAt) return;
+        bool freshApproach = finalApproach && (!state.FinalApproach || state.Mode == "combat" || state.Mode == "recover");
+        bool leftApproach = state.FinalApproach && !finalApproach;
+        if (now < state.NextDecisionAt && !freshApproach && !leftApproach) return;
         state.NextDecisionAt = now + 1;
-        if (beingTracked && !state.InterceptionHandled)
+        state.FinalApproach = finalApproach;
+        bool workingSensoryClue = state.LastContactKey != "" && state.EvidenceKey == state.LastContactKey && state.SearchUntil > now && (state.HasGoal || state.WatchUntil > now);
+        if (leftApproach)
+        {
+            state.LastSignalKey = "";
+            if (!workingSensoryClue) Hold(state, "hold", "Outside Final Approach; return to scheduled bearings");
+        }
+        if (freshApproach && !workingSensoryClue) state.LastContactKey = "";
+        if (!finalApproach && beingTracked && !state.InterceptionHandled)
         {
             state.InterceptionHandled = true;
             float heading = state.ScoutHeading;
@@ -205,7 +245,7 @@ class PredateHunterBrain
             Goal(state, ownPosition, ownPosition + escapeDirection * 90, now, "evade", "Reposition after an interception warning", "");
             return;
         }
-        if (state.Mode == "evade" && state.HasGoal && now < state.SearchUntil && Distance(ownPosition, state.Goal) > 8) return;
+        if (!finalApproach && state.Mode == "evade" && state.HasGoal && now < state.SearchUntil && Distance(ownPosition, state.Goal) > 8) return;
         PredateObservation contact = LatestContact(memory, now, retiredLifeAt, retiredSubject, selectedSubject, state.LastContactKey);
         // A new sound inside the same uncertainty area should not restart an active search.
         if (contact && contact.IsAudible() && state.HasGoal && now < state.SearchUntil && (state.Mode == "investigate" || state.Mode == "search") && Distance(state.SearchCenter, contact.Estimate) <= state.SearchRadiusAt(now) + contact.Radius)
@@ -242,6 +282,11 @@ class PredateHunterBrain
             Goal(state, ownPosition, contact.Estimate, now, "investigate", reason, contact.EventKey);
             return;
         }
+        if (freshApproach && !workingSensoryClue)
+        {
+            BeginFinalSearch(state, ownPosition, track, now);
+            return;
+        }
         if (now < state.WatchUntil) return;
         if (limited)
         {
@@ -252,8 +297,17 @@ class PredateHunterBrain
             }
             state.SearchUntil = Math.Min(state.SearchUntil, state.SearchObservedAt + 24);
         }
+        if (finalApproach && !state.HasGoal)
+        {
+            if (state.Mode != "observe") return;
+            vector localSearchPoint;
+            if (now < state.SearchUntil && NextSearchPosition(state, ownPosition, now, localSearchPoint))
+                Goal(state, ownPosition, localSearchPoint, now, "search", "Final Approach: check nearby ground for contact", state.EvidenceKey);
+            else Hold(state, "hold", "Bounded search exhausted; no new knowledge");
+            return;
+        }
         PredateObservation signal;
-        if (track && !limited) signal = track.LastSample;
+        if (track && !limited && !finalApproach) signal = track.LastSample;
         if (signal && !signal.Expired(now) && signal.EventKey != state.LastSignalKey)
         {
             state.LastSignalKey = signal.EventKey;
@@ -312,7 +366,9 @@ class PredateHunterBrain
         }
         if (now >= state.SearchUntil)
         {
-            Hold(state, "hold", "Evidence search lifetime exhausted");
+            string exhaustedReason = "Evidence search lifetime exhausted";
+            if (finalApproach) exhaustedReason = "Bounded search exhausted; no new knowledge";
+            Hold(state, "hold", exhaustedReason);
             return;
         }
         if (Distance(ownPosition, state.Goal) <= 8)

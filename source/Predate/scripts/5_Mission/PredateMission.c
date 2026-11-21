@@ -11,6 +11,7 @@ class PredateSession
     float m_PredateNextLightScan;
     bool m_HuntReady;
     bool m_HuntSentState;
+    bool m_HuntSentCloseApproach;
     bool m_HuntSchemaValid;
     bool m_Development;
     string m_HuntError;
@@ -149,6 +150,19 @@ class PredateSession
         }
     }
 
+    bool PredatePlayerCloseApproach(PlayerBase player, PredatePeerBinding chosen)
+    {
+        if (!player || !player.IsAlive() || m_WorldState.PlayerAwaitingRedeploy) return false;
+        PredateSignalTrack track = m_WorldState.PlayerSignal;
+        PlayerBase target = m_HuntBot;
+        if (chosen)
+        {
+            track = chosen.State.PlayerReceiver;
+            target = chosen.Actor;
+        }
+        return track && track.Selected && track.Reception != PredatePulseReception.UNAVAILABLE && target && target.IsAlive() && PredateSignalRules.FinalApproach(player.GetPosition(), target.GetPosition());
+    }
+
     void PredateSend(PlayerBase player)
     {
         if (player.m_PredateKillNotices.Count() > 0 && m_WorldState && m_WorldState.PlayerSignal)
@@ -161,9 +175,10 @@ class PredateSession
         if (m_WorldState) receiverTrack = m_WorldState.PlayerSignal;
         string operatorId = "raven-01";
         int availableOperators = -1;
+        PredatePeerBinding chosen;
         if (m_PeerRoster)
         {
-            PredatePeerBinding chosen = m_PeerRoster.PlayerLock();
+            chosen = m_PeerRoster.PlayerLock();
             if (chosen)
             {
                 receiverTrack = chosen.State.PlayerReceiver;
@@ -176,7 +191,7 @@ class PredateSession
         bool available = receiverReady && receiverTrack && receiverTrack.Reception != PredatePulseReception.UNAVAILABLE;
         bool locked = receiverReady && receiverTrack && receiverTrack.Selected;
         bool canDeploy = receiverReady && !available && m_HuntProgress.Defeated && !m_PeerRoster && !m_HuntConfig.EnableOperatorRespawns;
-        bool closeApproach = available && locked && receiverTrack.Reception == PredatePulseReception.CLOSE;
+        bool closeApproach = available && locked && PredatePlayerCloseApproach(player, chosen);
         bool intercepted = receiverReady && m_HuntConfig.EnableSharedSignals && m_WorldState.PlayerInterceptionUntil > m_WorldState.SimulationSeconds;
         float now = m_WorldState.SimulationSeconds;
         PredateObservation sample;
@@ -208,6 +223,7 @@ class PredateSession
         nextPulse = Math.Clamp(nextPulse, 0, PredateBearingPulse.INTERVAL);
         bool first = !m_HuntSentState;
         m_HuntSentState = true;
+        m_HuntSentCloseApproach = closeApproach;
         ScriptRPC rpc = new ScriptRPC;
         rpc.Write(PredateProtocol.VERSION);
         rpc.Write(operatorId);
@@ -235,7 +251,7 @@ class PredateSession
         if (needsRedeploy) rpc.Write(player.m_PredateSpawnRejected);
         // Only the sampled bearing and coarse distance band reach the receiver.
         PredateSignalService.WriteHistory(this, rpc, locked, receiverTrack);
-        PredateSignalService.WriteMapPulses(this, rpc, !needsRedeploy && m_HuntReady && m_HuntError == "");
+        PredateSignalService.WriteMapPulses(this, rpc, receiverReady, closeApproach);
         rpc.Write(availableOperators);
         vector footprintGround;
         int footprintHeading;
@@ -459,7 +475,10 @@ class PredateSession
             }
             PredateSignalService.Tick(this, player, seconds);
             if (m_PeerRoster) m_PeerRoster.SampleForPlayer(this, player);
-            if (player.m_PredateKillNotices.Count() > 0 || m_HuntStateTimer >= 1)
+            PredatePeerBinding chosen;
+            if (m_PeerRoster) chosen = m_PeerRoster.PlayerLock();
+            bool closeApproach = PredatePlayerCloseApproach(player, chosen);
+            if (closeApproach != m_HuntSentCloseApproach || player.m_PredateKillNotices.Count() > 0 || m_HuntStateTimer >= 1)
             {
                 bool confirmedKill = player.m_PredateKillNotices.Count() > 0;
                 PredateSend(player);

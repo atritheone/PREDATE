@@ -1,10 +1,46 @@
 class PredatePlayerLifeEvents
 {
     static ref ScriptInvoker Death = new ScriptInvoker;
+    static ref ScriptInvoker LocalDeath = new ScriptInvoker;
 }
 
 modded class DayZPlayerImplement
 {
+#ifndef SERVER
+    protected bool m_PredateSimpleDeath;
+
+    protected bool PredateOwnDeath()
+    {
+        if (GetGame().GetPlayer() != this || GetGame().GetMissionState() != DayZGame.MISSION_STATE_GAME) return false;
+        PlayerBase player = PlayerBase.Cast(this);
+        return GetDayZGame().m_PredateClientAgent || (player && player.m_PredateReceivedState);
+    }
+
+    override bool HandleDeath(int pCurrentCommandID)
+    {
+        if (!PredateOwnDeath() || (IsAlive() && m_DeathAnimType == -2)) return super.HandleDeath(pCurrentCommandID);
+        if (!m_PredateSimpleDeath)
+        {
+            m_PredateSimpleDeath = true;
+            PredatePlayerLifeEvents.LocalDeath.Invoke(this);
+            PhysicsSetSimpleDeath(true);
+            GetGame().GetWorld().SetVoiceOn(false, false);
+        }
+        return true;
+    }
+
+    override void ShowDeadScreen(bool show, float duration)
+    {
+        if (show && PredateOwnDeath())
+        {
+            StopDeathDarkeningEffect();
+            PredatePlayerLifeEvents.LocalDeath.Invoke(this);
+            return;
+        }
+        super.ShowDeadScreen(show, duration);
+    }
+#endif
+
     override int CameraHandler(int pCameraMode)
     {
         // Older launcher builds can still create a third-person server config.

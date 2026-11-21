@@ -1,5 +1,6 @@
 {
   "Schema": 1,
+  "StartingBandages": 3,
   "DefaultOutfit": "spectral",
   "Outfits": [
     {

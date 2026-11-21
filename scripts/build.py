@@ -89,6 +89,12 @@ def layouts():
         readout += row.replace('ignorepointer 1','ignorepointer 1\nvisible 0')
     readout = readout.replace('font "gui/fonts/etelkatextpro22"',
                               'scaled 0\nfont "gui/fonts/sdf_MetronBook24"\n"exact text" 1\n"exact text size" 15')
+    pulse_picker = label("PulsePickerTitle", "Overlapping pulses", 0,0,1,.14,"0.55 0.85 0.90 1")
+    pulse_picker = pulse_picker.replace('font "gui/fonts/etelkatextpro22"',
+                                        'scaled 0\nfont "gui/fonts/sdf_MetronBook24"\n"exact text" 1\n"exact text size" 15')
+    pulse_picker += widget("TextListboxWidgetClass","PulseChoices",0,.16,1,.84,
+                           'lines 9\nfont "gui/fonts/sdf_MetronBook24"')
+    readout += widget("FrameWidgetClass","PulsePicker",.06,.48,.88,.40,'visible 0',pulse_picker)
     readout += widget("ButtonWidgetClass","Select",.06,.366,.88,.057,
                        'visible 0\nstyle Default\ntext "Clear target lock"')
     readout += widget("ButtonWidgetClass","NewHunt",.06,.913,.52,.058,
@@ -158,6 +164,17 @@ def layouts():
     feed = widget("FrameWidgetClass","HuntFeed",.675,.035,.30,.21,"ignorepointer 1",notices)
     release.write_changed(gui/"hunt_feed.layout",widget("FrameWidgetClass","PredateHuntFeed",0,0,1,1,"ignorepointer 1\nvisible 0\npriority 900",feed))
     release.write_changed(gui/"hud.layout",widget("FrameWidgetClass","PredateHud",0,0,1,1,"ignorepointer 1",compass+footprint))
+    death = label("DeathTitle","Death",0,0,1,1,"0 0 0 1").replace(
+        '"text valign" center', '"text valign" center\n"text halign" center\n"exact text" 1\n"exact text size" 48')
+    death = death.replace('font "gui/fonts/etelkatextpro22"', 'scaled 0\nfont "gui/fonts/sdf_MetronBook24"')
+    death_buttons = widget("ButtonWidgetClass","DeathRedeploy",.40,.595,.20,.052,
+                           'style Default\ntext "Redeploy"')
+    death_buttons += widget("ButtonWidgetClass","DeathSaveQuit",.40,.66,.20,.052,
+                            'style Default\ntext "Save and Quit"')
+    death += widget("FrameWidgetClass","DeathChoices",0,0,1,1,
+                    'visible 0\nignorepointer 1\npriority 10',death_buttons)
+    release.write_changed(gui/"death.layout",widget("PanelWidgetClass","PredateDeath",0,0,1,1,
+        "visible 0\npriority 9999\ncolor 1 0 0 1\nstyle rover_sim_colorable",death))
 
 
 def stage_dependencies(dependencies, locked=None):

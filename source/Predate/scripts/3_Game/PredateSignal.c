@@ -240,10 +240,19 @@ class PredateBearingPulse
 
 class PredateSignalRules
 {
-    static int Reception(vector origin, vector subject, bool transmitting, PredateConfig config)
+    static const float FINAL_APPROACH_METRES = 250;
+
+    static bool FinalApproach(vector observer, vector subject)
+    {
+        vector delta = subject - observer;
+        delta[1] = 0;
+        return delta.LengthSq() <= FINAL_APPROACH_METRES * FINAL_APPROACH_METRES;
+    }
+
+    static int Reception(vector origin, vector subject, bool transmitting)
     {
         if (!transmitting) return PredatePulseReception.UNAVAILABLE;
-        if (WithinFinalApproach(origin, subject, config.FinalApproachRadius)) return PredatePulseReception.CLOSE;
+        if (FinalApproach(origin, subject)) return PredatePulseReception.CLOSE;
         if (PredateHunterBrain.Distance(origin, subject) > PredateBearingPulse.REACH) return PredatePulseReception.OUT_OF_RANGE;
         return PredatePulseReception.BEARING;
     }
@@ -258,11 +267,12 @@ class PredateSignalRules
     static PredateObservation ReceiverReading(PredateSignalTrack track, vector origin, vector targetTruth, float now, PredateConfig config)
     {
         if (!PredateInformationMath.FiniteVector(origin) || !PredateInformationMath.FiniteVector(targetTruth)) return null;
+        if (FinalApproach(origin, targetTruth)) return null;
         vector difference = targetTruth - origin;
         difference[1] = 0;
         float distanceSquared = difference.LengthSq();
         if (distanceSquared > PredateBearingPulse.REACH * PredateBearingPulse.REACH) return null;
-        PredateObservation observation = Reading(track, origin, targetTruth, now, PredateBearingPulse.INTERVAL, config, 0, 0);
+        PredateObservation observation = Reading(track, origin, targetTruth, now, PredateBearingPulse.INTERVAL, config, 0, 0, false);
         if (!observation) return null;
         observation.Bearing = PredateBearingPulse.SampleStart(PredateMath.CameraHeading(difference), track.LastSample);
         observation.BearingError = PredateBearingPulse.DEGREES / 2.0;
@@ -281,10 +291,10 @@ class PredateSignalRules
         return Reading(track, origin, targetTruth, now, config.PulseInterval, config, energy, randomUnit);
     }
 
-    static PredateObservation Reading(PredateSignalTrack track, vector origin, vector targetTruth, float now, float interval, PredateConfig config, float energy, float randomUnit)
+    static PredateObservation Reading(PredateSignalTrack track, vector origin, vector targetTruth, float now, float interval, PredateConfig config, float energy, float randomUnit, bool applyConfiguredCutoff = true)
     {
         if (!PredateInformationMath.FiniteVector(origin) || !PredateInformationMath.FiniteVector(targetTruth)) return null;
-        if (WithinFinalApproach(origin, targetTruth, config.FinalApproachRadius)) return null;
+        if (applyConfiguredCutoff && WithinFinalApproach(origin, targetTruth, config.FinalApproachRadius)) return null;
         float strength = Math.Clamp(energy, 0, 1);
         float error = Math.Max(0, config.BearingErrorDegrees * (1 - 0.5 * strength));
         int center = PredateMath.Bearing(origin, targetTruth);

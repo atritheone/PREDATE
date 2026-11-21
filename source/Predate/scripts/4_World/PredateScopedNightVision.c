@@ -31,6 +31,30 @@ class PredateScopedNightVision
         ItemOptics sight = rifle.GetAttachedOptics();
         return sight && !sight.IsNVOptic() && camera.GetCurrentSightEntity() == sight;
     }
+
+    static bool UsesNightScope(PlayerBase player)
+    {
+        if (!player.IsInOptics()) return false;
+        DayZPlayerCameraOptics camera = DayZPlayerCameraOptics.Cast(player.GetCurrentPlayerCamera());
+        if (!camera) return false;
+        Weapon_Base weapon = Weapon_Base.Cast(player.GetEntityInHands());
+        if (!weapon) return false;
+        ItemOptics sight = weapon.GetAttachedOptics();
+        return sight && sight.IsNVOptic() && camera.GetCurrentSightEntity() == sight;
+    }
+
+    static void PlayGoggleHandoff(PlayerBase player, bool gogglesOn)
+    {
+        string sound = "FOG_NVG_OFF_SoundSet";
+        if (gogglesOn) sound = "FOG_NVG_ON_SoundSet";
+        if (!GetGame().ConfigIsExisting("CfgSoundSets " + sound))
+        {
+            sound = "Flashlight_TurnOff_SoundSet";
+            if (gogglesOn) sound = "Flashlight_TurnOn_SoundSet";
+        }
+        EffectSound effect = SEffectManager.PlaySound(sound, player.GetPosition());
+        if (effect) effect.SetSoundAutodestroy(true);
+    }
 }
 
 modded class DayZPlayerCameraOptics

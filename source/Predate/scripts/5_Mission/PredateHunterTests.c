@@ -92,6 +92,44 @@ class PredateHunterTests
         Check(listening.GoalRevision == stepRevision, "overlapping sounds preserve an active investigation route");
     }
 
+    void CheckFinalApproach(vector own)
+    {
+        PredateHunterState hunter = new PredateHunterState;
+        PredateObservationMemory memory = new PredateObservationMemory;
+        memory.OwnerId = hunter.OwnerId;
+        PredateSignalTrack track = PredateSignalService.Track(hunter.OwnerId, "lynx-01");
+        PredateConfig config = new PredateConfig;
+        track.RecordSample(PredateSignalRules.ReceiverReading(track, own, own + "0 0 700", 10, config));
+        track.Reception = PredatePulseReception.BEARING;
+        track.NextPulseAt = 100;
+        PredateHunterBrain.Step(hunter, own, 10, memory, track, false, false);
+        Check(hunter.HasGoal, "a bearing supplies a strategic route before Final Approach");
+
+        PredateHunterBrain.Step(hunter, own, 10.25, memory, track, false, false, false, -1, "", "lynx-01", false, false, true);
+        Check(hunter.FinalApproach && !hunter.HasGoal && hunter.WatchUntil > 10.25, "Final Approach immediately stops the pulse route to look and listen");
+        Check(track.Reception == PredatePulseReception.BEARING && track.NextPulseAt == 100 && track.LastSample, "live cue does not resample or erase a bearing");
+        PredateHunterBrain.Step(hunter, own, 14, memory, track, false, false, false, -1, "", "lynx-01", false, false, true);
+        Check(hunter.Mode == "search" && hunter.HasGoal && PredateHunterBrain.Distance(own, hunter.Goal) < 100, "Final Approach searches locally even when the old pulse points far away");
+        PredateHunterBrain.Step(hunter, own, 14.25, memory, track, false, false);
+        Check(!hunter.FinalApproach && hunter.HasGoal && hunter.Mode == "observe", "crossing back out immediately allows the existing bearing route again");
+
+        PredateObservation sound = new PredateObservation;
+        sound.EventKey = "close-footsteps";
+        sound.ObserverId = memory.OwnerId;
+        sound.Source = PredateObservationSource.FOOTSTEP;
+        sound.Confidence = 0.7;
+        sound.HasPosition = true;
+        sound.Estimate = own + "30 0 0";
+        sound.Radius = 12;
+        sound.ObservedAt = 15;
+        sound.ExpiresAt = 30;
+        memory.Add(sound, 15);
+        PredateHunterBrain.Step(hunter, own, 15, memory, track, false, false, false, -1, "", "lynx-01", false, false, true);
+        Check(hunter.FinalApproach && hunter.Mode == "investigate" && hunter.Goal == sound.Estimate, "fresh sensory evidence guides Final Approach");
+        PredateHunterBrain.Step(hunter, own, 15.25, memory, track, true, false, false, -1, "", "lynx-01", false, false, true);
+        Check(hunter.Mode == "combat" && !hunter.HasGoal, "native combat interrupts the Final Approach route");
+    }
+
     void Run()
     {
         PredateHunterState state = new PredateHunterState;
@@ -100,6 +138,7 @@ class PredateHunterTests
         PredateSignalTrack track = PredateSignalService.Track("raven-01", "player-01");
         vector own = "5000 0 5000";
         CheckRecognitionAndEvidence(own);
+        CheckFinalApproach(own);
         PredateHunterBrain.Step(state, own, 0, memory, track, false, false);
         Check(!state.HasGoal && state.Mode == "hold", "no evidence provides no invented destination");
         PredateConfig config = new PredateConfig;

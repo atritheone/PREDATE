@@ -262,13 +262,13 @@ class Supervisor:
                     "profile": self.profile, "session_id": self.session_id, "client": identity,
                     "server": read_native(world.STATE)})
                 break
-        self.handoff_client_focus(self.client_status(), connected=False)
+        self.handoff_client_focus(connected=False)
         return bool(self.client)
 
-    def handoff_client_focus(self, client, connected):
+    def handoff_client_focus(self, connected):
         if not self.client_launch_focus or not self.client_alive(): return
         try:
-            if self.client_launch_focus.poll(self.client["pid"], client.get("StartupArtworkReady", False), connected):
+            if self.client_launch_focus.poll(self.client["pid"], connected):
                 self.client_launch_focus = None
         except OSError as error:
             self.client_launch_focus = None
@@ -475,7 +475,7 @@ class Supervisor:
         native = world.native_status()
         if native.get("SessionId") != self.session_id: return
         client = self.client_status()
-        self.handoff_client_focus(client, client.get("Phase") == "connected" and native.get("Players", 0) > 0)
+        self.handoff_client_focus(client.get("Phase") == "connected" and native.get("Players", 0) > 0)
         client_error = client.get("Error")
         if client_error and not self.seen_connection:
             self.dispatch({"id": uuid.uuid4().hex, "action": "quit", "failure": client_error})

@@ -1,7 +1,7 @@
 #ifndef SERVER
 modded class MissionGameplay
 {
-    protected static const float PREDATE_MASTER_GAIN = 2.25;
+    protected static const float PREDATE_MASTER_GAIN = 3.375;
     protected bool m_PredateManageMasterGain;
     protected bool m_PredateResumeGainAfterOptions;
     protected ref GameOptions m_PredateGainOptions;

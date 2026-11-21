@@ -162,7 +162,7 @@ class PredateSignalService
         vector position;
         bool transmitting = actor && actor.IsAlive();
         if (transmitting) position = actor.GetPosition();
-        track.Reception = PredateSignalRules.Reception(origin, position, transmitting, config);
+        track.Reception = PredateSignalRules.Reception(origin, position, transmitting);
         PredateObservation reading;
         if (track.Reception == PredatePulseReception.BEARING)
             reading = PredateSignalRules.ReceiverReading(track, origin, position, now, config);
@@ -180,7 +180,7 @@ class PredateSignalService
         tracks.InsertAt(track, position);
     }
 
-    static void WriteMapPulses(PredateSession s, ScriptRPC rpc, bool visible)
+    static void WriteMapPulses(PredateSession s, ScriptRPC rpc, bool visible, bool hideSelected)
     {
         int count;
         if (!visible || !s.m_WorldState)
@@ -192,6 +192,11 @@ class PredateSignalService
         float now = s.m_WorldState.SimulationSeconds;
         AddMapPulse(tracks, s.m_WorldState.PlayerSignal, now);
         if (s.m_PeerRoster) s.m_PeerRoster.AddMapPulses(tracks, now);
+        if (hideSelected)
+        {
+            for (int index = tracks.Count() - 1; index >= 0; index--)
+                if (tracks[index].Selected) tracks.RemoveOrdered(index);
+        }
         count = tracks.Count();
         rpc.Write(count);
         foreach (PredateSignalTrack track : tracks)

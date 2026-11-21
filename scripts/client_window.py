@@ -152,7 +152,7 @@ class ClientWindow:
 
 
 class ClientLaunchFocus:
-    """Hand the launcher window over to DayZ once the PREDATE artwork is visible."""
+    """Give DayZ foreground ownership while it initializes its input devices."""
 
     def __init__(self, launcher_pid):
         self.window = ClientWindow()
@@ -161,7 +161,7 @@ class ClientLaunchFocus:
         self.ready_at = None
         self.next_attempt_at = 0
 
-    def poll(self, pid, artwork_ready, connected):
+    def poll(self, pid, connected):
         """Return True when launch-time focus handling is complete."""
         now = time.monotonic()
         if not connected:
@@ -171,7 +171,7 @@ class ClientLaunchFocus:
         if self.ready_at is not None and now >= self.ready_at + 10:
             print("DayZ startup activation timed out.", flush=True)
             return True
-        if not (artwork_ready or connected) or now < self.next_attempt_at:
+        if now < self.next_attempt_at:
             return False
         self.next_attempt_at = now + 0.25
 
@@ -183,12 +183,10 @@ class ClientLaunchFocus:
             if owner not in (0, self.launcher_pid, pid):
                 # Leave the active desktop app alone if the player switches away.
                 return connected
-            if not artwork_ready and now < self.ready_at + 0.75:
-                return False
             if not self.window.activate(handle):
                 return False
         if handle != self.focused_handle:
-            phase = "PREDATE loading artwork" if not connected else "loaded world"
+            phase = "client startup" if not connected else "world entry"
             print(f"DayZ received foreground and keyboard focus during {phase}.", flush=True)
             self.focused_handle = handle
         return connected

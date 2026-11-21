@@ -146,7 +146,7 @@ class PredateSignalTests
         receiver.Tracks.Insert(far);
         PredateHuntSelection.Update(receiver, hunter, vector.Zero, 10, false);
         Check(receiver.TargetId == "lynx-01", "same receiver prefers a nearer AI over a farther human");
-        Check(!PredateSignalRules.ReceiverReading(near, vector.Zero, "0 0 199", 10, config) && !PredateSignalRules.ReceiverReading(far, vector.Zero, "0 0 5001", 10, config), "private receiver uses the player cutoff and outer range");
+        Check(!PredateSignalRules.ReceiverReading(near, vector.Zero, "0 300 250", 10, config) && PredateSignalRules.ReceiverReading(near, vector.Zero, "0 0 251", 10, config) && !PredateSignalRules.ReceiverReading(far, vector.Zero, "0 0 5001", 10, config), "operator bearings use the same inclusive 250 metre cutoff and outer range as the player");
         near.RecordSample(PredateSignalRules.ReceiverReading(near, vector.Zero, "0 0 400", 100, config));
         far.RecordSample(PredateSignalRules.ReceiverReading(far, vector.Zero, "0 0 1800", 100, config));
         PredateHuntSelection.Update(receiver, hunter, vector.Zero, 100, false);
@@ -168,6 +168,15 @@ class PredateSignalTests
         memory.AnonymizeSightings();
         PredateHuntSelection.Update(receiver, hunter, vector.Zero, 192, false);
         Check(oldContact.SubjectId == "" && oldContact.VisualContactKey != "" && receiver.TargetId != "player-01", "a visual contact cannot select a radio call sign");
+        receiver.TargetId = "lynx-01";
+        near.RecordSample(null);
+        receiver.Tracks.Insert(far);
+        PredateHuntSelection.Update(receiver, hunter, vector.Zero, 193, false, true);
+        Check(receiver.TargetId == "lynx-01", "Final Approach retains the lock between pulses even with a usable alternate bearing");
+        hunter.FinalApproach = true;
+        hunter.Reason = "Bounded search exhausted; no new knowledge";
+        PredateHuntSelection.Update(receiver, hunter, vector.Zero, 194, false, true);
+        Check(receiver.TargetId == "player-01" && receiver.DeferredId == "lynx-01", "an unsuccessful Final Approach can yield to an alternate bearing");
     }
 
     void RunService(PredateSession session, PlayerBase player)
@@ -195,6 +204,7 @@ class PredateSignalTests
         PredateSignalTrack privateTrack = state.HuntReceiver.Find("player-01");
         Check(state.PlayerSignal.LastSample && privateTrack && privateTrack.LastSample, "live actors receive reciprocal scheduled pulses");
         Check(state.PlayerSignal.LastSample.Origin == humanPosition && privateTrack.LastSample.Origin == botPosition, "live service captures each recipient origin");
+        Check(PredateSignalRules.FinalApproach(vector.Zero, "0 300 250") && !PredateSignalRules.FinalApproach(vector.Zero, "0 0 251"), "Final Approach starts at 250 horizontal metres");
         Check(privateTrack.LastSample.DistanceBand == 2 && privateTrack.LastSample.PulseDistance == 0, "AI receives the player-visible distance band");
         PredateSignalService.MarkPlayerHunted(session, now);
         Check(state.PlayerInterceptionUntil == now + PredateBearingPulse.INTERVAL + 30 && state.BotInterceptionUntil == state.PlayerInterceptionUntil, "interceptions retain the shared pulse cadence");
@@ -206,8 +216,8 @@ class PredateSignalTests
         Check(privateTrack.NextSampleSerial == serial && privateTrack.LastSample.Origin == botPosition, "ordinary ticks cannot refresh historical origin");
         PredateSignalTrack scheduled = PredateSignalService.Track("player-01", "raven-01");
         PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now, session.m_HuntConfig);
-        bot.SetPosition(humanPosition + "0 0 50");
-        Check(!PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now + 1, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.BEARING && scheduled.LastSample, "crossing the cutoff between polls preserves the previous display");
+        bot.SetPosition(humanPosition + "0 0 249");
+        Check(PredateSignalRules.FinalApproach(player.GetPosition(), bot.GetPosition()) && !PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now + 1, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.BEARING && scheduled.LastSample && scheduled.NextPulseAt == now + 90, "live approach enters between pulses without consuming or rescheduling the bearing");
         Check(PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now + 90, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.CLOSE && !scheduled.LastSample && scheduled.History.Count() == 1, "scheduled cutoff retains historical evidence");
         Check(!PredateSignalService.SamplePlayerPulse(scheduled, player, null, now + 91, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.CLOSE, "vanishing contact does not leak between scheduled polls");
         Check(PredateSignalService.SamplePlayerPulse(scheduled, player, null, now + 180, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.UNAVAILABLE && scheduled.History.Count() == 1, "the next poll confirms signal loss");

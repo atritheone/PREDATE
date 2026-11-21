@@ -34,13 +34,15 @@ The hunt persists between sessions. Surviving Operators carry their injuries and
 ## How a hunt works
 
 1. Choose **New Hunt** and set the game rules, spawn, and loadout. Select **Create and Play** to deploy.
-2. Open the map to see bearing pulses from Operators within 5 km of you when sampled. Each pulse covers a 15° range that can shift between samples. Overlapping arcs stack with nearer Operators inside farther ones. Pulse colours run from yellow for distant signals to red for nearby ones. Select an arc to see its estimated distance band and track it on your compass.
-3. Select a contact to see its historical sectors on the terrain from where you took each reading. The receiver hands off to sight and sound when a scheduled pulse finds the target inside 200 metres. Earlier sectors stay on the map.
+2. Open the map to see bearing pulses from Operators within 5 km of you when sampled. Each pulse covers a 15° range that can shift between samples. Overlapping arcs stack with nearer Operators inside farther ones. Every pulse has a clickable nameplate on the map. When a group is too dense for all its connecting lines to stay visible, hover over a name to show its line and highlight its arc. Hovering also previews the Operator and sampled distance. Pulse colours run from yellow for distant signals to red for nearby ones. The tracked arc is white with a distance-coloured outline, and the compass readout includes the estimated distance band.
+3. Select a contact to see its historical sectors on the terrain from where you took each reading. Final Approach starts as soon as you are within 250 metres of your tracked Operator. The compass hands off to sight and sound, and earlier sectors stay on the map. Bearing pulses still run every 90 seconds.
+
+AI Operators get the same Final Approach cue for their own tracked contact. They pause to look and listen, then walk a short search guided by remembered bearings and anything they see or hear. They keep their normal combat and recovery priorities.
 4. Use **Save and Quit** to save the hunt and stop the local server. Select **Continue** in the launcher to resume it.
 
 Each new hunt shuffles its Operator starting positions. At least one Operator starts 1.5–3.2 km from your insertion, while larger rosters fill regions across Chernarus. Dense starting rosters allow Operators to start closer to each other. The 1.5 km separation for redeployment and Operator respawns still applies.
 
-If you die, choose **Redeploy** to return with the hunt's starting kit. PREDATE looks across the map for safe ground at least 1.5 km from every living Operator. It favors sites with more Operators within the 5 km receiver range, then shorter approaches to those Operators. Your death location breaks ties. Operator and player corpses cannot be looted. You can also save and quit from the death screen.
+On death, the screen immediately shows **Death** on solid red. **Redeploy** and **Save and Quit** appear two seconds later on the same screen. Redeploy returns you with the hunt's starting kit. PREDATE looks across the map for safe ground at least 1.5 km from every living Operator. It favors sites with more Operators within the 5 km receiver range, then shorter approaches to those Operators. Your death location breaks ties. Operator and player corpses cannot be looted.
 
 Pick player and AI equipment separately from the weapon preset in **New Hunt**. **Spectral** is the player default, with a white T-shirt, beige canvas trousers, brown work boots, a tan plate carrier, and black gloves and night vision. **Ghost** uses a black carrier. **Operator** pairs Spectral's gear with blue jeans and black sneakers. **File** is the original camouflage uniform. The presets mount NVGs on a head strap and carry supplies in clothing and vest pouches. AI Operators have matching black or tan equipment and eye-opening balaclavas.
 
@@ -71,7 +73,11 @@ Low ready uses DayZ's lowered stance and standard right-mouse aiming. While aimi
 
 Head-mounted NVGs blur the view through standard weapon scopes. Tap <kbd>N</kbd> to turn the goggles off and clear the view without lowering the weapon.
 
+With active goggles, entering a night vision scope plays the goggles-off cue. Leaving the scope plays the goggles-on cue if the goggles are still active.
+
 The Workshop weapon module reports mode and power changes in the same bottom-left HUD log as fire mode and zeroing. It emits one laser at a time. The visible laser and white light work with unaided vision. The IR laser and illuminator require active night vision. Keys <kbd>5</kbd> through <kbd>8</kbd> control the module when it is fitted to the weapon in your hands. Hunts using the original PREDATE module continue to use <kbd>K</kbd> to select a mode and <kbd>U</kbd> to toggle it.
+
+Weapon lights and lasers stop emitting when holstered. Drawing the weapon restores the settings you left on that weapon.
 
 The default rifle kits use the Workshop module when installed. AI Operators holding a rifle use its visible laser in daylight. In low light they lower their quad goggles and use the IR laser and illuminator while the goggles are powered.
 

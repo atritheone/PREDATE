@@ -48,7 +48,7 @@ class PredateHuntRuntime
             bool existing = track != null;
             if (!track) track = PredateSignalService.Track(observer.Id, contact.Id);
             vector samplePosition = contact.Position;
-            track.Reception = PredateSignalRules.Reception(origin, samplePosition, true, config);
+            track.Reception = PredateSignalRules.Reception(origin, samplePosition, true);
             PredateObservation sample;
             if (track.Reception == PredatePulseReception.BEARING)
                 sample = PredateSignalRules.ReceiverReading(track, origin, samplePosition, now, config);
@@ -99,8 +99,8 @@ class PredateHuntRuntime
             session.m_PredateNextLightScan = now + 0.75;
             PredatePEQClues.Scan(participants, now);
         }
-        array<string> live = {};
-        foreach (PredateHuntParticipant participant : participants) live.Insert(participant.Id);
+        map<string, vector> live = new map<string, vector>;
+        foreach (PredateHuntParticipant participant : participants) live.Insert(participant.Id, participant.Position);
         foreach (PredateHuntParticipant observer : participants)
         {
             if (!observer.Receiver) continue;
@@ -112,7 +112,7 @@ class PredateHuntRuntime
             for (int index = observer.Receiver.Tracks.Count() - 1; index >= 0; index--)
             {
                 string subject = observer.Receiver.Tracks[index].SubjectId;
-                if (live.Find(subject) >= 0) continue;
+                if (live.Contains(subject)) continue;
                 if (observer.Receiver.TargetId == subject)
                     PredateHunterBrain.Hold(observer.Hunter, "hold", "Contact dropped from the receiver");
                 observer.Receiver.Retire(subject);
@@ -126,11 +126,19 @@ class PredateHuntRuntime
         foreach (PredateHuntParticipant hunter : participants)
         {
             if (!hunter.Receiver) continue;
-            if (Think(session, hunter, playerId, now, routeBudget > 0)) routeBudget--;
+            if (Think(session, hunter, live, playerId, now, routeBudget > 0)) routeBudget--;
         }
     }
 
-    static bool Think(PredateSession session, PredateHuntParticipant hunter, string playerId, float now, bool canPlan)
+    // The receiver gets a proximity cue only for its selected signal.
+    static bool FinalApproach(PredateHuntParticipant observer, map<string, vector> live)
+    {
+        vector subjectPosition;
+        string targetId = observer.Receiver.TargetId;
+        return targetId != "" && live.Find(targetId, subjectPosition) && PredateSignalRules.FinalApproach(observer.Position, subjectPosition);
+    }
+
+    static bool Think(PredateSession session, PredateHuntParticipant hunter, map<string, vector> live, string playerId, float now, bool canPlan)
     {
         eAIBase actor = eAIBase.Cast(hunter.Actor);
         if (!actor || !actor.IsAlive()) return false;
@@ -145,31 +153,20 @@ class PredateHuntRuntime
         string previousMode = hunter.Hunter.Mode;
         PredateHuntReceiver receiver = hunter.Receiver;
         vector position = hunter.Position;
-        PredateHuntSelection.Update(receiver, hunter.Hunter, position, now, combat || recover);
+        string priorTarget = receiver.TargetId;
+        bool finalApproach = FinalApproach(hunter, live);
+        PredateHuntSelection.Update(receiver, hunter.Hunter, position, now, combat || recover, finalApproach);
+        if (receiver.TargetId != priorTarget) finalApproach = FinalApproach(hunter, live);
         PredateSignalTrack track = receiver.Find(receiver.TargetId);
         string subject = receiver.TargetId;
         if (subject == "player-01") subject = playerId;
-        if (!combat && !recover && !limited && now >= hunter.Hunter.WatchUntil && track && track.Reception == PredatePulseReception.CLOSE && track.History.Count() > 0)
-        {
-            PredateObservation last = track.History[track.History.Count() - 1];
-            if (last.DistanceBand <= 2 && !last.Expired(now) && receiver.FinalSearchKey != last.EventKey)
-            {
-                receiver.FinalSearchKey = last.EventKey;
-                hunter.Hunter.SearchCenter = PredateHuntSelection.SectorCenter(last);
-                hunter.Hunter.SearchRadius = Math.Min(200, PredateHuntSelection.SectorRadius(last, now));
-                hunter.Hunter.SearchObservedAt = now;
-                hunter.Hunter.SearchUntil = now + PredateBearingPulse.INTERVAL;
-                hunter.Hunter.SearchStep = 0;
-                hunter.Hunter.CheckedSectors = 0;
-                PredateHunterBrain.Goal(hunter.Hunter, position, hunter.Hunter.SearchCenter, now, "search", "Check the area from the last close pulse", last.EventKey);
-            }
-        }
         if (!combat && !recover && hunter.Hunter.HasGoal && hunter.Hunter.WatchUntil > 0 && now >= hunter.Hunter.WatchUntil && hunter.Hunter.GoalRevision == hunter.Hunter.SearchWatchRevision)
         {
             PredateRoutePlanner.RecordObservedSectors(actor, hunter.Hunter, now);
             hunter.Hunter.WatchUntil = 0;
         }
-        PredateHunterBrain.Step(hunter.Hunter, position, now, hunter.Memory, track, combat, recover, now < hunter.InterceptedUntil, session.m_WorldState.PlayerLastDeathAt, playerId, subject, receiver.Replanned, limited);
+        actor.PredateSetFinalApproach(finalApproach && !combat && !recover);
+        PredateHunterBrain.Step(hunter.Hunter, position, now, hunter.Memory, track, combat, recover, now < hunter.InterceptedUntil, session.m_WorldState.PlayerLastDeathAt, playerId, subject, receiver.Replanned, limited, finalApproach);
         if (track && track.LastSample && track.LastSample.ObservedAt == now && session.m_PeerRoster)
             session.m_PeerRoster.MarkInterception(session, track.SubjectId, now);
         else if (track && track.LastSample && track.LastSample.ObservedAt == now && track.SubjectId == "player-01")
