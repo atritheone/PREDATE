@@ -95,11 +95,14 @@ class PredateOperatorService
         {
             foreach (string attachment : kit.Attachments)
             {
+                if (rival && GetGame().IsKindOf(attachment, "ItemOptics")) continue;
                 EntityAI item = rifle.GetInventory().CreateAttachment(PredateLoadoutCatalog.IssuedAttachment(attachment));
                 if (!item) PredatePersistence.Fail(s, "Starting-kit attachment is incompatible: " + attachment);
                 else if (kit.NightVisionClass != "" && item.GetInventory().HasAttachmentSlot(InventorySlots.GetSlotIdFromString("BatteryD")) && !InstallBattery(item))
                     PredatePersistence.Fail(s, "Starting-kit accessory could not be powered: " + attachment);
             }
+            if (rival && !EquipRivalNightScope(rifle))
+                PredatePersistence.Fail(s, "Starting-kit night vision scope could not be equipped: " + kit.Id);
             if (!rifle.GetAttachedSuppressor() && !rifle.GetInventory().CreateAttachment(kit.SuppressorClass))
                 PredatePersistence.Fail(s, "Starting-kit suppressor is incompatible: " + kit.SuppressorClass);
             rifle.SpawnAttachedMagazine(kit.MagazineClass);
@@ -213,6 +216,38 @@ class PredateOperatorService
         return device && (device.FindAttachmentBySlotName("BatteryD") || device.GetInventory().CreateAttachment("Battery9V"));
     }
 
+    static bool EquipRivalNightScope(Weapon_Base rifle)
+    {
+        GameInventory inventory = rifle.GetInventory();
+        string scope = "KazuarOptic";
+        int slot = InventorySlots.GetSlotIdFromString("weaponOpticsAK");
+        if (!inventory.HasAttachmentSlot(slot))
+        {
+            scope = "StarlightOptic";
+            slot = InventorySlots.GetSlotIdFromString("weaponOptics");
+            if (!inventory.HasAttachmentSlot(slot)) return true;
+        }
+        ItemOptics previous = rifle.GetAttachedOptics();
+        if (previous && previous.eAI_GetNightVisibility(false) > 0) return InstallBattery(previous);
+
+        string previousClass;
+        int previousSlot;
+        if (previous)
+        {
+            InventoryLocation location = new InventoryLocation;
+            if (!previous.GetInventory().GetCurrentInventoryLocation(location)) return false;
+            previousClass = previous.GetType();
+            previousSlot = location.GetSlot();
+            GetGame().ObjectDelete(previous);
+        }
+        EntityAI sight = inventory.CreateAttachmentEx(scope, slot);
+        if (InstallBattery(sight)) return true;
+
+        if (sight) GetGame().ObjectDelete(sight);
+        if (previousClass != "") inventory.CreateAttachmentEx(previousClass, previousSlot);
+        return false;
+    }
+
     static string RivalKit(PredateSession session, PredateOperatorRecord record)
     {
         if (record.RifleKit != "") return record.RifleKit;
@@ -243,17 +278,31 @@ class PredateOperatorService
         return session.m_Loadouts.RotatingOutfit(slot + deploymentOffset);
     }
 
-    static bool UpgradeRivalEquipment(PredateSession session, eAIBase actor, PredateOperatorRecord record, bool sidearmIssued = false)
+    static bool UpgradeRivalEquipment(PredateSession session, eAIBase actor, PredateOperatorRecord record, bool freshDeployment = false)
     {
         PredateSupplyService.RemoveEpinephrine(actor, record.Supplies);
         if (record.EquipmentRevision < 1 && !UpgradeRivalProtection(session, actor, record)) return false;
-        if (record.EquipmentRevision >= 2) return true;
-        PredateStartingSidearm sidearm = session.m_Loadouts.Sidearm;
-        if (!sidearmIssued && !EquipSidearm(actor, actor.FindAttachmentBySlotName("Vest"), sidearm)) return false;
-        string magazineClass = sidearm.IssuedMagazineClass();
-        if (record.Supplies.NextAt > 0 && !record.Supplies.Find(magazineClass))
-            PredateSupplyService.AddConfigured(record.Supplies, magazineClass, sidearm.SpareMagazines + 1);
-        record.EquipmentRevision = 2;
+        if (record.EquipmentRevision < 2)
+        {
+            PredateStartingSidearm sidearm = session.m_Loadouts.Sidearm;
+            if (!freshDeployment && !EquipSidearm(actor, actor.FindAttachmentBySlotName("Vest"), sidearm)) return false;
+            string magazineClass = sidearm.IssuedMagazineClass();
+            if (record.Supplies.NextAt > 0 && !record.Supplies.Find(magazineClass))
+                PredateSupplyService.AddConfigured(record.Supplies, magazineClass, sidearm.SpareMagazines + 1);
+            record.EquipmentRevision = 2;
+        }
+        if (record.EquipmentRevision >= 3) return true;
+        if (!freshDeployment)
+        {
+            array<EntityAI> inventory = {};
+            actor.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
+            foreach (EntityAI entity : inventory)
+            {
+                Weapon_Base rifle = Weapon_Base.Cast(entity);
+                if (rifle && !rifle.IsKindOf("Pistol_Base") && !EquipRivalNightScope(rifle)) return false;
+            }
+        }
+        record.EquipmentRevision = 3;
         return true;
     }
 
