@@ -34,6 +34,8 @@ class PredateClientAgent
     float m_DeployRetryIn;
     bool m_StagingInitialJoin;
     bool m_PreloadReported;
+    bool m_WaitForStartupFocus;
+    float m_StartupFocusDeadline;
     ref PredateClientCommand m_InitialJoin;
 
     void PredateClientAgent(string id)
@@ -42,6 +44,7 @@ class PredateClientAgent
         m_Status.SessionId = id;
         string preload;
         m_StagingInitialJoin = GetGame().CommandlineGetParam("predateWaitForServer", preload);
+        m_WaitForStartupFocus = GetGame().CommandlineGetParam("predateStartupFocus", preload);
     }
 
     void RequestQuit()
@@ -183,6 +186,8 @@ class PredateClientAgent
     void JoinReadyWorld()
     {
         DayZGame game = GetDayZGame();
+        if (game.m_loading && game.m_loading.m_PredatePreloadCover)
+            m_Status.StartupArtworkReady = true;
         if (game.GetGameState() != DayZGameState.MAIN_MENU || game.IsLoading() || game.IsConnecting() || !game.GetMission() || !game.GetUIManager().GetMenu() || game.GetUIManager().IsDialogVisible()) return;
         if (!m_PreloadReported)
         {
@@ -190,6 +195,11 @@ class PredateClientAgent
             Print("[Predate] Client preloaded; waiting for the local mission.");
         }
         if (!m_InitialJoin) return;
+        if (m_WaitForStartupFocus && !game.IsAppActive())
+        {
+            if (!m_StartupFocusDeadline) m_StartupFocusDeadline = game.GetTickTime() + 2.0;
+            if (game.GetTickTime() < m_StartupFocusDeadline) return;
+        }
         m_StagingInitialJoin = false;
         Print("[Predate] Local mission ready; joining from the loading screen.");
         game.ConnectFromServerBrowserEx("127.0.0.1", m_InitialJoin.Port, m_InitialJoin.QueryPort, m_InitialJoin.Password);

@@ -52,6 +52,7 @@ class PredateClientStatus
     bool PauseDisconnected;
     bool PauseMenu;
     int GameState;
+    bool StartupArtworkReady;
 }
 
 class PredateClientCommand

@@ -5,5 +5,3 @@
 add signs of movement.
 
 add other maps.
-
-refix window input and focus.

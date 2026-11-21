@@ -207,7 +207,8 @@ class Supervisor:
             if self.cancel.is_set():
                 return
             launched_at = time.time()
-            world.launch_client(self.session_id, prefs["offline"], wait_for_server=True)
+            startup_args = ["-predateStartupFocus"] if self.client_launch_focus else None
+            world.launch_client(self.session_id, prefs["offline"], extra_args=startup_args, wait_for_server=True)
 
         def loading_progress(_):
             if launched_at is not None:
@@ -261,13 +262,13 @@ class Supervisor:
                     "profile": self.profile, "session_id": self.session_id, "client": identity,
                     "server": read_native(world.STATE)})
                 break
-        self.handoff_client_focus(False)
+        self.handoff_client_focus(self.client_status(), connected=False)
         return bool(self.client)
 
-    def handoff_client_focus(self, connected):
+    def handoff_client_focus(self, client, connected):
         if not self.client_launch_focus or not self.client_alive(): return
         try:
-            if self.client_launch_focus.poll(self.client["pid"], connected):
+            if self.client_launch_focus.poll(self.client["pid"], client.get("StartupArtworkReady", False), connected):
                 self.client_launch_focus = None
         except OSError as error:
             self.client_launch_focus = None
@@ -474,7 +475,7 @@ class Supervisor:
         native = world.native_status()
         if native.get("SessionId") != self.session_id: return
         client = self.client_status()
-        self.handoff_client_focus(client.get("Phase") == "connected" and native.get("Players", 0) > 0)
+        self.handoff_client_focus(client, client.get("Phase") == "connected" and native.get("Players", 0) > 0)
         client_error = client.get("Error")
         if client_error and not self.seen_connection:
             self.dispatch({"id": uuid.uuid4().hex, "action": "quit", "failure": client_error})
