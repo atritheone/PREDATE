@@ -55,6 +55,7 @@ With both packs loaded, AI Operators start with a mix of modern rifle presets. E
 | <kbd>M</kbd> | Open or close the map. Select a bearing arc or name to track an Operator. |
 | <kbd>Esc</kbd> | Close the map, or pause and open the game menu during play. |
 | <kbd>F</kbd> | Interact. An equipped firearm lowers briefly as needed. |
+| <kbd>1</kbd>–<kbd>4</kbd> | Use a hotbar slot. The default rifle and sidearm are in slots 1 and 2. |
 | Scroll down | Lower a held firearm to low ready. |
 | Scroll up | Return a held firearm to PREDATE's default raised stance. |
 | Tap <kbd>N</kbd> | Toggle equipped night vision goggles. |
@@ -70,7 +71,7 @@ Low ready uses DayZ's lowered stance and standard right-mouse aiming. While aimi
 
 Head-mounted NVGs blur the view through standard weapon scopes. Tap <kbd>N</kbd> to turn the goggles off and clear the view without lowering the weapon.
 
-The Workshop weapon module reports mode and power changes in the same bottom-left HUD log as fire mode and zeroing. It emits one laser at a time. The visible laser and white light work with unaided vision. The IR laser and illuminator require active night vision. While you hold a weapon fitted with this module, <kbd>5</kbd> through <kbd>8</kbd> control the module instead of those quickbar slots. Hunts using the original PREDATE module continue to use <kbd>K</kbd> to select a mode and <kbd>U</kbd> to toggle it.
+The Workshop weapon module reports mode and power changes in the same bottom-left HUD log as fire mode and zeroing. It emits one laser at a time. The visible laser and white light work with unaided vision. The IR laser and illuminator require active night vision. Keys <kbd>5</kbd> through <kbd>8</kbd> control the module when it is fitted to the weapon in your hands. Hunts using the original PREDATE module continue to use <kbd>K</kbd> to select a mode and <kbd>U</kbd> to toggle it.
 
 The default rifle kits use the Workshop module when installed. AI Operators holding a rifle use its visible laser in daylight. In low light they lower their quad goggles and use the IR laser and illuminator while the goggles are powered.
 

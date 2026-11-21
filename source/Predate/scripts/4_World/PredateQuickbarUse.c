@@ -1,3 +1,19 @@
+modded class QuickBarBase
+{
+    static const int PREDATE_SLOT_COUNT = 4;
+
+    override void updateSlotsCount()
+    {
+        SetSize(PREDATE_SLOT_COUNT);
+    }
+
+    override void SetEntityShortcut(EntityAI entity, int index, bool force = false)
+    {
+        if (index >= PREDATE_SLOT_COUNT) return;
+        super.SetEntityShortcut(entity, index, force);
+    }
+}
+
 modded class PlayerBase
 {
     static const int PREDATE_WEAPON_SHORTCUT_RPC = 918620;
@@ -6,6 +22,10 @@ modded class PlayerBase
     bool m_PredateQuickbarHeld;
     ref array<Weapon_Base> m_PredatePendingWeaponShortcuts = {null, null};
     int m_PredateNextWeaponShortcutSync;
+    int m_PredateQuickbarSwitchSlot;
+    int m_PredateQuickbarSwitchDeadline;
+    EntityAI m_PredateQuickbarSwitchItem;
+    EntityAI m_PredateQuickbarSwitchHands;
 
     void PredateAssignWeaponSlot(Weapon_Base weapon, int index)
     {
@@ -64,12 +84,52 @@ modded class PlayerBase
 
     override void OnQuickBarSingleUse(int slotClicked)
     {
+        if (slotClicked < 1 || slotClicked > QuickBarBase.PREDATE_SLOT_COUNT) return;
         PredateMarkQuickbarUse();
+        EntityAI hands = GetEntityInHands();
+        if (GetGame().GetPlayer() == this && IsRaised() && GetCommand_Move() && Weapon_Base.Cast(hands))
+        {
+            EntityAI item = GetQuickBarEntity(slotClicked - 1);
+            if (item)
+            {
+                // DayZ discards quickbar taps while raised. Lower first and
+                // let its normal inventory action handle the actual swap.
+                m_PredateQuickbarSwitchSlot = slotClicked;
+                m_PredateQuickbarSwitchItem = item;
+                m_PredateQuickbarSwitchHands = hands;
+                m_PredateQuickbarSwitchDeadline = GetGame().GetTime() + 1500;
+                return;
+            }
+        }
+        PredateClearQuickbarSwitch();
         super.OnQuickBarSingleUse(slotClicked);
+    }
+
+    bool PredateUpdateQuickbarSwitch(bool canSetReady)
+    {
+        if (!m_PredateQuickbarSwitchSlot) return false;
+        bool expired = GetGame().GetTime() >= m_PredateQuickbarSwitchDeadline;
+        bool sameShortcut = m_PredateQuickbarSwitchItem && GetQuickBarEntity(m_PredateQuickbarSwitchSlot - 1) == m_PredateQuickbarSwitchItem;
+        if (!canSetReady || expired || !sameShortcut || GetEntityInHands() != m_PredateQuickbarSwitchHands)
+        {
+            PredateClearQuickbarSwitch();
+            return false;
+        }
+        if (!IsRaised() && !IsInOptics() && !IsInIronsights() && GetDayZPlayerInventory().IsIdle() && ScriptInputUserData.CanStoreInputUserData())
+            OnQuickBarSingleUse(m_PredateQuickbarSwitchSlot);
+        return true;
+    }
+
+    void PredateClearQuickbarSwitch()
+    {
+        m_PredateQuickbarSwitchSlot = 0;
+        m_PredateQuickbarSwitchItem = null;
+        m_PredateQuickbarSwitchHands = null;
     }
 
     override void OnQuickBarContinuousUseStart(int slotClicked)
     {
+        if (slotClicked < 1 || slotClicked > QuickBarBase.PREDATE_SLOT_COUNT) return;
         PredateMarkQuickbarUse();
         if (GetGame().GetPlayer() == this) m_PredateQuickbarHeld = true;
         super.OnQuickBarContinuousUseStart(slotClicked);
@@ -77,6 +137,7 @@ modded class PlayerBase
 
     override void OnQuickBarContinuousUseEnd(int slotClicked)
     {
+        if (slotClicked < 1 || slotClicked > QuickBarBase.PREDATE_SLOT_COUNT) return;
         PredateMarkQuickbarUse();
         if (GetGame().GetPlayer() == this) m_PredateQuickbarHeld = false;
         super.OnQuickBarContinuousUseEnd(slotClicked);

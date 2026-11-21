@@ -28,14 +28,15 @@ modded class PlayerBase
             if (GetInputInterface().SyncedPress_ID(UAWalkRunToggle))
                 m_PredateWalkToggled = !m_PredateWalkToggled;
             bool canSetReady = PredateShouldAutoRaise(pCurrentCommandID);
+            bool quickbarSwitch = PredateUpdateQuickbarSwitch(canSetReady);
             if (canSetReady)
             {
                 PredateReadReadyPosition();
                 PredateReadInteraction(pDt);
             }
-            if (canSetReady && (!m_PredateLowReady || m_PredateInteractionTime > 0))
+            if (canSetReady && (!m_PredateLowReady || m_PredateInteractionTime > 0 || quickbarSwitch))
             {
-                autoRaise = m_PredateInteractionTime <= 0;
+                autoRaise = m_PredateInteractionTime <= 0 && !quickbarSwitch;
                 if (autoRaise) PredateReadyAnimations.Apply();
                 GetInputController().OverrideRaise(HumanInputControllerOverrideType.ENABLED, autoRaise);
                 m_PredateOwnRaiseOverride = true;
