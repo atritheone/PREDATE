@@ -349,8 +349,9 @@ button.quiet {
   padding: 9px 12px;
 }
 
-.session-footer:has(.session-status:empty):not(:has(button)) {
-  padding: 0;
+.session-footer:has(.session-status:empty):not(:has(.save-and-quit)) {
+  background: transparent;
+  padding: 0 6px 6px;
   border: 0;
 }
 
@@ -359,6 +360,7 @@ button.quiet {
 }
 
 .session-status {
+  margin-inline-end: auto;
   color: var(--blue);
   font-size: 13px;
 }
@@ -371,6 +373,22 @@ button.quiet {
   margin: 0 8px 2px 0;
   background: currentColor;
   box-shadow: 0 0 6px #83d7ff80;
+}
+
+.music-toggle {
+  min-height: 24px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: none;
+}
+
+button.music-toggle:hover:not(:disabled) {
+  background: transparent;
+  color: var(--blue);
 }
 
 @media (max-height: 470px) {

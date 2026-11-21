@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { Overview, Preferences, SessionAction, SessionStatus } from '../../shared/types'
 import wordmark from '../../../../flash/predate_wordmark.png'
+import { LauncherMusic } from './LauncherMusic'
 import { OperationSetup, readOperationDraft } from './OperationSetup'
 
 type Page = 'Continue' | 'New Hunt' | 'Settings' | 'Backups'
@@ -303,7 +304,9 @@ export function App(): ReactNode {
   const active = !['idle', 'suspended'].includes(status.phase)
   const operation = overview?.operations.find((item) => item.id === selected)
   const operationRunning = status.phase === 'playing' && status.profile === selected
-  const canStop = active || quitting || pending === 'continue' || pending === 'new'
+  const inHunt =
+    (active && status.phase !== 'error') || quitting || pending === 'continue' || pending === 'new'
+  const canStop = inHunt || status.phase === 'error'
   const selectedBackup = overview?.backups.find((item) => item.file === backupFile)
   const phase = phaseLabels[status.phase]
   const sessionNote = quitting
@@ -496,12 +499,14 @@ export function App(): ReactNode {
           </span>
           {canStop && (
             <button
+              className="save-and-quit"
               disabled={quitting || status.phase === 'saving' || status.phase === 'stopping'}
               onClick={() => void perform({ action: 'quit' })}
             >
               Save and Quit
             </button>
           )}
+          <LauncherMusic inHunt={inHunt} />
         </footer>
       </div>
     </div>
