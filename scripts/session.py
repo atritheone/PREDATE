@@ -214,7 +214,8 @@ class Supervisor:
             world.launch_client(self.session_id, prefs["offline"], wait_for_server=True)
 
         def loading_progress(_):
-            self.observe_starting_client(launched_at)
+            if launched_at is not None:
+                self.observe_starting_client(launched_at)
             if self.data["phase"] != "loading":
                 self.publish("loading", "Opening DayZ and loading the world...")
 
