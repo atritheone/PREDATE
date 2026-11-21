@@ -110,7 +110,7 @@ class PredateHunterBrain
         return score;
     }
 
-    static PredateObservation LatestContact(PredateObservationMemory memory, float now, float retiredLifeAt = -1, string retiredSubject = "", string selectedSubject = "", bool elite = false, string current = "")
+    static PredateObservation LatestContact(PredateObservationMemory memory, float now, float retiredLifeAt = -1, string retiredSubject = "", string selectedSubject = "", string current = "")
     {
         PredateObservation best;
         float bestScore;
@@ -120,12 +120,8 @@ class PredateHunterBrain
             if (observation.Source == PredateObservationSource.SIGNAL) continue;
             if ((observation.Source == PredateObservationSource.VISUAL || observation.Source == PredateObservationSource.GLIMPSE) && observation.ObservedAt <= retiredLifeAt && (retiredSubject == "" || observation.SubjectId == retiredSubject || observation.SubjectId == "")) continue;
             if (selectedSubject != "" && observation.SubjectId != "" && observation.SubjectId != selectedSubject) continue;
-            float score = observation.ObservedAt;
-            if (elite)
-            {
-                score = EvidenceScore(observation, memory, now);
-                if (observation.EventKey == current) score += 0.08;
-            }
+            float score = EvidenceScore(observation, memory, now);
+            if (observation.EventKey == current) score += 0.08;
             if (best && (score < bestScore || (score == bestScore && observation.ObservedAt <= best.ObservedAt))) continue;
             best = observation;
             bestScore = score;
@@ -190,7 +186,7 @@ class PredateHunterBrain
         return best < 1000000;
     }
 
-    static void Step(PredateHunterState state, vector ownPosition, float now, PredateObservationMemory memory, PredateSignalTrack track, bool combat, bool recover, bool beingTracked = false, float retiredLifeAt = -1, string retiredSubject = "", string selectedSubject = "", bool replan = false, bool elite = false, bool limited = false)
+    static void Step(PredateHunterState state, vector ownPosition, float now, PredateObservationMemory memory, PredateSignalTrack track, bool combat, bool recover, bool beingTracked = false, float retiredLifeAt = -1, string retiredSubject = "", string selectedSubject = "", bool replan = false, bool limited = false)
     {
         if (!state || !memory || memory.OwnerId != state.OwnerId || (track && track.OwnerId != state.OwnerId)) return;
         if (!beingTracked) state.InterceptionHandled = false;
@@ -210,9 +206,9 @@ class PredateHunterBrain
             return;
         }
         if (state.Mode == "evade" && state.HasGoal && now < state.SearchUntil && Distance(ownPosition, state.Goal) > 8) return;
-        PredateObservation contact = LatestContact(memory, now, retiredLifeAt, retiredSubject, selectedSubject, elite, state.LastContactKey);
+        PredateObservation contact = LatestContact(memory, now, retiredLifeAt, retiredSubject, selectedSubject, state.LastContactKey);
         // A new sound inside the same uncertainty area should not restart an active search.
-        if (elite && contact && contact.IsAudible() && state.HasGoal && now < state.SearchUntil && (state.Mode == "investigate" || state.Mode == "search") && Distance(state.SearchCenter, contact.Estimate) <= state.SearchRadiusAt(now) + contact.Radius)
+        if (contact && contact.IsAudible() && state.HasGoal && now < state.SearchUntil && (state.Mode == "investigate" || state.Mode == "search") && Distance(state.SearchCenter, contact.Estimate) <= state.SearchRadiusAt(now) + contact.Radius)
         {
             state.LastContactKey = contact.EventKey;
             contact = null;
@@ -229,7 +225,7 @@ class PredateHunterBrain
             state.SearchStep = 0;
             bool watchFromHere = limited && (contact.Source != PredateObservationSource.VISUAL || Distance(ownPosition, contact.Estimate) > 140);
             bool quietStep = contact.Source == PredateObservationSource.FOOTSTEP && contact.Confidence < 0.4;
-            if ((elite && (contact.Source == PredateObservationSource.GLIMPSE || quietStep)) || watchFromHere)
+            if (contact.Source == PredateObservationSource.GLIMPSE || quietStep || watchFromHere)
             {
                 string watchReason = "Check the direction of ambiguous movement";
                 if (quietStep) watchReason = "Listen and look after a single footstep";
@@ -246,7 +242,7 @@ class PredateHunterBrain
             Goal(state, ownPosition, contact.Estimate, now, "investigate", reason, contact.EventKey);
             return;
         }
-        if (elite && now < state.WatchUntil) return;
+        if (now < state.WatchUntil) return;
         if (limited)
         {
             if (!state.HasGoal || (state.Mode != "investigate" && state.Mode != "search") || Distance(ownPosition, state.SearchCenter) > 140)
@@ -332,15 +328,14 @@ class PredateHunterBrain
                 Hold(state, "hold", "Observation baseline reached; wait for scheduled sample");
                 return;
             }
-            int searchLimit = 4;
-            if (elite) searchLimit += (state.OwnerId.Hash() & 3);
+            int searchLimit = 4 + (state.OwnerId.Hash() & 3);
             if (limited) searchLimit = 2;
             if (now >= state.SearchUntil || state.SearchStep >= searchLimit)
             {
                 Hold(state, "hold", "Bounded search exhausted; no new knowledge");
                 return;
             }
-            if (elite && state.SearchWatchRevision != state.GoalRevision)
+            if (state.SearchWatchRevision != state.GoalRevision)
             {
                 state.SearchWatchRevision = state.GoalRevision;
                 state.WatchPoint = state.SearchCenter;
@@ -348,18 +343,10 @@ class PredateHunterBrain
                 return;
             }
             state.SearchStep++;
-            if (elite)
-            {
-                vector uncheckedPosition;
-                if (NextSearchPosition(state, ownPosition, now, uncheckedPosition))
-                    Goal(state, ownPosition, uncheckedPosition, now, "search", "Check an unobserved part of the remembered area", state.EvidenceKey);
-                else Hold(state, "hold", "Bounded search exhausted; no new knowledge");
-                return;
-            }
-            float angle = state.SearchStep * 137.5;
-            vector offset = PredateInformationMath.BearingDirection(angle) * Math.Clamp(state.SearchRadiusAt(now), 25, 120);
-            vector searchDestination = state.SearchCenter + offset;
-            Goal(state, ownPosition, searchDestination, now, "search", "Search an uncertain remembered area", state.EvidenceKey);
+            vector uncheckedPosition;
+            if (NextSearchPosition(state, ownPosition, now, uncheckedPosition))
+                Goal(state, ownPosition, uncheckedPosition, now, "search", "Check an unobserved part of the remembered area", state.EvidenceKey);
+            else Hold(state, "hold", "Bounded search exhausted; no new knowledge");
             return;
         }
         if (state.HasDetour && Distance(ownPosition, state.Detour) <= 8)

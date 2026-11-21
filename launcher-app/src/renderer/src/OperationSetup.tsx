@@ -50,7 +50,6 @@ export interface OperationDraft {
   time: string
   opponents: OpponentCount
   enemyRespawns: boolean
-  eliteAI: boolean
   respawnDelay: string
   spawn: string
   x: string
@@ -68,7 +67,6 @@ const defaults: OperationDraft = {
   time: defaultTime,
   opponents: DEFAULT_OPPONENT_COUNT,
   enemyRespawns: true,
-  eliteAI: true,
   respawnDelay: '120',
   spawn: 'original',
   x: '',
@@ -292,7 +290,6 @@ export function OperationSetup({
         startHour,
         startMinute,
         enemyRespawns: draft.enemyRespawns,
-        eliteAI: draft.eliteAI,
         respawnDelay: draft.enemyRespawns ? delay : 120,
         playerOutfit,
         operatorOutfit,
@@ -404,13 +401,6 @@ export function OperationSetup({
                   </button>
                 ))}
               </div>
-              <label className="field">
-                Operator AI
-                <select value={draft.eliteAI ? 'elite' : 'classic'} onChange={(event) => change({ eliteAI: event.target.value === 'elite' })}>
-                  <option value="elite">Elite</option>
-                  <option value="classic">Classic</option>
-                </select>
-              </label>
               <label className="game-toggle split">
                 <span>
                   <strong>Enemy Respawns</strong>

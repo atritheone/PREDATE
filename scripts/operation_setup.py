@@ -110,10 +110,9 @@ def config(selection):
         "EnableOperatorRespawns": respawns,
         "OperatorRespawnDelay": delay,
     }
-    if "eliteAI" in selection:
-        if type(selection["eliteAI"]) is not bool:
-            raise ValueError("Select a valid Operator AI preset")
-        rules["EliteAI"] = selection["eliteAI"]
+    # Older launchers can send this field. Both values now use the same AI.
+    if "eliteAI" in selection and type(selection["eliteAI"]) is not bool:
+        raise ValueError("Invalid new operation settings")
     if "playerOutfit" in selection or "operatorOutfit" in selection:
         outfits = {outfit["Id"] for outfit in loadouts.definitions()["Outfits"]}
         for key, stored_name, allowed in (

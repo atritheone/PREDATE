@@ -127,7 +127,7 @@ modded class eAIBase
 
     override void OverrideTargetPosition(eAITarget target, bool isFinal = true)
     {
-        if (m_PredateEliteAI && target && target.m_LOS && m_PredateAimPauseTarget && target.GetEntity() == m_PredateAimPauseTarget && m_PredateSimulationTime < m_PredateAimPauseUntil && !m_eAI_IsInDangerByArea && !eAI_IsSideStepping() && GetCurrentCommandID() == DayZPlayerConstants.COMMANDID_MOVE)
+        if (m_PredateCombatEnabled && target && target.m_LOS && m_PredateAimPauseTarget && target.GetEntity() == m_PredateAimPauseTarget && m_PredateSimulationTime < m_PredateAimPauseUntil && !m_eAI_IsInDangerByArea && !eAI_IsSideStepping() && GetCurrentCommandID() == DayZPlayerConstants.COMMANDID_MOVE)
         {
             OverrideTargetPosition(m_PredateAimPausePosition, true, 0.25, false);
             return;
@@ -138,7 +138,7 @@ modded class eAIBase
     void PredateRequestAimPause(eAITarget target, float distance)
     {
         float now = m_PredateSimulationTime;
-        if (!m_PredateEliteAI || m_PredateProbeShooter || m_PredateVisualTarget != target.GetEntity() || now < m_PredateNextAimPause || m_eAI_IsInDangerByArea || eAI_IsSideStepping() || GetCurrentCommandID() != DayZPlayerConstants.COMMANDID_MOVE) return;
+        if (m_PredateProbeShooter || m_PredateVisualTarget != target.GetEntity() || now < m_PredateNextAimPause || m_eAI_IsInDangerByArea || eAI_IsSideStepping() || GetCurrentCommandID() != DayZPlayerConstants.COMMANDID_MOVE) return;
         Weapon_Base weapon = Weapon_Base.Cast(GetHumanInventory().GetEntityInHands());
         if (!weapon || !eAI_CanFire(weapon) || !PredateShotLane.Clear(this, weapon, GetAimPosition(), target.GetEntity())) return;
 
@@ -154,7 +154,7 @@ modded class eAIBase
     void PredateDeferredShot(eAITarget target, string reason, bool canChangeView)
     {
         m_PredateFireBlock = reason;
-        if (!m_PredateEliteAI || !target.IsPlayer() || m_PredateProbeShooter) return;
+        if (!target.IsPlayer() || m_PredateProbeShooter) return;
         float now = m_PredateSimulationTime;
         if (m_PredateReconsiderTarget != target.GetEntity() || m_PredateBlockedSince < 0)
         {
@@ -270,7 +270,7 @@ modded class eAIBase
         }
         float now = GetGame().GetTickTime();
         if (now < m_PredateNextShotTime) { m_PredateFireBlock = "Cadence cooldown"; return; }
-        if (m_PredateEliteAI && target.GetEntity() == m_PredateReconsiderTarget && m_PredateSimulationTime < m_PredateReconsiderAt) return;
+        if (target.GetEntity() == m_PredateReconsiderTarget && m_PredateSimulationTime < m_PredateReconsiderAt) return;
         if (!target.m_LOS || !eAI_HasLOS())
         {
             m_PredateAimSince = 0;

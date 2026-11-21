@@ -2,6 +2,7 @@
 class PredateTacticalKnowledgeTests : PredateKnowledgeTests
 {
     int VisibleAttempts;
+    float VisibleSince;
     PredateSession Session;
     eAIBase Observer;
     PlayerBase Target;
@@ -54,8 +55,6 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
 
     float CheckHearing(eAIBase observer, PlayerBase target, vector heardAt, float now)
     {
-        bool previousPreset = observer.m_PredateEliteAI;
-        observer.m_PredateEliteAI = true;
         eAINoiseParams step = new eAINoiseParams("CfgVehicles SurvivorBase NoiseStepStand", eAINoiseType.SOUND);
         step.m_Strength = 200;
         int pending = observer.m_PredatePendingSounds.Count();
@@ -75,7 +74,6 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
         observer.PredateAdvanceInformation(now + 3);
         PredateObservation report = observer.m_PredateMemory.Latest("", PredateObservationSource.AUDIBLE, now + 3);
         Check(report && report.Confidence > 0.4 && report.ExpiresAt - report.ObservedAt > 12, "an audible muzzle report stays actionable longer than a footstep");
-        observer.m_PredateEliteAI = previousPreset;
         return now + 3;
     }
 
@@ -261,6 +259,7 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
         if (VisibleAttempts >= 3) range = 5;
         vector visiblePosition = Session.PredateGround(Observer.GetPosition() + direction * range);
         Target.SetPosition(visiblePosition);
+        VisibleSince = Observer.m_PredateSimulationTime;
         GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(CheckVisible, 300, false);
     }
 
@@ -278,6 +277,11 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
         Observer.m_eAI_TargetChanged = true;
         Observer.m_eAI_LOSCheckDT = 1;
         bool reacquired = Observer.EnforceLOS(1.0);
+        if (!reacquired && Observer.m_PredateSimulationTime < VisibleSince + 1.25)
+        {
+            GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(CheckVisible, 250, false);
+            return;
+        }
         if (!reacquired)
         {
             Observer.m_PredateKnowledgeEnabled = false;
@@ -302,7 +306,7 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
             State.UpdatePosition(false);
             vector actual = Target.GetPosition();
             Check(vector.Distance(State.m_LastKnownPosition, actual) < 0.1, "fresh visual observation updates the cached location");
-            CheckEliteRecognition();
+            CheckRecognition();
         }
         else
         {
@@ -317,12 +321,10 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
         CheckSightRange();
     }
 
-    void CheckEliteRecognition()
+    void CheckRecognition()
     {
-        bool previousPolicy = Observer.m_PredateEliteAI;
         float now = Observer.m_PredateSimulationTime;
         State.m_PredateRecognition = null;
-        Observer.m_PredateEliteAI = true;
         bool first = Observer.PredateRecognize(State, Target, 4);
         bool duplicate = Observer.PredateRecognize(State, Target, 4);
         PredateObservation clue = Observer.m_PredateMemory.Latest("", PredateObservationSource.GLIMPSE, now);
@@ -331,7 +333,6 @@ class PredateTacticalKnowledgeTests : PredateKnowledgeTests
         Check(Observer.PredateRecognize(State, Target, 4), "a sustained second observation confirms the contact");
         Check(!Observer.PredateRecognize(State, Target, 0), "occlusion denies visual permission in the same simulation tick");
         Observer.m_PredateSimulationTime = now;
-        Observer.m_PredateEliteAI = previousPolicy;
         State.m_PredateRecognition = null;
     }
 }

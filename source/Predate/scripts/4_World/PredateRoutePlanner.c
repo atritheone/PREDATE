@@ -51,7 +51,7 @@ class PredateRoutePlanner
         return distance * 0.1 + maximumGrade * 60 - cover * 0.6;
     }
 
-    static bool Plan(vector ownPosition, vector goal, out vector intermediate, bool elite = false, PredateHunterState state = null)
+    static bool Plan(vector ownPosition, vector goal, out vector intermediate, PredateHunterState state)
     {
         if (!Land(goal)) return false;
         vector forward = goal - ownPosition;
@@ -69,10 +69,10 @@ class PredateRoutePlanner
             vector sampled;
             if (!Snap(candidate, 8, sampled)) continue;
             candidate = sampled;
-            float first = LegCost(ownPosition, candidate, !elite);
-            float second = LegCost(candidate, goal, !elite);
+            float first = LegCost(ownPosition, candidate, false);
+            float second = LegCost(candidate, goal, false);
             float cost = first + second;
-            if (elite && cost < 1000000)
+            if (cost < 1000000)
             {
                 cost -= Cover(candidate) * 1.2;
                 if (state && (state.Mode == "search" || state.Mode == "investigate"))

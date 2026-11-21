@@ -29,9 +29,7 @@ modded class eAIBase
 
     bool PredateTacticalPriority(float now)
     {
-        float contactHold = 12;
-        if (m_PredateEliteAI) contactHold = 2;
-        if (m_PredateLastVisualAt >= 0 && now - m_PredateLastVisualAt <= contactHold) return true;
+        if (m_PredateLastVisualAt >= 0 && now - m_PredateLastVisualAt <= 2) return true;
         if (!m_PredateMemory) return false;
         foreach (PredateObservation observation : m_PredateMemory.Entries)
             if (observation.Source == PredateObservationSource.IMPACT && now - observation.ObservedAt <= 3) return true;
@@ -42,10 +40,7 @@ modded class eAIBase
     {
         if (IsUnconscious() || IsRestrained() || IsInTransport() || IsFighting()) return true;
         if (GetActionManager().GetRunningAction()) return true;
-        if (m_PredateEliteAI) return IsBleeding() && GetBandageToUse() != null;
-        if (GetHealth01("", "Health") <= 0.5 || GetHealth01("", "Blood") < 0.7) return true;
-        if (GetBleedingManagerServer() && GetBleedingManagerServer().GetBleedingSourcesCount() > 0) return true;
-        return false;
+        return IsBleeding() && GetBandageToUse() != null;
     }
 
     override bool eAI_UpdateLookDirectionPreference()
@@ -61,7 +56,7 @@ modded class eAIBase
         }
 
         float heading;
-        if (m_PredateEliteAI && m_PredateSimulationTime < m_PredateWatchUntil)
+        if (m_PredateSimulationTime < m_PredateWatchUntil)
         {
             vector eyes = GetBonePositionWS(GetBoneIndexByName("Head"));
             vector toward = m_PredateWatchPoint - eyes;
@@ -84,7 +79,7 @@ modded class eAIBase
                 return true;
             }
         }
-        if (m_PredateEliteAI && m_PredateRouteActive && m_PredateSimulationTime < m_PredateGlanceUntil)
+        if (m_PredateRouteActive && m_PredateSimulationTime < m_PredateGlanceUntil)
         {
             vector towardClue = m_PredateGlancePoint - GetPosition();
             float relativeClue = ExpansionMath.AngleDiff2(GetOrientation()[0], towardClue.VectorToAngles()[0]);
@@ -102,8 +97,7 @@ modded class eAIBase
                 heading = ExpansionMath.AngleDiff2(GetOrientation()[0], toWaypoint.VectorToAngles()[0]);
         }
         float sideLook = 68;
-        if (m_PredateRouteActive) sideLook = 46;
-        if (m_PredateRouteActive && m_PredateEliteAI) sideLook = 55;
+        if (m_PredateRouteActive) sideLook = 55;
         if (m_PredateLookStep == 1) heading -= sideLook;
         if (m_PredateLookStep == 3) heading += sideLook;
         vector gaze = Vector(Math.Clamp(heading, -75, 75), 0, 0);
@@ -165,7 +159,7 @@ modded class eAIBase
             {
                 vector intermediate;
                 vector ownPosition = GetPosition();
-                if (PredateRoutePlanner.Plan(ownPosition, destination, intermediate, m_PredateEliteAI, state))
+                if (PredateRoutePlanner.Plan(ownPosition, destination, intermediate, state))
                 {
                     group.AddWaypoint(intermediate);
                     group.AddWaypoint(destination);

@@ -76,7 +76,6 @@ class PredateAcquisitionMission : MissionServer
             m_AcquisitionObserver.SetAllowDamage(false);
             m_AcquisitionObserver.m_PredateProbeShooter = true;
             m_AcquisitionObserver.m_PredateProbeCeaseFire = true;
-            m_AcquisitionObserver.m_PredateEliteAI = m_PredateSession.m_HuntConfig.EliteAI;
             m_AcquisitionNext = now + 2;
             return;
         }
@@ -117,7 +116,7 @@ class PredateAcquisitionMission : MissionServer
         {
             m_AcquisitionDone = true;
             string error;
-            JsonFileLoader<PredateAcquisitionReport>.SaveFile("$profile:EliteAcquisition.json", m_AcquisitionReport, error);
+            JsonFileLoader<PredateAcquisitionReport>.SaveFile("$profile:OperatorAcquisition.json", m_AcquisitionReport, error);
             return;
         }
         m_AcquisitionMeasurement = new PredateAcquisitionMeasurement;
@@ -234,7 +233,7 @@ class PredateAcquisitionMission : MissionServer
         vector eyes = m_AcquisitionObserver.GetBonePositionWS(m_AcquisitionObserver.GetBoneIndexByName("Head"));
         vector neck = m_AcquisitionTarget.GetBonePositionWS(m_AcquisitionTarget.GetBoneIndexByName("Neck"));
         if (m_AcquisitionObserver.PredateContactRay(m_AcquisitionTarget, eyes, neck)) m_AcquisitionMeasurement.BodyVisibleSamples++;
-        if (m_AcquisitionObserver.PredateVisualQuality(m_AcquisitionTarget, true) <= 0)
+        if (m_AcquisitionObserver.PredateVisualQuality(m_AcquisitionTarget) <= 0)
         {
             m_ExposureStarted = -1;
             return;

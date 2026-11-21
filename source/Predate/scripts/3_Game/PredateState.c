@@ -143,7 +143,6 @@ class PredateConfig
     bool EnableFairInformation;
     bool EnableSharedSignals;
     bool EnableStrategicHunter;
-    bool EliteAI = true;
     bool EnableFootprints;
     bool EnableOperatorRespawns;
     float OperatorRespawnDelay = 120;

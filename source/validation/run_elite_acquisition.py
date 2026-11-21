@@ -36,7 +36,7 @@ def close_client(nonce):
         raise TimeoutError('The validation client did not close')
 
 
-def prepare(classic):
+def prepare():
     build.require_closed_runtime()
     os.environ['PREDATE_CANDIDATE_MOD'] = '1'
     profile = 'validation-acquisition-' + uuid.uuid4().hex[:6]
@@ -47,7 +47,7 @@ def prepare(classic):
     settings = store.read_json(settings_path)
     settings.update(EnableFairInformation=True, EnableSharedSignals=False, EnableStrategicHunter=False,
                     EnableOperatorRespawns=False, RandomInitialSpawns=False, ThreatDistance=1000,
-                    EliteAI=not classic, PlayerStart=[11700, 0, 12200], BotStart=[11730, 0, 12220])
+                    PlayerStart=[11700, 0, 12200], BotStart=[11730, 0, 12220])
     store.atomic_json(settings_path, settings)
     mission = world.MISSION / 'init.c'
     script = mission.read_text(encoding='utf-8')
@@ -66,7 +66,7 @@ def collect():
         failure = session.read_native(world.WORLD / 'client/PredateFailure.json')
         if failure:
             raise RuntimeError(failure.get('message', 'The validation client failed'))
-        result = session.read_native(world.PROFILE / 'EliteAcquisition.json')
+        result = session.read_native(world.PROFILE / 'OperatorAcquisition.json')
         if result.get('Trials'):
             return result['Trials']
         time.sleep(1)
@@ -74,12 +74,9 @@ def collect():
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--classic', action='store_true', help='Run the same exposures with Classic AI')
-    args = parser.parse_args()
-    profile = prepare(args.classic)
-    label = 'classic' if args.classic else 'elite'
-    report = {'profile': profile, 'preset': label, 'passed': False,
+    argparse.ArgumentParser(description=__doc__).parse_args()
+    profile = prepare()
+    report = {'profile': profile, 'passed': False,
               'addon_sha256': store.digest(world.MODS[-1] / 'addons/Predate.pbo'),
               'mission_sha256': store.digest(world.MISSION / 'init.c'),
               'dependency_lock_sha256': store.digest(ROOT / 'config/release-lock.json')}
@@ -113,7 +110,7 @@ def main():
         finally:
             if world.running():
                 world.stop(make_backup=False)
-            path = ROOT / f'build/engine-acquisition-{label}-results.json'
+            path = ROOT / 'build/engine-acquisition-operator-results.json'
             store.atomic_json(path, report)
             print(path, flush=True)
 

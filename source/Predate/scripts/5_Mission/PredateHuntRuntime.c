@@ -136,13 +136,12 @@ class PredateHuntRuntime
         if (!actor || !actor.IsAlive()) return false;
         if (!actor.m_PredateAIConfigured)
         {
-            actor.m_PredateEliteAI = session.m_HuntConfig.EliteAI;
             actor.m_PredateAITrace = FileExist("$profile:PredateAITrace.txt");
             actor.m_PredateAIConfigured = true;
         }
         bool combat = actor.PredateTacticalPriority(now);
         bool recover = actor.PredateOwnActionPriority();
-        bool limited = actor.m_PredateEliteAI && (actor.GetHealth01("", "Health") <= 0.5 || actor.GetHealth01("", "Blood") < 0.7);
+        bool limited = actor.GetHealth01("", "Health") <= 0.5 || actor.GetHealth01("", "Blood") < 0.7;
         string previousMode = hunter.Hunter.Mode;
         PredateHuntReceiver receiver = hunter.Receiver;
         vector position = hunter.Position;
@@ -165,12 +164,12 @@ class PredateHuntRuntime
                 PredateHunterBrain.Goal(hunter.Hunter, position, hunter.Hunter.SearchCenter, now, "search", "Check the area from the last close pulse", last.EventKey);
             }
         }
-        if (actor.m_PredateEliteAI && !combat && !recover && hunter.Hunter.HasGoal && hunter.Hunter.WatchUntil > 0 && now >= hunter.Hunter.WatchUntil && hunter.Hunter.GoalRevision == hunter.Hunter.SearchWatchRevision)
+        if (!combat && !recover && hunter.Hunter.HasGoal && hunter.Hunter.WatchUntil > 0 && now >= hunter.Hunter.WatchUntil && hunter.Hunter.GoalRevision == hunter.Hunter.SearchWatchRevision)
         {
             PredateRoutePlanner.RecordObservedSectors(actor, hunter.Hunter, now);
             hunter.Hunter.WatchUntil = 0;
         }
-        PredateHunterBrain.Step(hunter.Hunter, position, now, hunter.Memory, track, combat, recover, now < hunter.InterceptedUntil, session.m_WorldState.PlayerLastDeathAt, playerId, subject, receiver.Replanned, actor.m_PredateEliteAI, limited);
+        PredateHunterBrain.Step(hunter.Hunter, position, now, hunter.Memory, track, combat, recover, now < hunter.InterceptedUntil, session.m_WorldState.PlayerLastDeathAt, playerId, subject, receiver.Replanned, limited);
         if (track && track.LastSample && track.LastSample.ObservedAt == now && session.m_PeerRoster)
             session.m_PeerRoster.MarkInterception(session, track.SubjectId, now);
         else if (track && track.LastSample && track.LastSample.ObservedAt == now && track.SubjectId == "player-01")

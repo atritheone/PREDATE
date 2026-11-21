@@ -4,7 +4,6 @@ modded class eAIBase
 {
     protected static const float PREDATE_NVG_RANGE = 800.0;
     bool m_PredateCombatEnabled;
-    bool m_PredateEliteAI;
     bool m_PredateAIConfigured;
     bool m_PredateAITrace;
     bool m_PredateKnowledgeEnabled;
@@ -144,16 +143,11 @@ modded class eAIBase
         observation.Source = PredateObservationSource.VISUAL;
         observation.ObservedAt = m_PredateSimulationTime;
         observation.ExpiresAt = m_PredateSimulationTime + 120;
-        observation.Confidence = 0.95;
         observation.HasPosition = true;
         observation.Estimate = state.m_LastKnownPosition;
-        observation.Radius = 2;
-        if (m_PredateEliteAI)
-        {
-            float distance = vector.Distance(GetPosition(), state.m_LastKnownPosition);
-            observation.Confidence = Math.Lerp(0.97, 0.78, Math.Clamp(distance / 1000, 0, 1));
-            observation.Radius = Math.Max(2, distance * 0.025);
-        }
+        float distance = vector.Distance(GetPosition(), state.m_LastKnownPosition);
+        observation.Confidence = Math.Lerp(0.97, 0.78, Math.Clamp(distance / 1000, 0, 1));
+        observation.Radius = Math.Max(2, distance * 0.025);
         m_PredateMemory.Add(observation, m_PredateSimulationTime);
     }
 
@@ -173,30 +167,17 @@ modded class eAIBase
         m_eAI_TargetChanged = true;
         m_PredateSensorDepth++;
         bool visible;
-        bool recognizedPath;
-        if (m_PredateEliteAI && target.IsPlayer())
+        PlayerBase contact;
+        if (target.IsPlayer()) contact = PlayerBase.Cast(target.GetEntity());
+        if (contact)
         {
-            PlayerBase contact = PlayerBase.Cast(target.GetEntity());
-            if (contact)
-            {
-                recognizedPath = true;
-                visible = PredateRecognize(target, contact, PredateVisualQuality(contact, true));
-                if (visible && !target.m_LOS) m_eAI_PositionOverrideTimeout = 0;
-                if (visible) target.m_SearchOnLOSLost = true;
-                target.m_LOS = visible;
-            }
+            visible = PredateRecognize(target, contact, PredateVisualQuality(contact));
+            if (visible && !target.m_LOS) m_eAI_PositionOverrideTimeout = 0;
+            if (visible) target.m_SearchOnLOSLost = true;
+            target.m_LOS = visible;
         }
-        if (!recognizedPath) visible = super.EnforceLOS(pDt);
+        else visible = super.EnforceLOS(pDt);
         m_eAI_TargetChanged = changed;
-        if (!recognizedPath && !visible && m_PredateCombatEnabled && target.IsPlayer())
-        {
-            PlayerBase person = PlayerBase.Cast(target.GetEntity());
-            if (person && PredateVisualQuality(person, false) > 0)
-            {
-                target.m_LOS = true;
-                visible = true;
-            }
-        }
         if (visible && target.IsPlayer())
         {
             if (m_PredateVisualTarget != target.GetEntity())
@@ -231,7 +212,7 @@ modded class eAIBase
         if (previous && m_PredateVisualTarget && previous.GetEntity() == m_PredateVisualTarget && previous.m_LOS && m_PredateSimulationTime - m_PredateLastVisualAt <= 0.5)
         {
             selected = previous;
-            if (m_PredateEliteAI && m_PredateSimulationTime >= m_PredateNextPeripheralScan)
+            if (m_PredateSimulationTime >= m_PredateNextPeripheralScan)
             {
                 m_PredateNextPeripheralScan = m_PredateSimulationTime + 0.75;
                 PlayerBase challenger = PredateFindVisibleContact(previous.GetEntity());
@@ -293,10 +274,9 @@ modded class eAIBase
             if ((person.IsAI() && person.IsUnconscious()) || !PlayerIsEnemy(person) || person.Expansion_IsInSafeZone()) continue;
             float distanceSq = vector.DistanceSq(own, person.GetPosition());
             if (distanceSq > closest) continue;
-            float quality = PredateVisualQuality(person, m_PredateEliteAI);
+            float quality = PredateVisualQuality(person);
             if (quality <= 0) continue;
-            if (m_PredateEliteAI)
-                PredateRecognize(eAI_GetTargetInformationState(person.GetTargetInformation(), false), person, quality);
+            PredateRecognize(eAI_GetTargetInformationState(person.GetTargetInformation(), false), person, quality);
             closest = distanceSq;
             selected = person;
         }
@@ -348,7 +328,7 @@ modded class eAIBase
             Print("[PredateAI] operator=" + m_PredateOperatorId + "; simulation=" + m_PredateSimulationTime + "; action=" + action);
     }
 
-    float PredateVisualQuality(PlayerBase person, bool graded)
+    float PredateVisualQuality(PlayerBase person)
     {
         if (IsUnconscious() || person.Expansion_HasAdminToolInvisibility()) return 0;
         string eyeBone = "Head";
@@ -363,13 +343,11 @@ modded class eAIBase
         float halfAngle = eAI_CalculateFOVHalfAngleH(distance);
         if (Math.AbsFloat(angle) > halfAngle) return 0;
         bool bodyVisible = PredateContactRay(person, eyes, body);
-        if (bodyVisible && !graded) return 1;
         string secondBone = "Head";
         if (bodyVisible) secondBone = "spine3";
         vector secondPoint = person.GetBonePositionWS(person.GetBoneIndexByName(secondBone));
         bool secondVisible = PredateContactRay(person, eyes, secondPoint);
         if (!secondVisible && !bodyVisible) return 0;
-        if (!graded) return 1;
         float quality = Math.Lerp(5, 0.65, distance / limit);
         if (!secondVisible || !bodyVisible) quality *= 0.65;
         quality *= Math.Lerp(1, 0.55, Math.AbsFloat(angle) / halfAngle);
@@ -451,7 +429,7 @@ modded class eAIBase
         vector own = GetPosition();
         float distance = vector.Distance(own, position);
         if (distance > strength || distance > m_eAI_NoiseInvestigationDistanceLimit) return;
-        bool footstep = m_PredateEliteAI && params.m_Path.Contains(" NoiseStep");
+        bool footstep = params.m_Path.Contains(" NoiseStep");
         bool impact = params.m_Type == eAINoiseType.BULLETIMPACT;
         float radius = Math.Max(5, distance * 0.1);
         float confidence = 0.5;
@@ -467,7 +445,7 @@ modded class eAIBase
             confidence = Math.Lerp(0.33, 0.20, distance / strength);
             rememberedFor = 12;
         }
-        else if (m_PredateEliteAI)
+        else
         {
             float audibility = distance / Math.Min(strength, m_eAI_NoiseInvestigationDistanceLimit);
             confidence = Math.Lerp(0.59, 0.36, audibility);
