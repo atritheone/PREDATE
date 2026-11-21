@@ -522,7 +522,11 @@ export function starterInventory(id: string, outfitId: string): Inventory {
   const spareLimit = modern ? modernLoadouts.Equipment.SpareMagazines : playerSpareMagazines
   for (let count = spareLimit; count >= 0; count--) {
     for (const container of containers) container.cargo = []
-    const items = [...Array<string>(count).fill(preset.MagazineClass), ...supplies]
+    const items = [
+      presets.StartingRangefinder,
+      ...Array<string>(count).fill(preset.MagazineClass),
+      ...supplies,
+    ]
     const fits = items.every((id) => {
       const item = newItem(id)
       if (id === preset.MagazineClass) item.amount = gearById.get(id)?.capacity

@@ -1,6 +1,7 @@
 {
   "Schema": 1,
   "StartingBandages": 3,
+  "StartingRangefinder": "Rangefinder",
   "DefaultOutfit": "spectral",
   "Outfits": [
     {
@@ -24,8 +25,8 @@
       "Body": "Hoodie_Black", "Legs": "Jeans_BlueDark", "Feet": "Sneakers_White",
       "Mask": "BalaclavaMask_Black",
       "Vest": "PlateCarrierVest_Desert", "Pouches": "PlateCarrierPouches_Desert", "Gloves": "TacticalGloves_Black",
-      "Eyewear": "PredateOperatorHeadstrap_Black", "NightVision": "PredateOperatorNVG_Black",
-      "WorkshopNightVision": "FOG_GPNVG_Black", "InRotation": true
+      "Eyewear": "PredateOperatorHeadstrap_Tan", "NightVision": "PredateOperatorNVG_Tan",
+      "WorkshopNightVision": "FOG_GPNVG_Tan", "InRotation": true
     },
     {
       "Id": "original-uniform", "Name": "File",

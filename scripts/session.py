@@ -21,7 +21,7 @@ from app_runtime import ROOT, command as helper_command
 RUNTIME = ROOT / "session-runtime"
 STATUS = RUNTIME / "status.json"
 MANAGER = RUNTIME / "manager.json"
-OPERATION_SETUP_VERSION = 4
+OPERATION_SETUP_VERSION = 6
 _status_cache = None
 
 

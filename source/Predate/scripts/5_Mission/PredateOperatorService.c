@@ -78,6 +78,9 @@ class PredateOperatorService
             if (outfit.Vest != "") vestClass = outfit.Vest;
             if (outfit.Pouches != "") pouchClass = outfit.Pouches;
             if (outfit.Gloves != "") glovesClass = outfit.Gloves;
+        }
+        if (!rival || outfit.Id == "operator")
+        {
             if (outfit.Eyewear != "") mountClass = outfit.Eyewear;
             if (outfit.NightVision != "") gogglesClass = outfit.NightVision;
             if (outfit.WorkshopNightVision != "" && PredateLoadoutCatalog.ClassExists(outfit.WorkshopNightVision))
@@ -88,8 +91,12 @@ class PredateOperatorService
         if (outfit.Headgear != "") mountClass = outfit.Headgear;
         EntityAI nightVisionMount = player.GetInventory().CreateAttachment(mountClass);
         EntityAI vest = player.GetInventory().CreateAttachment(vestClass);
-        if (!vest || !vest.GetInventory().CreateAttachment(pouchClass))
+        EntityAI pouch;
+        if (vest) pouch = vest.GetInventory().CreateAttachment(pouchClass);
+        if (!pouch)
             PredatePersistence.Fail(s, "Starting-kit vest pouches could not be equipped");
+        else if (!InstallBattery(pouch.GetInventory().CreateEntityInCargo(s.m_Loadouts.StartingRangefinder)))
+            PredatePersistence.Fail(s, "Starting-kit rangefinder could not be packed and powered");
         Weapon_Base rifle = Weapon_Base.Cast(player.GetHumanInventory().CreateInHands(kit.FirearmClass));
         if (rifle)
         {

@@ -9,3 +9,5 @@ add other maps.
 make ai not use flashlight or ir flashlight in open spaces.
 
 server optimisation.
+
+give more randomness to redeploy location.
