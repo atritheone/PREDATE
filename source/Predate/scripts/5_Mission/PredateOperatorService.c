@@ -101,8 +101,8 @@ class PredateOperatorService
                 else if (kit.NightVisionClass != "" && item.GetInventory().HasAttachmentSlot(InventorySlots.GetSlotIdFromString("BatteryD")) && !InstallBattery(item))
                     PredatePersistence.Fail(s, "Starting-kit accessory could not be powered: " + attachment);
             }
-            if (rival && !EquipRivalNightScope(rifle))
-                PredatePersistence.Fail(s, "Starting-kit night vision scope could not be equipped: " + kit.Id);
+            if (rival && !EquipRivalScope(rifle, kit, RivalUsesNightScopes(s)))
+                PredatePersistence.Fail(s, "Starting-kit scope could not be equipped: " + kit.Id);
             if (!rifle.GetAttachedSuppressor() && !rifle.GetInventory().CreateAttachment(kit.SuppressorClass))
                 PredatePersistence.Fail(s, "Starting-kit suppressor is incompatible: " + kit.SuppressorClass);
             rifle.SpawnAttachedMagazine(kit.MagazineClass);
@@ -216,19 +216,68 @@ class PredateOperatorService
         return device && (device.FindAttachmentBySlotName("BatteryD") || device.GetInventory().CreateAttachment("Battery9V"));
     }
 
-    static bool EquipRivalNightScope(Weapon_Base rifle)
+    static bool RivalUsesNightScopes(PredateSession session)
     {
-        GameInventory inventory = rifle.GetInventory();
-        string scope = "KazuarOptic";
-        int slot = InventorySlots.GetSlotIdFromString("weaponOpticsAK");
-        if (!inventory.HasAttachmentSlot(slot))
+        PredateWorldState state = session.m_WorldState;
+        if (state.RivalOptics == PredateRivalOptics.DAY) return false;
+        if (state.RivalOptics == PredateRivalOptics.NIGHT) return true;
+
+        int year, month, day, hour, minute;
+        GetGame().GetWorld().GetDate(year, month, day, hour, minute);
+        if (session.m_HuntConfig.StartHour >= 0)
         {
-            scope = "StarlightOptic";
-            slot = InventorySlots.GetSlotIdFromString("weaponOptics");
-            if (!inventory.HasAttachmentSlot(slot)) return true;
+            hour = session.m_HuntConfig.StartHour;
+            minute = session.m_HuntConfig.StartMinute;
+            if (state.Year > 0) month = state.Month;
         }
+        WorldData lighting = GetGame().GetMission().GetWorldData();
+        float startTime = hour + minute / 60.0;
+        bool night = startTime < lighting.GetApproxSunriseTime(month) || startTime >= lighting.GetApproxSunsetTime(month);
+        if (night) state.RivalOptics = PredateRivalOptics.NIGHT;
+        else state.RivalOptics = PredateRivalOptics.DAY;
+        return night;
+    }
+
+    static bool IsNightScopeClass(string name)
+    {
+        return GetGame().IsKindOf(name, "StarlightOptic") || GetGame().IsKindOf(name, "KazuarOptic");
+    }
+
+    static string RivalScopeClass(Weapon_Base rifle, PredateStartingKit kit, bool night)
+    {
+        if (!night && kit)
+        {
+            foreach (string attachment : kit.Attachments)
+                if (GetGame().IsKindOf(attachment, "ItemOptics") && !IsNightScopeClass(attachment))
+                    return attachment;
+        }
+        GameInventory inventory = rifle.GetInventory();
+        if (inventory.HasAttachmentSlot(InventorySlots.GetSlotIdFromString("weaponOpticsAK")))
+        {
+            if (night) return "KazuarOptic";
+            return "PSO1Optic";
+        }
+        if (inventory.HasAttachmentSlot(InventorySlots.GetSlotIdFromString("weaponOptics")))
+        {
+            if (night) return "StarlightOptic";
+            return "ACOGOptic";
+        }
+        if (!night && inventory.HasAttachmentSlot(InventorySlots.GetSlotIdFromString("weaponOpticsHunting")))
+            return "HuntingOptic";
+        return "";
+    }
+
+    static bool EquipRivalScope(Weapon_Base rifle, PredateStartingKit kit, bool night)
+    {
         ItemOptics previous = rifle.GetAttachedOptics();
-        if (previous && previous.eAI_GetNightVisibility(false) > 0) return InstallBattery(previous);
+        if (previous)
+        {
+            bool previousIsNight = IsNightScopeClass(previous.GetType()) || previous.eAI_GetNightVisibility(false) > 0;
+            if (previousIsNight == night)
+                return !night || !previous.HasEnergyManager() || InstallBattery(previous);
+        }
+        string scope = RivalScopeClass(rifle, kit, night);
+        if (scope == "") return true;
 
         string previousClass;
         int previousSlot;
@@ -240,8 +289,9 @@ class PredateOperatorService
             previousSlot = location.GetSlot();
             GetGame().ObjectDelete(previous);
         }
-        EntityAI sight = inventory.CreateAttachmentEx(scope, slot);
-        if (InstallBattery(sight)) return true;
+        GameInventory inventory = rifle.GetInventory();
+        EntityAI sight = inventory.CreateAttachment(scope);
+        if (sight && (!sight.GetInventory().HasAttachmentSlot(InventorySlots.GetSlotIdFromString("BatteryD")) || InstallBattery(sight))) return true;
 
         if (sight) GetGame().ObjectDelete(sight);
         if (previousClass != "") inventory.CreateAttachmentEx(previousClass, previousSlot);
@@ -291,18 +341,22 @@ class PredateOperatorService
                 PredateSupplyService.AddConfigured(record.Supplies, magazineClass, sidearm.SpareMagazines + 1);
             record.EquipmentRevision = 2;
         }
-        if (record.EquipmentRevision >= 3) return true;
+        if (record.EquipmentRevision >= 4) return true;
         if (!freshDeployment)
         {
+            bool night = RivalUsesNightScopes(session);
             array<EntityAI> inventory = {};
             actor.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
             foreach (EntityAI entity : inventory)
             {
                 Weapon_Base rifle = Weapon_Base.Cast(entity);
-                if (rifle && !rifle.IsKindOf("Pistol_Base") && !EquipRivalNightScope(rifle)) return false;
+                if (!rifle || rifle.IsKindOf("Pistol_Base")) continue;
+                PredateStartingKit kit = session.m_Loadouts.Find(record.RifleKit);
+                if (!kit || kit.FirearmClass != rifle.GetType()) kit = session.m_Loadouts.FindRifle(rifle.GetType());
+                if (!EquipRivalScope(rifle, kit, night)) return false;
             }
         }
-        record.EquipmentRevision = 3;
+        record.EquipmentRevision = 4;
         return true;
     }
 
@@ -404,6 +458,7 @@ class PredateOperatorService
             GetGame().GetWorld().GetDate(year, month, day, hour, minute);
             GetGame().GetWorld().SetDate(year, month, day, s.m_HuntConfig.StartHour, s.m_HuntConfig.StartMinute);
         }
+        RivalUsesNightScopes(s);
         PredateOperatorRecord record = s.m_HuntProgress.Operator;
         bool restoring = record.LifeState == "alive";
         if (record.LifeState != "defeated")
