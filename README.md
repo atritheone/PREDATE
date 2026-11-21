@@ -55,6 +55,8 @@ With both packs loaded, AI Operators start with a mix of modern rifle presets. E
 | <kbd>M</kbd> | Open or close the map. Select a bearing arc or name to track an Operator. |
 | <kbd>Esc</kbd> | Close the map, or pause and open the game menu during play. |
 | <kbd>F</kbd> | Interact. An equipped firearm lowers briefly as needed. |
+| Scroll down | Lower a held firearm to low ready. |
+| Scroll up | Return a held firearm to PREDATE's default raised stance. |
 | Tap <kbd>N</kbd> | Toggle equipped night vision goggles. |
 | <kbd>5</kbd> | Toggle the white weapon flashlight. |
 | <kbd>6</kbd> | Toggle the selected laser on or off. |
@@ -63,6 +65,10 @@ With both packs loaded, AI Operators start with a mix of modern rifle presets. E
 | Tap <kbd>R</kbd> | Reload the equipped firearm. |
 | Double-tap <kbd>R</kbd> | Rack the action or clear a jam. |
 | Hold <kbd>R</kbd> | Check roughly how full the magazine is. |
+
+Low ready uses DayZ's lowered stance and standard right-mouse aiming. While aiming down sights, the wheel keeps its normal optics controls.
+
+Head-mounted NVGs blur the view through standard weapon scopes. Tap <kbd>N</kbd> to turn the goggles off and clear the view without lowering the weapon.
 
 The Workshop weapon module reports mode and power changes in the same bottom-left HUD log as fire mode and zeroing. It emits one laser at a time. The visible laser and white light work with unaided vision. The IR laser and illuminator require active night vision. While you hold a weapon fitted with this module, <kbd>5</kbd> through <kbd>8</kbd> control the module instead of those quickbar slots. Hunts using the original PREDATE module continue to use <kbd>K</kbd> to select a mode and <kbd>U</kbd> to toggle it.
 
@@ -80,7 +86,7 @@ The agent follows [AGENTS.md](AGENTS.md) to check your installation, build the D
 
 ### Steam Workshop dependencies
 
-Subscribe to these four packs for every PREDATE installation.
+Subscribe to these six packs in Steam and let their downloads finish. PREDATE setup stages the locked versions locally and loads them on both the client and server.
 
 | Workshop pack | Item ID |
 | --- | --- |
@@ -88,8 +94,14 @@ Subscribe to these four packs for every PREDATE installation.
 | [Dabs Framework](https://steamcommunity.com/sharedfiles/filedetails/?id=2545327648) | `2545327648` |
 | [DayZ Expansion Core](https://steamcommunity.com/sharedfiles/filedetails/?id=2291785308) | `2291785308` |
 | [DayZ Expansion AI](https://steamcommunity.com/sharedfiles/filedetails/?id=2792982069) | `2792982069` |
+| [Better-Snap-Sounds](https://steamcommunity.com/sharedfiles/filedetails/?id=2565724570) | `2565724570` |
+| [Reactive Ragdolls](https://steamcommunity.com/sharedfiles/filedetails/?id=3824364587) | `3824364587` |
 
-New hunts require both gear packs for the modern AI rifle roster, even if the player chooses a custom inventory. The launcher adds the packs automatically after Steam finishes downloading them. Existing hunts retain their saved mod lists.
+Better-Snap-Sounds changes bullet flyby audio. Reactive Ragdolls adds physics-driven falls for players and supported AI Operators. Both apply to new and resumed hunts. If you previously added either pack through **Extra Mods**, setup uses the staged copy without loading it twice.
+
+To upgrade an existing installation, use **Save and Quit** if a hunt is active, then rerun setup after Steam finishes downloading both packs.
+
+New hunts also require both gear packs for the modern AI rifle roster, even if the player chooses a custom inventory. The launcher adds the packs automatically after Steam finishes downloading them. Existing hunts retain their saved gear and other optional mods.
 
 | Workshop pack | Item ID | Equipment |
 | --- | --- | --- |

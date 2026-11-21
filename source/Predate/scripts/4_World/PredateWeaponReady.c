@@ -2,6 +2,7 @@ modded class PlayerBase
 {
     bool m_PredateAutoRaiseReported;
     bool m_PredateOwnRaiseOverride;
+    bool m_PredateLowReady;
     float m_PredateInteractionTime;
     bool m_PredateInteractionTap;
     bool m_PredateInteractionPreview;
@@ -26,9 +27,14 @@ modded class PlayerBase
         {
             if (GetInputInterface().SyncedPress_ID(UAWalkRunToggle))
                 m_PredateWalkToggled = !m_PredateWalkToggled;
-            if (PredateShouldAutoRaise(pCurrentCommandID))
+            bool canSetReady = PredateShouldAutoRaise(pCurrentCommandID);
+            if (canSetReady)
             {
+                PredateReadReadyPosition();
                 PredateReadInteraction(pDt);
+            }
+            if (canSetReady && (!m_PredateLowReady || m_PredateInteractionTime > 0))
+            {
                 autoRaise = m_PredateInteractionTime <= 0;
                 if (autoRaise) PredateReadyAnimations.Apply();
                 GetInputController().OverrideRaise(HumanInputControllerOverrideType.ENABLED, autoRaise);
@@ -49,7 +55,7 @@ modded class PlayerBase
             Print("[Predate] Automatic firearm ready stance confirmed.");
             m_PredateAutoRaiseReported = true;
         }
-        if (!m_PredateAutoRaiseReported && GetGame().GetPlayer() == this)
+        if (!m_PredateAutoRaiseReported && !m_PredateLowReady && GetGame().GetPlayer() == this)
         {
             m_PredateRaiseDiagnosticTimer += pDt;
             if (m_PredateRaiseDiagnosticTimer >= 5)
@@ -91,6 +97,15 @@ modded class PlayerBase
             m_PredateTravelTime = 0;
             m_PredateTravelDistance = 0;
         }
+    }
+
+    void PredateReadReadyPosition()
+    {
+        // The same wheel bindings control scope magnification in native ADS.
+        if (GetInputController().WeaponADS() || IsInOptics() || IsInIronsights()) return;
+        UAInterface input = GetInputInterface();
+        if (input.SyncedPress("UAPredateLowReady")) m_PredateLowReady = true;
+        else if (input.SyncedPress("UAPredateHighReady")) m_PredateLowReady = false;
     }
 
     void PredateReadInteraction(float seconds)

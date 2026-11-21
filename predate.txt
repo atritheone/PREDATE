@@ -2,16 +2,8 @@
 
 ## todo
 
-add low ready.
-
 add signs of movement.
 
-make using non-nv scopes with nvgs difficult or disable again.
-
-add sidearms by default and add to hotbar.
-
-add betters sounds.
-
-add better ragdoll.
-
 add other maps.
+
+refix window input and focus.

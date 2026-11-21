@@ -328,6 +328,9 @@ modded class MissionGameplay
         UIScriptedMenu previousMenu = GetGame().GetUIManager().GetMenu();
         super.OnUpdate(timeslice);
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+#ifndef SERVER
+        PredateScopedNightVision.UpdateBlur(player);
+#endif
         bool needsRedeploy = InGameMenu.PredateNeedsRedeploy(player);
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
         PredateState state;

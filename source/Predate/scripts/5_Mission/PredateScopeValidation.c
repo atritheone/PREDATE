@@ -4,6 +4,9 @@ class PredateScopeReport
     bool ScopeOpened;
     bool NightVisionApplied;
     bool NightVisionCleared;
+    bool GoggleScopeBlurApplied;
+    bool GoggleScopeBlurCleared;
+    bool GoggleScopeBlurClearedOnExit;
     bool PoweredPanoramicGoggles;
     bool PanoramicMaskRestored;
     bool PoweredScope;
@@ -35,7 +38,7 @@ class PredateScopeValidation
             Weapon_Base rifle = Weapon_Base.Cast(player.GetHumanInventory().GetEntityInHands());
             ItemOptics optic;
             if (rifle) optic = rifle.GetAttachedOptics();
-            if (!optic)
+            if (!optic || !player.IsWeaponRaiseCompleted())
             {
                 if (m_Elapsed < 12) return true;
                 return Finish();
@@ -66,25 +69,46 @@ class PredateScopeValidation
         bool nightVision = PPERequesterBank.IsRequesterRunning(PPERequesterBank.REQ_CAMERANV);
         if (m_Stage == 1)
         {
-            m_Report.ScopeOpened = scoped && !nightVision;
-            Print("[PredateScopeTest] Scope opened=" + scoped + "; headset effect before toggle=" + nightVision);
+            m_Report.ScopeOpened = scoped && !nightVision && CurrentScopeBlur() < 0.01;
+            Print("[PredateScopeTest] Scope opened=" + scoped + "; headset effect before toggle=" + nightVision + "; goggle blur=" + CurrentScopeBlur());
             player.AddActiveNV(NVTypes.NV_GOGGLES);
         }
         else if (m_Stage == 2)
         {
             m_Report.NightVisionApplied = scoped && nightVision;
-            Print("[PredateScopeTest] Scope held=" + scoped + "; headset effect after toggle=" + nightVision);
+            float scopeBlur = CurrentScopeBlur();
+            m_Report.GoggleScopeBlurApplied = scoped && scopeBlur > 0.6;
+            Print("[PredateScopeTest] Scope held=" + scoped + "; headset effect after toggle=" + nightVision + "; goggle blur=" + scopeBlur);
             player.RemoveActiveNV(NVTypes.NV_GOGGLES);
+        }
+        else if (m_Stage == 3)
+        {
+            m_Report.NightVisionCleared = scoped && !nightVision;
+            m_Report.GoggleScopeBlurCleared = scoped && CurrentScopeBlur() < 0.01;
+            Print("[PredateScopeTest] Goggle blur after toggle off=" + CurrentScopeBlur());
+            player.AddActiveNV(NVTypes.NV_GOGGLES);
+        }
+        else if (m_Stage == 4)
+        {
+            player.ExitSights();
         }
         else
         {
-            m_Report.NightVisionCleared = scoped && !nightVision;
-            player.ExitSights();
+            m_Report.GoggleScopeBlurClearedOnExit = !scoped && CurrentScopeBlur() < 0.01;
+            player.RemoveActiveNV(NVTypes.NV_GOGGLES);
             return Finish();
         }
         m_Stage++;
         m_Elapsed = 0;
         return true;
+    }
+
+    float CurrentScopeBlur()
+    {
+        PPERequesterBase requester = PPERequesterBank.GetRequester(PredateGoggleScopeBlur.s_RequesterId);
+        PPERequestParamDataFloat blur = PPERequestParamDataFloat.Cast(requester.GetRequestData(PostProcessEffectType.GaussFilter, PPEGaussFilter.PARAM_INTENSITY, PPEConstants.VAR_TYPE_FLOAT));
+        if (!blur || !blur.IsDataActive()) return 0;
+        return blur.m_FloatCurrent;
     }
 
     bool UpdatePoweredKit(PlayerBase player)

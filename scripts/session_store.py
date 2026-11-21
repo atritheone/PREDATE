@@ -16,6 +16,7 @@ import mod_presets
 import loadouts
 import spawn_points
 import presentation
+import release
 import workshop_lasers
 from contextlib import closing
 
@@ -58,12 +59,14 @@ def preferences():
     saved = read_json(ROOT / "config/launcher-settings.local.json", {})
     if saved.get("schema", 1) != SCHEMA:
         raise ValueError("Unsupported launcher settings version")
-    return DEFAULTS | saved
+    result = DEFAULTS | saved
+    result["extra_mods"] = mod_presets.optional_paths(result["extra_mods"])
+    return result
 
 
 def validate_mods(values):
     mod_presets.validate_paths(values)
-    core = {(ROOT/'mods'/name).resolve() for name in ('@CF', '@DabsFramework', '@ExpansionCore', '@ExpansionAI', '@Predate')}
+    core = {(ROOT / "mods" / name).resolve() for name in (*release.DEPENDENCIES, "@Predate")}
     for value in values:
         if Path(value).resolve() in core:
             raise ValueError(f"PREDATE already loads this standard mod: {value}")
@@ -71,7 +74,7 @@ def validate_mods(values):
 
 def verify_operation_mods(profile):
     info = metadata(profile)
-    validate_mods(info['extra_mods'])
+    validate_mods(mod_presets.optional_paths(info['extra_mods']))
     verified = mod_presets.verify(info['extra_mods'], info.get('mod_lock'))
     workshop_lasers.verify_pair(verified)
     if 'mod_lock' not in info:
@@ -90,7 +93,9 @@ def save_preferences(values):
         raise ValueError("Backup retention must be between 1 and 200 snapshots")
     # A missing future-operation preset must not prevent continuing an existing
     # operation that has its own valid, independent preset.
-    if "extra_mods" in values: validate_mods(result["extra_mods"])
+    if "extra_mods" in values:
+        result["extra_mods"] = mod_presets.optional_paths(result["extra_mods"])
+        validate_mods(result["extra_mods"])
     presentation.validate(result)
     atomic_json(ROOT / "config/launcher-settings.local.json", result)
     return result
@@ -148,7 +153,7 @@ def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, pl
     rules = operation_setup.config(setup) if setup is not None else {}
     if kit and kit.get("PlayerPreset") and not rules.get("HasCustomInventory"):
         raise ValueError("Workshop starting kits require a loadout from New Operation")
-    mods = preferences()["extra_mods"] if extra_mods is None else extra_mods
+    mods = preferences()["extra_mods"] if extra_mods is None else mod_presets.optional_paths(extra_mods)
     validate_mods(mods)
     custom_classes = {item["ClassName"] for item in rules.get("PlayerInventory", [])}
     uses_workshop_gear = any(item["id"] in custom_classes for item in loadouts.modern_data()["Catalog"])
@@ -283,7 +288,7 @@ def restore_snapshot(filename, name):
     path = ROOT / "backups" / filename
     manifest = validate_snapshot(path)
     current = read_json(ROOT / "config/release-lock.json")
-    if manifest["release"] != current:
+    if not release.snapshot_matches(manifest["release"], current):
         raise ValueError("This snapshot requires a different game/dependency release; its files were retained")
     restored_mod_lock = mod_presets.verify(manifest['operation']['extra_mods'], manifest['operation'].get('mod_lock'))
     info = create_operation(name, extra_mods=manifest["operation"]["extra_mods"], hunt_defaults=False)

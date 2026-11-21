@@ -5,16 +5,22 @@
       <input name="UAPredateWeaponLight" loc="Toggle weapon light"/>
       <input name="UAPredateWeaponLightMode" loc="Cycle weapon light mode"/>
       <input name="UAPredateToggleNVG" loc="Toggle night vision"/>
+      <input name="UAPredateLowReady" loc="Lower firearm to low ready"/>
+      <input name="UAPredateHighReady" loc="Raise firearm"/>
     </actions>
     <sorting name="predate" loc="PREDATE">
       <input name="UAPredateWeaponLight"/>
       <input name="UAPredateWeaponLightMode"/>
       <input name="UAPredateToggleNVG"/>
+      <input name="UAPredateLowReady"/>
+      <input name="UAPredateHighReady"/>
     </sorting>
   </inputs>
   <preset>
     <input name="UAPredateWeaponLight"><btn name="kU"/></input>
     <input name="UAPredateWeaponLightMode"><btn name="kK"/></input>
     <input name="UAPredateToggleNVG"><btn name="kN"/></input>
+    <input name="UAPredateLowReady"><btn name="mWheelDown"/></input>
+    <input name="UAPredateHighReady"><btn name="mWheelUp"/></input>
   </preset>
 </modded_inputs>

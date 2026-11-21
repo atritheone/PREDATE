@@ -43,4 +43,32 @@ modded class PPERequester_CameraNV
         return false;
     }
 }
+
+class PredateGoggleScopeBlur extends PPERequester_GameplayBase
+{
+    static int s_RequesterId = PPERequesterBank.INVALID;
+
+    static void SetEnabled(bool enabled)
+    {
+        PPERequesterBase requester = PPERequesterBank.GetRequester(s_RequesterId);
+        if (!requester || enabled == requester.IsRequesterRunning()) return;
+        if (enabled) requester.Start();
+        else requester.Stop();
+    }
+
+    override protected void OnStart(Param par = null)
+    {
+        super.OnStart(par);
+        SetTargetValueFloat(PostProcessEffectType.GaussFilter, PPEGaussFilter.PARAM_INTENSITY, false, 0.64, PPEGaussFilter.L_0_ADS + 1, PPOperators.SET);
+    }
+}
+
+modded class PPERequesterRegistrations
+{
+    override protected void RegisterAdditionalRequesters()
+    {
+        super.RegisterAdditionalRequesters();
+        PredateGoggleScopeBlur.s_RequesterId = PPERequesterBank.RegisterRequester(PredateGoggleScopeBlur);
+    }
+}
 #endif

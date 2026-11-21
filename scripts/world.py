@@ -22,6 +22,7 @@ import uuid
 import os
 
 from app_runtime import ROOT, command as helper_command, spawn
+from release import DEPENDENCIES
 WORLD = ROOT / "world"
 PROFILE = WORLD / "profile"
 STORAGE = WORLD / "storage"
@@ -36,7 +37,7 @@ TEST_CLIENT = False
 PROFILE_NAME = "main"
 SCENARIO = None
 CONFIG = ROOT / "serverDZ.cfg"
-MODS = [ROOT / "mods" / name for name in ['@CF', '@DabsFramework', '@ExpansionCore', '@ExpansionAI', '@Predate']]
+MODS = [ROOT / "mods" / name for name in (*DEPENDENCIES, "@Predate")]
 
 
 def select_profile(name):
@@ -55,7 +56,7 @@ def select_profile(name):
     CONFIG = ROOT / "serverDZ.cfg" if name == "main" else WORLD / "serverDZ.cfg"
     STATE = WORLD / "server-process.json"
     PORT, QUERY_PORT, RCON_PORT = (2402, 2405, 2406) if name == "main" else (2502, 2505, 2506)
-    MODS = [ROOT / "mods" / item for item in ("@CF", "@DabsFramework", "@ExpansionCore", "@ExpansionAI", "@Predate")]
+    MODS = [ROOT / "mods" / item for item in (*DEPENDENCIES, "@Predate")]
     if name == "main" and stable_fallback():
         MODS[-1] = ROOT / "mods" / "@PredateBaseline"
     if os.environ.get("PREDATE_CANDIDATE_MOD") == "1":

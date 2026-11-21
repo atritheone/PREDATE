@@ -7,9 +7,38 @@ import subprocess
 
 from app_runtime import ROOT
 STEAM = Path(r"C:\Program Files (x86)\Steam\steamapps")
+WORKSHOP = STEAM / "workshop/content/221100"
 LOCK = ROOT / "config/release-lock.json"
+REALISM_MODS = {"@BetterSnapSounds": "2565724570", "@ReactiveRagdolls": "3824364587"}
 DEPENDENCIES = {"@CF": "1559212036", "@DabsFramework": "2545327648",
-                "@ExpansionCore": "2291785308", "@ExpansionAI": "2792982069"}
+                "@ExpansionCore": "2291785308", "@ExpansionAI": "2792982069",
+                **REALISM_MODS}
+
+
+def installed_realism_mod(value):
+    path = Path(value).resolve()
+    workshop_path = tuple(part.casefold() for part in path.parts[-5:-1])
+    for name, item in REALISM_MODS.items():
+        staged = ROOT / "mods" / name
+        if path == staged or (workshop_path == ("steamapps", "workshop", "content", "221100") and path.name == item):
+            return staged
+    metadata = path / "meta.cpp"
+    if metadata.is_file():
+        match = re.search(r"(?m)^\s*publishedid\s*=\s*(\d+)\s*;", metadata.read_text(errors="replace"))
+        if match:
+            return next((ROOT / "mods" / name for name, item in REALISM_MODS.items() if item == match[1]), None)
+    return None
+
+
+def snapshot_matches(saved, current):
+    if saved == current:
+        return True
+    if not isinstance(saved, dict) or not isinstance(saved.get("dependencies"), dict) or not current:
+        return False
+    dependencies = saved["dependencies"]
+    added = {name: current["dependencies"][name] for name in REALISM_MODS
+             if name in current["dependencies"] and name not in dependencies}
+    return {**saved, "dependencies": dependencies | added} == current
 
 
 def digest(path):

@@ -136,12 +136,8 @@ class Supervisor:
     def configure(self, profile, validate=True):
         world.select_profile(profile)
         if not validate: return
-        mods = store.metadata(profile)["extra_mods"]
         verified = store.verify_operation_mods(profile)
-        for value in mods:
-            path = Path(value)
-            if not path.is_dir(): raise RuntimeError(f"This operation needs the missing mod folder: {path}")
-            world.MODS.append(path)
+        world.MODS.extend(Path(mod["path"]) for mod in verified["mods"] if Path(mod["path"]) not in world.MODS)
         mod_presets.install_keys(verified, world.SERVER / 'keys')
 
     def client_alive(self):

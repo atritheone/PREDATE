@@ -4,6 +4,16 @@
   },
   "dayz_version": "1.30.164.289",
   "dependencies": {
+    "@BetterSnapSounds": {
+      "files": {
+        "Addons/BetterSnapSounds.pbo": "19e23a346c6d0dc0eda2fd8949d7fed80e031a208a1697cf37969a08aed03add",
+        "Addons/BetterSnapSounds.pbo.DanceOfJesus.bisign": "92f4311c580f44a8643b581358d3f351a28df2fac01906cd269260e011a27f7b",
+        "Keys/DanceOfJesus.bikey": "4c215e8de447477a5b8f53a30bef60defe047b4fcfd1e87f7ef6a34d88070855",
+        "meta.cpp": "7f4470d96d45f1852b3be27bf733aff18ee60541318186893985245e180c09c1"
+      },
+      "version": "not declared; identified by file hashes",
+      "workshop_id": "2565724570"
+    },
     "@CF": {
       "files": {
         "addons/gui.pbo": "42c3b14eefbbfd0b3d66fdd2e460a1a95d08dd5ed90d37b4de42a377b001ae40",
@@ -130,6 +140,18 @@
       },
       "version": "1.9.84",
       "workshop_id": "2291785308"
+    },
+    "@ReactiveRagdolls": {
+      "files": {
+        "Addons/reactiveragdolls.pbo": "4eae0a593c5835ff5dcac034ba6013617832d8909ee42e31ae323cbba4b49bc1",
+        "Addons/reactiveragdolls.pbo.EMW.bisign": "92ca98ce763411299b6a679bee78dced0a78ae7ea236e9ef9d3c136ace257137",
+        "Keys/EMW.bikey": "be2cd25bca06bf3b9003cb47cf23a4c77cf7be5d18fd5f66dd5005d1d0734deb",
+        "README.txt": "1affcbe36e33aadcb42c8b15fefa255728b87b324690eea62a30cf7680e762e3",
+        "meta.cpp": "3049bada8e9b50d9f45c4ae61a80a46b42e61d00e75382778d895dec52bfe0c7",
+        "mod.cpp": "c9635ffb1b88fa9e0bcb4f564ab3e49bed5518734222d1567780d23a3851781a"
+      },
+      "version": "1.0.4-expansion-ai-test2",
+      "workshop_id": "3824364587"
     }
   },
   "mission_base": {

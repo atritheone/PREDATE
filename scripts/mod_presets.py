@@ -2,6 +2,14 @@
 from pathlib import Path
 import hashlib
 
+import release
+
+
+def optional_paths(values):
+    if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
+        raise ValueError("Additional mods must be a list of folder paths")
+    return [value for value in values if release.installed_realism_mod(value) is None]
+
 
 def validate_paths(values):
     if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
@@ -41,7 +49,9 @@ def capture(values):
 
 
 def verify(values, expected):
-    actual = capture(values)
+    # Older hunts may have selected a Workshop copy of a now-required mod.
+    # Verify its saved fingerprint against the staged copy used at launch.
+    actual = capture([str(release.installed_realism_mod(value) or value) for value in values])
     if expected is None:
         # Legacy operations have no earlier content record to compare against.
         return actual
@@ -52,7 +62,8 @@ def verify(values, expected):
     for previous, current in zip(expected['mods'], actual['mods']):
         if not isinstance(previous, dict) or not isinstance(previous.get('path'), str) or not isinstance(previous.get('files'), dict):
             raise ValueError('Invalid operation mod record; the saved world was retained')
-        if str(Path(previous['path']).resolve()).casefold() != current['path'].casefold():
+        previous_path = release.installed_realism_mod(previous['path']) or Path(previous['path'])
+        if previous_path.resolve() != Path(current['path']):
             raise ValueError('This operation\'s mod order or folders changed. Restore its recorded preset or start a new operation.')
         if previous['files'] != current['files']:
             names = sorted(name for name in set(previous['files']) | set(current['files']) if previous['files'].get(name) != current['files'].get(name))

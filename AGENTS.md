@@ -14,6 +14,8 @@ When a player asks to set up PREDATE, perform the setup in this checkout and ver
 | Dabs Framework | `2545327648` |
 | DayZ Expansion Core | `2291785308` |
 | DayZ Expansion AI | `2792982069` |
+| Better-Snap-Sounds | `2565724570` |
+| Reactive Ragdolls | `3824364587` |
 
 Normal play requires Steam to be signed in online. If Steam needs user interaction, report the exact missing game, tool, or Workshop item so the player can resolve it. If a PREDATE session is running, save and quit through the launcher or game menu before building. Close other DayZ clients or servers normally before replacing the runtime or addon.
 
@@ -27,7 +29,7 @@ Normal play requires Steam to be signed in online. If Steam needs user interacti
    Pop-Location
    ```
 
-   Reuse a provisioned `runtime/` and `mods/` on an existing installation. Staging synchronizes the four managed dependency folders to the installed Workshop copies, so inspect any existing staged dependencies before refreshing them.
+   Reuse a provisioned `runtime/` and `mods/` on an existing installation. Full staging synchronizes all six managed dependency folders to their installed Workshop copies, so inspect any existing staged dependencies before refreshing them. The normal build stages or repairs the Better-Snap-Sounds and Reactive Ragdolls folders when needed and the Steam downloads match the release lock.
 
 2. Build and sign the addon against the checked-in release lock.
 

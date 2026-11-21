@@ -11,8 +11,7 @@ import release
 ROOT = Path(__file__).resolve().parents[1]
 INSTALL = Path(r"C:\Program Files (x86)\Steam\steamapps\common\DayZServer")
 TOOLS = Path(r"C:\Program Files (x86)\Steam\steamapps\common\DayZ Tools\Bin")
-WORKSHOP = Path(r"C:\Program Files (x86)\Steam\steamapps\workshop\content\221100")
-DEPENDENCIES = {"@CF":"1559212036", "@DabsFramework":"2545327648", "@ExpansionCore":"2291785308", "@ExpansionAI":"2792982069"}
+WORKSHOP = release.WORKSHOP
 
 
 def require_closed_runtime():
@@ -161,6 +160,51 @@ def layouts():
     release.write_changed(gui/"hud.layout",widget("FrameWidgetClass","PredateHud",0,0,1,1,"ignorepointer 1",compass+footprint))
 
 
+def stage_dependencies(dependencies, locked=None):
+    if not dependencies:
+        return
+    require_closed_runtime()
+    for name, item in dependencies.items():
+        source = WORKSHOP / item
+        if not list(source.glob("[Aa]ddons/*.pbo")):
+            raise RuntimeError(f"Workshop dependency is not installed: {name} ({item})")
+        if locked is not None and release.fingerprints(source) != locked[name]["files"]:
+            raise RuntimeError(f"Workshop dependency does not match the release lock: {name} ({item})")
+
+    for name, item in dependencies.items():
+        source = WORKSHOP / item
+        target = ROOT / "mods" / name
+        target.mkdir(parents=True, exist_ok=True)
+        # Stage an exact snapshot so files removed by an upstream update cannot linger.
+        source_files = {p.relative_to(source) for p in source.rglob("*") if p.is_file()}
+        for existing in target.rglob("*"):
+            if existing.is_file() and existing.relative_to(target) not in source_files:
+                existing.unlink()
+        shutil.copytree(source, target, dirs_exist_ok=True, copy_function=copy_changed)
+    install_dependency_keys(dependencies)
+    print("Installed Workshop dependencies: " + ", ".join(dependencies), flush=True)
+
+
+def install_dependency_keys(dependencies):
+    keys = ROOT / "runtime/keys"
+    keys.mkdir(parents=True, exist_ok=True)
+    for name in dependencies:
+        for key in (ROOT / "mods" / name).rglob("*.bikey"):
+            copy_changed(key, keys / key.name)
+
+
+def stage_realism_mods():
+    if not release.LOCK.is_file():
+        return
+    locked = json.loads(release.LOCK.read_text())["dependencies"]
+    if not release.REALISM_MODS.keys() <= locked.keys():
+        return
+    missing = {name: item for name, item in release.REALISM_MODS.items()
+               if release.fingerprints(ROOT / "mods" / name) != locked[name]["files"]}
+    stage_dependencies(missing, locked)
+    install_dependency_keys(release.REALISM_MODS)
+
+
 def runtime():
     require_closed_runtime()
     dest=ROOT/"runtime"
@@ -179,23 +223,7 @@ def runtime():
     shutil.copytree(INSTALL/"battleye",dest/"battleye",dirs_exist_ok=True)
     for key in (INSTALL/"keys").glob("*.bikey"):
         shutil.copy2(key,dest/"keys"/key.name)
-    mods=ROOT/"mods"
-    mods.mkdir(exist_ok=True)
-    for name,item in DEPENDENCIES.items():
-        src=WORKSHOP/item
-        if not src.is_dir() or not list(src.glob("[Aa]ddons/*.pbo")):
-            raise RuntimeError(f"Workshop dependency is not installed: {name} ({item})")
-        # Stage an exact snapshot so files removed by an upstream update cannot linger.
-        target = mods / name
-        target.mkdir(exist_ok=True)
-        source_files = {p.relative_to(src) for p in src.rglob("*") if p.is_file()}
-        for existing in target.rglob("*"):
-            if existing.is_file() and existing.relative_to(target) not in source_files:
-                existing.unlink()
-        shutil.copytree(src,target,dirs_exist_ok=True,copy_function=copy_changed)
-        for key in src.rglob("*.bikey"):
-            shutil.copy2(key,dest/"keys"/key.name)
-    print("Installed local copies of all four Workshop dependencies.",flush=True)
+    stage_dependencies(release.DEPENDENCIES)
 
 
 def mission():
@@ -320,6 +348,7 @@ if __name__=='__main__':
         runtime()
         release.accept()
     else:
+        stage_realism_mods()
         release.verify()
     if not args.candidate: mission()
     pack(candidate=args.candidate)
