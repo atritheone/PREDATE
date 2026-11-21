@@ -152,19 +152,21 @@ class ClientWindow:
 
 
 class ClientLaunchFocus:
-    """Bring the new game forward once, with keyboard focus."""
+    """Bring DayZ forward if its loaded world is still in the background."""
 
     def __init__(self, launcher_pid):
         self.window = ClientWindow()
         self.launcher_pid = launcher_pid
-        self.handle = None
+        self.active_handle = None
         self.ready_at = None
         self.next_attempt_at = 0
 
     def poll(self, pid, connected):
         """Return True when launch-time focus handling is complete."""
         now = time.monotonic()
-        if connected and self.ready_at is None:
+        if not connected:
+            self.ready_at = None
+        elif self.ready_at is None:
             self.ready_at = now
         if self.ready_at is not None and now >= self.ready_at + 10:
             print("DayZ startup activation timed out.", flush=True)
@@ -176,18 +178,21 @@ class ClientLaunchFocus:
         handle = self.window.find(pid)
         if not handle:
             return False
-        if self.handle and not self.window.foreground(handle):
-            foreground = self.window.user.GetForegroundWindow()
-            owner = self.window.owner_pid(foreground)
-            replaced_with_launcher_foreground = handle != self.handle and owner == self.launcher_pid
-            if owner != pid and not replaced_with_launcher_foreground:
-                # The player can switch away once the game came forward.
-                return connected
-        if not self.window.activate(handle):
+        foreground = self.window.foreground(handle)
+        if foreground:
+            self.active_handle = handle
+        if not connected:
             return False
-        if handle != self.handle:
-            self.handle = handle
-            print("DayZ received foreground and keyboard focus.", flush=True)
-        # Fullscreen can replace its top-level window during loading. Follow
-        # the DayZ-owned window through the handoff to the live mission.
-        return connected
+        if not foreground:
+            if self.active_handle:
+                owner = self.window.owner_pid(self.window.user.GetForegroundWindow())
+                replaced = handle != self.active_handle and owner == self.launcher_pid
+                if owner != pid and not replaced:
+                    # The player has already had the game in front and switched away.
+                    return True
+            # Give the native client its first gameplay frames before fallback
+            # activation. Preloading above only observes the window.
+            if now < self.ready_at + 0.75 or not self.window.activate(handle):
+                return False
+        print("DayZ startup window is in the foreground.", flush=True)
+        return True
