@@ -50,6 +50,8 @@ def ensure_manager():
 
 
 def request(action, **values):
+    if action in {"new", "continue"} and not platform_win.find_processes("steam.exe"):
+        raise RuntimeError("Steam is not running. Open Steam, then try again.")
     ensure_manager()
     if action == "new" and "setup" in values:
         deadline = time.monotonic() + 2

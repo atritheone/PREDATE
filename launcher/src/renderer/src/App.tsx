@@ -54,6 +54,7 @@ function errorMessage(error: unknown, fallback: string): string {
   const message = (error instanceof Error ? error.message : String(error))
     .replace(/^Error invoking remote method '[^']+': Error: /, '')
     .trim()
+  if (message === 'Steam is not running. Open Steam, then try again.') return message
   if (/^DayZ is already open|^This world's server was started separately/i.test(message))
     return 'A game is already open. Close it before starting this hunt.'
   if (/^The server (had already )?stopped unexpectedly/i.test(message))
@@ -251,7 +252,14 @@ export function App(): ReactNode {
       return
     }
     void refresh().catch((error) => setError(errorMessage(error, huntListError)))
-    return window.predate.onStatus(setStatus)
+    const unsubscribeStatus = window.predate.onStatus(setStatus)
+    const unsubscribeContinueError = window.predate.onContinueError((message) => {
+      setError(errorMessage(message, actionErrors.continue))
+    })
+    return () => {
+      unsubscribeStatus()
+      unsubscribeContinueError()
+    }
   }, [refresh])
 
   useEffect(() => {

@@ -73,6 +73,9 @@ class PredateWhitePhosphor extends PPERequester_GameplayBase
             {1.0, 1.0, 1.0, 0.0}, PPEGlow.L_23_NVG + 1, PPOperators.SET);
         SetTargetValueFloat(PostProcessEffectType.Glow, PPEGlow.PARAM_SATURATION, false,
             0.0, PPEGlow.L_23_NVG + 1, PPOperators.SET);
+        // Apply this after the shared night-vision brightness multiplier.
+        SetTargetValueFloat(PostProcessEffectType.Glow, PPEGlow.PARAM_BRIGHTNESS, true,
+            0.675, PPEGlow.L_23_NVG + 2, PPOperators.MULTIPLICATIVE);
     }
 }
 

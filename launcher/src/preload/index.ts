@@ -15,6 +15,11 @@ const api: PredateAPI = {
     ipcRenderer.on('predate:status', listener)
     return () => ipcRenderer.removeListener('predate:status', listener)
   },
+  onContinueError: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, message: string): void => callback(message)
+    ipcRenderer.on('predate:continue-error', listener)
+    return () => ipcRenderer.removeListener('predate:continue-error', listener)
+  },
 }
 
 contextBridge.exposeInMainWorld('predate', api)

@@ -82,6 +82,21 @@ function trusted(event: Electron.IpcMainInvokeEvent): void {
     throw new Error('Untrusted launcher frame')
 }
 
+async function continueFromShortcut(): Promise<void> {
+  try {
+    const overview = await backend.overview()
+    await backend.perform(
+      { action: 'continue', profile: overview.preferences.selected_world },
+      serverDiagnostics,
+    )
+  } catch (error) {
+    window?.webContents.send(
+      'predate:continue-error',
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+}
+
 async function createWindow(): Promise<void> {
   const diagnose = process.argv.includes('--diagnose')
   backend = new Backend(findProject())
@@ -435,17 +450,7 @@ async function createWindow(): Promise<void> {
       polling = false
     }
   }, 500)
-  if (process.argv.includes('--continue')) {
-    const overview = await backend.overview()
-    void backend
-      .perform(
-        { action: 'continue', profile: overview.preferences.selected_world },
-        serverDiagnostics,
-      )
-      .catch((error) => {
-        window?.webContents.send('predate:status', { phase: 'error', message: String(error) })
-      })
-  }
+  if (process.argv.includes('--continue')) void continueFromShortcut()
 }
 
 if (!app.requestSingleInstanceLock()) app.quit()
@@ -455,18 +460,7 @@ else {
     if (window?.isMinimized()) window.restore()
     window?.show()
     window?.focus()
-    if (argv.includes('--continue') && backend)
-      void backend
-        .overview()
-        .then((info) =>
-          backend.perform(
-            { action: 'continue', profile: info.preferences.selected_world },
-            serverDiagnostics,
-          ),
-        )
-        .catch((error) =>
-          window?.webContents.send('predate:status', { phase: 'error', message: String(error) }),
-        )
+    if (argv.includes('--continue') && backend) void continueFromShortcut()
     if (argv.includes('--save-quit') && backend)
       void backend
         .perform({ action: 'quit' })

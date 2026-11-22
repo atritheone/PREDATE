@@ -148,4 +148,5 @@ export interface PredateAPI {
   saveLoadoutPreset(preset: LoadoutPresetInput): Promise<LoadoutPreset>
   setSetupOpen(open: boolean): Promise<void>
   onStatus(callback: (status: SessionStatus) => void): () => void
+  onContinueError(callback: (message: string) => void): () => void
 }
