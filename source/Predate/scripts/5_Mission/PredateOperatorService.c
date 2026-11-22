@@ -123,7 +123,8 @@ class PredateOperatorService
         if (!InstallBattery(goggles)) PredatePersistence.Fail(s, "Starting-kit goggles could not be mounted and powered: " + gogglesClass);
         for (int j = 0; j < s.m_Loadouts.StartingBandages; j++)
             player.GetInventory().CreateInInventory("BandageDressing");
-        player.GetInventory().CreateInInventory("Morphine");
+        for (int morphine = 0; morphine < s.m_Loadouts.StartingMorphine; morphine++)
+            player.GetInventory().CreateInInventory("Morphine");
         if (rival) player.GetInventory().CreateInInventory("SalineBagIV");
         for (int i = 0; i < kit.SpareMagazines; i++)
             if (!player.GetInventory().CreateInInventory(kit.MagazineClass)) break;

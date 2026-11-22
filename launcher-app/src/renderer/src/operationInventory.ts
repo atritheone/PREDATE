@@ -508,37 +508,34 @@ export function starterInventory(id: string, outfitId: string): Inventory {
   root.Sidearm.attachments['@magazine'] = newItem(sidearmMagazineClass)
   root.Sidearm.attachments.pistolMuzzle = newItem(sidearm.SuppressorClass)
   root.Sidearm.attachments.pistolFlashlight = newItem(sidearm.LightClass)
-  const magazine = gearById.get(sidearmMagazineClass)
-  const magazinePouch = gearById.get(sidearm.MagazinePouchClass)
-  if (magazine && magazinePouch) {
-    for (let index = 0; index < sidearm.SpareMagazines; index++) {
-      const item = { ...newItem(magazine.id), amount: magazine.capacity }
-      const placement = placeInCargo(magazinePouch, root.Hips.cargo, item)
-      if (placement) root.Hips.cargo.push(placement)
-    }
-  }
-  const supplies = [...Array<string>(presets.StartingBandages).fill('BandageDressing'), 'Morphine']
-  const containers = [pouches, root.Legs, root.Body]
-  const spareLimit = modern ? modernLoadouts.Equipment.SpareMagazines : playerSpareMagazines
-  for (let count = spareLimit; count >= 0; count--) {
-    for (const container of containers) container.cargo = []
-    const items = [
-      presets.StartingRangefinder,
-      ...Array<string>(count).fill(preset.MagazineClass),
-      ...supplies,
-    ]
-    const fits = items.every((id) => {
-      const item = newItem(id)
-      if (id === preset.MagazineClass) item.amount = gearById.get(id)?.capacity
-      return containers.some((container) => {
-        const host = gearById.get(container.id)
-        const placement = host && placeInCargo(host, container.cargo, item)
-        if (!placement) return false
-        container.cargo.push(placement)
-        return true
-      })
+  const pack = (item: InventoryItem, containers: InventoryItem[]): boolean =>
+    containers.some((container) => {
+      const host = gearById.get(container.id)
+      const placement = host && placeInCargo(host, container.cargo, item)
+      if (!placement) return false
+      container.cargo.push(placement)
+      return true
     })
-    if (fits) break
+
+  const supplies = [
+    presets.StartingRangefinder,
+    ...Array<string>(presets.StartingBandages).fill('BandageDressing'),
+    ...Array<string>(presets.StartingMorphine).fill('Morphine'),
+  ]
+  for (const id of supplies) pack(newItem(id), [pouches])
+
+  const rifleMagazineContainers = [root.Legs, root.Body]
+  const sidearmMagazineContainers = [root.Hips]
+  const spareLimit = modern ? modernLoadouts.Equipment.SpareMagazines : playerSpareMagazines
+  for (const [id, count, containers] of [
+    [preset.MagazineClass, spareLimit, rifleMagazineContainers],
+    [sidearmMagazineClass, sidearm.SpareMagazines, sidearmMagazineContainers],
+  ] as const) {
+    const magazine = gearById.get(id)
+    if (!magazine) continue
+    for (let index = 0; index < count; index++) {
+      if (!pack({ ...newItem(id), amount: magazine.capacity }, containers)) break
+    }
   }
   return root
 }

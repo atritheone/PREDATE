@@ -164,9 +164,9 @@ def layouts():
     feed = widget("FrameWidgetClass","HuntFeed",.675,.035,.30,.21,"ignorepointer 1",notices)
     release.write_changed(gui/"hunt_feed.layout",widget("FrameWidgetClass","PredateHuntFeed",0,0,1,1,"ignorepointer 1\nvisible 0\npriority 900",feed))
     release.write_changed(gui/"hud.layout",widget("FrameWidgetClass","PredateHud",0,0,1,1,"ignorepointer 1",compass+footprint))
-    death = label("DeathTitle","Death",0,0,1,1,"0 0 0 1").replace(
-        '"text valign" center', '"text valign" center\n"text halign" center\n"exact text" 1\n"exact text size" 48')
-    death = death.replace('font "gui/fonts/etelkatextpro22"', 'scaled 0\nfont "gui/fonts/sdf_MetronBook24"')
+    death = widget("ImageWidgetClass", "DeathTitle", 0, 0, 1, 1,
+                   'ignorepointer 1\ncolor 0 0 0 1\nimage0 "Predate/gui/death_title_ca.paa"\n'
+                   'mode blend\n"src alpha" 1\n"stretch mode" stretch_w_h\nfilter 1')
     death_buttons = widget("ButtonWidgetClass","DeathRedeploy",.40,.595,.20,.052,
                            'style Default\ntext "Redeploy"')
     death_buttons += widget("ButtonWidgetClass","DeathSaveQuit",.40,.66,.20,.052,

@@ -6,8 +6,12 @@ add signs of movement.
 
 add other maps.
 
-make ai not use flashlight or ir flashlight in open spaces.
+make the ai better at self-preservation.
+
+	make ai not use flashlight or ir flashlight in open spaces.
+	
+	stop ai using large open spaces for transit if not necessary.
 
 server optimisation.
 
-give more randomness to redeploy location.
+check hud string formatting.

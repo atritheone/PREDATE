@@ -9,7 +9,7 @@ PanelWidgetClass PredateDeath {
 priority 9999
 color 1 0 0 1
 style rover_sim_colorable
- { TextWidgetClass DeathTitle {
+ { ImageWidgetClass DeathTitle {
  position 0 0
  size 1 1
  hexactpos 0
@@ -18,13 +18,11 @@ style rover_sim_colorable
  vexactsize 0
  ignorepointer 1
 color 0 0 0 1
-text "Death"
-scaled 0
-font "gui/fonts/sdf_MetronBook24"
-"text valign" center
-"text halign" center
-"exact text" 1
-"exact text size" 48
+image0 "Predate/gui/death_title_ca.paa"
+mode blend
+"src alpha" 1
+"stretch mode" stretch_w_h
+filter 1
  {  }
 }
 FrameWidgetClass DeathChoices {

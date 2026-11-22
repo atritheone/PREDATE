@@ -98,15 +98,17 @@ fieldset {
 }
 
 .app-shell {
+  --frame-inset: 14px;
+  position: relative;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 0 14px 14px;
+  padding: 0 var(--frame-inset) var(--frame-inset);
 }
 
 .titlebar {
   flex: 0 0 32px;
-  margin: 0 -14px;
+  margin: 0 calc(-1 * var(--frame-inset)) 7px;
   -webkit-app-region: drag;
 }
 
@@ -351,7 +353,7 @@ button.quiet {
 
 .session-footer:has(.session-status:empty):not(:has(.save-and-quit)) {
   background: transparent;
-  padding: 0 6px 6px;
+  padding: 0;
   border: 0;
 }
 
@@ -360,7 +362,6 @@ button.quiet {
 }
 
 .session-status {
-  margin-inline-end: auto;
   color: var(--blue);
   font-size: 13px;
 }
@@ -376,14 +377,23 @@ button.quiet {
 }
 
 .music-toggle {
-  min-height: 24px;
-  padding: 0 4px;
+  position: absolute;
+  inset-inline-end: var(--frame-inset);
+  inset-block-end: 1px;
+  min-height: 10px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 400;
+  line-height: 10px;
   text-transform: none;
+}
+
+.music-toggle:focus-visible {
+  outline-width: 1px;
+  outline-offset: 0;
 }
 
 button.music-toggle:hover:not(:disabled) {

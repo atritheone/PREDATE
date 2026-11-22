@@ -136,7 +136,7 @@ class PredateSupplyService
             PredateStartingSidearm sidearm = session.m_Loadouts.Sidearm;
             AddConfigured(starting, sidearm.IssuedMagazineClass(), sidearm.SpareMagazines + 1);
             AddConfigured(starting, "BandageDressing", session.m_Loadouts.StartingBandages);
-            AddConfigured(starting, "Morphine", 1);
+            AddConfigured(starting, "Morphine", session.m_Loadouts.StartingMorphine);
             if (eAIBase.Cast(actor)) AddConfigured(starting, "SalineBagIV", 1);
         }
         foreach (PredateSupplyEntry entry : starting.Entries)

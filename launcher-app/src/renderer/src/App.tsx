@@ -506,9 +506,9 @@ export function App(): ReactNode {
               Save and Quit
             </button>
           )}
-          <LauncherMusic inHunt={inHunt} />
         </footer>
       </div>
+      <LauncherMusic inHunt={inHunt} />
     </div>
   )
 }

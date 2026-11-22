@@ -80,6 +80,7 @@ class PredateLoadoutCatalog
 {
     int Schema;
     int StartingBandages;
+    int StartingMorphine;
     string StartingRangefinder;
     ref array<ref PredateOutfit> Outfits = new array<ref PredateOutfit>;
     string DefaultOutfit;
@@ -177,6 +178,7 @@ class PredateLoadoutCatalog
     {
         if (Schema != 1 || !Kits || Kits.Count() < 1 || Kits.Count() > 16) return Invalid("Invalid schema or kit count");
         if (StartingBandages < 1 || StartingBandages > 12) return Invalid("Invalid starting bandage count");
+        if (StartingMorphine < 1 || StartingMorphine > 12) return Invalid("Invalid starting morphine count");
         if (StartingRangefinder == "" || !ClassExists(StartingRangefinder)) return Invalid("Missing starting rangefinder");
         if (!OperatorKits || OperatorKits.Count() < 1 || OperatorKits.Count() > 16) return Invalid("Invalid operator kit count");
         if (!Outfits || !FindOutfit(DefaultOutfit) || !ClassExists(NightVisionMount)) return Invalid("Missing starting outfits or night vision mount");

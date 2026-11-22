@@ -12,8 +12,8 @@ let polling = false
 let timer: NodeJS.Timeout | undefined
 let rendererURL = ''
 let serverDiagnostics = process.argv.includes('--server-diagnostics')
-const windowSize = { width: 596, height: 486, minWidth: 480, minHeight: 440 }
-const setupSize = { width: 1420, height: 820, minWidth: 960, minHeight: 680 }
+const windowSize = { width: 596, height: 493, minWidth: 480, minHeight: 447 }
+const setupSize = { width: 1420, height: 827, minWidth: 960, minHeight: 687 }
 
 function validateAction(value: unknown): SessionAction {
   if (!value || typeof value !== 'object') throw new Error('Invalid session action')

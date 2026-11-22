@@ -21,7 +21,7 @@ export function LauncherMusic({ inHunt }: { inHunt: boolean }): ReactNode {
     const audio = audioRef.current
     if (!audio) return
 
-    audio.volume = 0.7
+    audio.volume = 1
     let replayTimer: number | undefined
     const syncPlayback = (): void => {
       window.clearTimeout(replayTimer)
@@ -65,14 +65,16 @@ export function LauncherMusic({ inHunt }: { inHunt: boolean }): ReactNode {
   return (
     <>
       <audio ref={audioRef} src={shadows} preload="none" muted={muted} hidden />
-      <button
-        type="button"
-        className="music-toggle"
-        aria-label={muted ? 'Unmute Music' : 'Mute Music'}
-        onClick={toggleMute}
-      >
-        {muted ? 'Unmute' : 'Mute'}
-      </button>
+      {!inHunt && (
+        <button
+          type="button"
+          className="music-toggle"
+          aria-label={muted ? 'Unmute Music' : 'Mute Music'}
+          onClick={toggleMute}
+        >
+          {muted ? 'Unmute' : 'Mute'}
+        </button>
+      )}
     </>
   )
 }

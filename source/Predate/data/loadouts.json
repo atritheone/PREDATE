@@ -1,6 +1,7 @@
 {
   "Schema": 1,
   "StartingBandages": 3,
+  "StartingMorphine": 3,
   "StartingRangefinder": "Rangefinder",
   "DefaultOutfit": "spectral",
   "Outfits": [

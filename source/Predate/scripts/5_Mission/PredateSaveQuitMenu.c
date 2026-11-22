@@ -2,10 +2,19 @@ class PredateDeathPresentation
 {
     static void FitTitle(Widget card)
     {
-        TextWidget title = TextWidget.Cast(card.FindAnyWidget("DeathTitle"));
+        Widget title = card.FindAnyWidget("DeathTitle");
+        if (!title) return;
+
         float width, height;
         card.GetScreenSize(width, height);
-        if (title) title.SetTextExactSize(Math.Round(Math.Clamp(height * 0.067, 38, 132)));
+        float scale = Math.Round(Math.Clamp(height * 0.067, 38, 132)) / 72.0;
+        // The 2x texture includes padding around the 187 x 50 px title at 1080p.
+        float titleWidth = Math.Round(256 * scale);
+        float titleHeight = Math.Round(128 * scale);
+        float x, y;
+        card.GetScreenPos(x, y);
+        title.SetScreenSize(titleWidth, titleHeight);
+        title.SetScreenPos(x + Math.Round((width - titleWidth) / 2), y + Math.Round((height - titleHeight) / 2 + 3 * scale));
     }
 }
 
@@ -221,7 +230,7 @@ modded class MissionGameplay
         m_PredateDeathMenuAt = GetGame().GetTime() + PREDATE_DEATH_CARD_MS;
         CloseAllMenus();
         PredateDeathPresentation.FitTitle(m_PredateDeathCard);
-        TextWidget title = TextWidget.Cast(m_PredateDeathCard.FindAnyWidget("DeathTitle"));
+        Widget title = m_PredateDeathCard.FindAnyWidget("DeathTitle");
         float width, height;
         m_PredateDeathCard.GetScreenSize(width, height);
         m_PredateDeathCard.Show(true);
