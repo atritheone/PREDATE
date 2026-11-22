@@ -127,6 +127,17 @@ class PredateSignalTrack
         return true;
     }
 
+    PredateObservation PlayerDisplaySample()
+    {
+        if (PlayerPulseFormat != 2) return null;
+        if (LastSample) return LastSample;
+        // A skipped close-range pulse leaves earlier readings in the receiver history.
+        if (!Selected || Reception != PredatePulseReception.CLOSE || History.Count() == 0) return null;
+        PredateObservation previous = History[History.Count() - 1];
+        if (previous && previous.PulseDistance > 0) return previous;
+        return null;
+    }
+
     void RecordSample(PredateObservation observation)
     {
         NextSampleSerial++;

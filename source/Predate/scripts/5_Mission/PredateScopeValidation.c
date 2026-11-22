@@ -4,6 +4,8 @@ class PredateScopeReport
     bool ScopeOpened;
     bool NightVisionApplied;
     bool NightVisionCleared;
+    bool NightVisionBrightnessScaled;
+    bool NightVisionBrightnessRestored;
     bool GoggleScopeBlurApplied;
     bool GoggleScopeBlurCleared;
     bool GoggleScopeBlurClearedOnExit;
@@ -76,6 +78,7 @@ class PredateScopeValidation
         else if (m_Stage == 2)
         {
             m_Report.NightVisionApplied = scoped && nightVision;
+            m_Report.NightVisionBrightnessScaled = HasDimming();
             float scopeBlur = CurrentScopeBlur();
             m_Report.GoggleScopeBlurApplied = scoped && scopeBlur > 0.6;
             Print("[PredateScopeTest] Scope held=" + scoped + "; headset effect after toggle=" + nightVision + "; goggle blur=" + scopeBlur);
@@ -84,6 +87,7 @@ class PredateScopeValidation
         else if (m_Stage == 3)
         {
             m_Report.NightVisionCleared = scoped && !nightVision;
+            m_Report.NightVisionBrightnessRestored = !PPERequesterBank.IsRequesterRunning(PredateNightVisionDimming.s_RequesterId);
             m_Report.GoggleScopeBlurCleared = scoped && CurrentScopeBlur() < 0.01;
             Print("[PredateScopeTest] Goggle blur after toggle off=" + CurrentScopeBlur());
             player.AddActiveNV(NVTypes.NV_GOGGLES);
@@ -101,6 +105,14 @@ class PredateScopeValidation
         m_Stage++;
         m_Elapsed = 0;
         return true;
+    }
+
+    bool HasDimming()
+    {
+        PPERequesterBase requester = PPERequesterBank.GetRequester(PredateNightVisionDimming.s_RequesterId);
+        if (!requester || !requester.IsRequesterRunning()) return false;
+        PPERequestParamDataFloat brightness = PPERequestParamDataFloat.Cast(requester.GetRequestData(PostProcessEffectType.Glow, PPEGlow.PARAM_BRIGHTNESS, PPEConstants.VAR_TYPE_FLOAT));
+        return brightness && brightness.IsDataActive() && Math.AbsFloat(brightness.m_FloatCurrent - 0.70) < 0.001;
     }
 
     float CurrentScopeBlur()
@@ -127,6 +139,7 @@ class PredateScopeValidation
                 m_Report.GogglePower = gogglesWorking && seesInfrared;
                 m_Report.GoggleMask = mask;
                 m_Report.PoweredPanoramicGoggles = m_Report.GogglePower && mask && seesInfrared;
+                m_Report.NightVisionBrightnessScaled = HasDimming();
                 string gogglesType = m_PanoramicGoggles.GetType();
                 m_Report.WorkshopOpticsModel = (gogglesType == "FOG_GPNVG_Tan" || gogglesType == "FOG_GPNVG_Black") && m_PanoramicGoggles.IsUsingOptics2DModel();
                 m_Report.InfraredVisible = m_PoweredModule && !m_PoweredModule.IsLightSource() && m_PoweredModule.PredateEmitterVisible();
@@ -137,6 +150,7 @@ class PredateScopeValidation
                 m_Report.ScopeOpened = scoped;
                 m_Report.PoweredScope = scoped && !mask && seesInfrared && m_PoweredOptic.IsWorking();
                 m_Report.NightVisionApplied = m_Report.PoweredScope;
+                m_Report.NightVisionBrightnessScaled = m_Report.NightVisionBrightnessScaled && HasDimming();
                 player.ExitSights();
                 break;
             case 3:
@@ -146,6 +160,7 @@ class PredateScopeValidation
                 break;
             case 4:
                 m_Report.NightVisionCleared = !mask && !seesInfrared;
+                m_Report.NightVisionBrightnessRestored = !PPERequesterBank.IsRequesterRunning(PredateNightVisionDimming.s_RequesterId);
                 m_Report.InfraredHidden = m_PoweredModule && m_PoweredModule.GetCompEM().IsWorking() && !m_PoweredModule.PredateEmitterVisible();
                 return Finish();
         }

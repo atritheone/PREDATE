@@ -68,8 +68,9 @@ def layouts():
     canvas = widget("CanvasWidgetClass", "MapOverlay", 0,0,1,1,"ignorepointer 1\npriority 100")
     bearing_labels = "".join(map_label(f"MapBearing{index}", "0.70 0.85 0.95 1") for index in range(24))
     pulse_labels = "".join(map_label(f"MapPulse{index}", "1 0.79 0.44 1") for index in range(100))
+    historical_label = map_label("MapLastKnown", "0.66 0.88 0.96 1")
     children = widget("MapWidgetClass", "Terrain", .016,.085,.644,.89,
-                      'clipchildren 1', canvas+bearing_labels+pulse_labels)
+                      'clipchildren 1', canvas+bearing_labels+pulse_labels+historical_label)
     children += label("Title", "Operation Map", .016,.012,.32,.06,"0.82 0.91 0.96 1")
     children += widget("ButtonWidgetClass","Overview",.259,.023,.11,.044,
                        'style Default\ntext "Overview"')

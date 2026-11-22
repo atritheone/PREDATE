@@ -495,18 +495,7 @@ modded class MissionGameplay
         }
         if (m_PredateFootprintTest && !m_PredateFootprintTest.Update(player, state, m_PredateFootprintView, m_PredateOwnFootprintView, m_PredateFootprintClue, m_PredateHuntFeed))
             m_PredateFootprintTest = null;
-        string text = "Map  M";
-        if (state && state.Available && state.Locked)
-        {
-            if (state.CloseApproach) text = "Final Approach - Track by Sight";
-            else if (state.HasPulse)
-            {
-                text = PredateProtocol.DisplayName(state.OperatorId) + "  |  " + PredateBearingPulse.RangeText(state.Bearing, " – ");
-                PredateBearingPulse tracked = state.TrackedPulse();
-                if (tracked) text += "  |  " + tracked.DistanceText(" – ");
-                text += "  |  Next Pulse " + Math.Ceil(state.NextPulse).ToString() + "s";
-            }
-        }
+        string text = PredateReceiverText.CompassReadout(state);
         if (PredatePresentationOptions.Current().HighContrast) m_PredateHudText.SetColor(0xFFFFFFFF);
         else m_PredateHudText.SetColor(0xFFC4D4D9);
         m_PredateHudText.SetText(text);

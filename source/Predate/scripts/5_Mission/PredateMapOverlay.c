@@ -12,6 +12,7 @@ class PredateMapOverlay
 
     MapWidget m_Map;
     CanvasWidget m_Canvas;
+    TextWidget m_LastKnown;
     ref array<TextWidget> m_Labels = new array<TextWidget>;
     ref array<TextWidget> m_Bearings = new array<TextWidget>;
     ref array<vector> m_LabelPositions = new array<vector>;
@@ -41,6 +42,7 @@ class PredateMapOverlay
     {
         m_Map = terrain;
         m_Canvas = canvas;
+        m_LastKnown = TextWidget.Cast(terrain.FindAnyWidget("MapLastKnown"));
         for (int index = 0; index < 24; index++)
         {
             TextWidget bearing = TextWidget.Cast(terrain.FindAnyWidget("MapBearing" + index));
@@ -177,6 +179,29 @@ class PredateMapOverlay
             }
             m_Canvas.DrawLine(origin[0], origin[1], nearPoint[0], nearPoint[1], m_Scale, guide);
             m_Canvas.DrawLine(nearPoint[0], nearPoint[1], farPoint[0], farPoint[1], 2 * m_Scale, edge);
+        }
+    }
+
+    void DrawLastKnown(PredateState state)
+    {
+        if (!m_LastKnown || !state || !state.CanShowHistory() || !state.Available || state.HasPulse || state.CloseApproach) return;
+        foreach (PredateReceiverSample sample : state.History)
+        {
+            if (!sample || sample.DistanceBand <= 0) continue;
+            float middle = (sample.DistanceBand - 0.5) * PredateBearingPulse.BAND_METRES;
+            vector center = HistoryPoint(sample, sample.Bearing + PredateBearingPulse.DEGREES / 2.0, middle);
+            if (center[0] < 0 || center[0] > m_Width || center[1] < 0 || center[1] > m_Height) return;
+            m_LastKnown.SetText(PredateProtocol.DisplayName(state.OperatorId) + " · Last Known");
+            int size = Math.Round(13 * m_Scale);
+            m_LastKnown.SetTextExactSize(size);
+            int textWidth, textHeight;
+            m_LastKnown.GetTextSize(textWidth, textHeight);
+            float width = textWidth + 12 * m_Scale;
+            float height = 20 * m_Scale;
+            center[0] = Math.Clamp(center[0], width / 2, m_Width - width / 2);
+            center[1] = Math.Clamp(center[1] - height, height / 2, m_Height - height / 2);
+            PlaceLabel(m_LastKnown, center, width, size, height);
+            return;
         }
     }
 
@@ -541,6 +566,7 @@ class PredateMapOverlay
     void Draw(PlayerBase player, PredateState state, float scale, bool allowHover = true)
     {
         m_Canvas.Clear();
+        if (m_LastKnown) m_LastKnown.Show(false);
         m_NextSlots.Clear();
         m_HoverHits.Clear();
         m_HoveredPulse = null;
@@ -637,6 +663,7 @@ class PredateMapOverlay
             m_LabelLockSlot = -1;
             ArrangePulseLabels(-1);
         }
+        DrawLastKnown(state);
         DrawPlayer(player, scale);
     }
 }

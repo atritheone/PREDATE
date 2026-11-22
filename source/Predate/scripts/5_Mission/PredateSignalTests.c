@@ -98,6 +98,11 @@ class PredateSignalTests
         display.Locked = true;
         display.HasPulseOrigin = false;
         Check(PredateReceiverText.Origin(display, "4530 200 6540") == "This older sample has no recorded origin.", "legacy samples cannot invent a historical origin");
+        display.HasPulse = false;
+        display.NextPulse = 46.1;
+        Check(PredateReceiverText.CompassReadout(display) == "Raven  |  Next Pulse 47s", "a selected target stays named on the compass while the receiver waits");
+        display.Locked = false;
+        Check(PredateReceiverText.CompassReadout(display) == "Map  M", "an unlocked receiver only shows the map prompt");
         Check(PredateProtocol.AcceptRequest(PredateProtocol.VERSION, "raven-01", 1) && !PredateProtocol.AcceptRequest(PredateProtocol.VERSION - 1, "raven-01", 1), "receiver packet revision rejects the previous incompatible protocol");
         for (int i = 0; i < 8; i++)
         {
@@ -215,10 +220,23 @@ class PredateSignalTests
         PredateHuntRuntime.Scan(observer, participants, session.m_HuntConfig, now);
         Check(privateTrack.NextSampleSerial == serial && privateTrack.LastSample.Origin == botPosition, "ordinary ticks cannot refresh historical origin");
         PredateSignalTrack scheduled = PredateSignalService.Track("player-01", "raven-01");
+        scheduled.SetPlayerTracking(true);
         PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now, session.m_HuntConfig);
+        float originalDistance = scheduled.LastSample.PulseDistance;
         bot.SetPosition(humanPosition + "0 0 249");
         Check(PredateSignalRules.FinalApproach(player.GetPosition(), bot.GetPosition()) && !PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now + 1, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.BEARING && scheduled.LastSample && scheduled.NextPulseAt == now + 90, "live approach enters between pulses without consuming or rescheduling the bearing");
         Check(PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now + 90, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.CLOSE && !scheduled.LastSample && scheduled.History.Count() == 1, "scheduled cutoff retains historical evidence");
+        array<PredateObservation> mapSamples = {};
+        PredateSignalService.AddMapPulse(mapSamples, scheduled, now + 90, true);
+        Check(mapSamples.Count() == 0, "the selected pulse stays hidden inside Final Approach");
+        bot.SetPosition(humanPosition + "0 0 251");
+        Check(!PredateSignalRules.FinalApproach(player.GetPosition(), bot.GetPosition()) && !PredateSignalService.SamplePlayerPulse(scheduled, player, bot, now + 91, session.m_HuntConfig) && scheduled.Selected && scheduled.NextPulseAt == now + 180, "leaving Final Approach keeps the target and original schedule");
+        PredateSignalService.AddMapPulse(mapSamples, scheduled, now + 91, false);
+        PredateObservation restored = scheduled.PlayerDisplaySample();
+        Check(mapSamples.Count() == 1 && mapSamples[0] == restored && restored.ObservedAt == now && restored.PulseDistance == originalDistance, "the previous reading supplies both displays without a new position");
+        mapSamples.Clear();
+        PredateSignalService.AddMapPulse(mapSamples, scheduled, now + 180, false);
+        Check(mapSamples.Count() == 0 && scheduled.History.Count() == 1 && scheduled.Selected, "the old pulse expires without removing the lock or history");
         Check(!PredateSignalService.SamplePlayerPulse(scheduled, player, null, now + 91, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.CLOSE, "vanishing contact does not leak between scheduled polls");
         Check(PredateSignalService.SamplePlayerPulse(scheduled, player, null, now + 180, session.m_HuntConfig) && scheduled.Reception == PredatePulseReception.UNAVAILABLE && scheduled.History.Count() == 1, "the next poll confirms signal loss");
         bot.SetPosition(displaced);

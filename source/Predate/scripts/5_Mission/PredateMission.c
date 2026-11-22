@@ -278,7 +278,7 @@ class PredateSession
         bool intercepted = receiverReady && m_HuntConfig.EnableSharedSignals && m_WorldState.PlayerInterceptionUntil > m_WorldState.SimulationSeconds;
         float now = m_WorldState.SimulationSeconds;
         PredateObservation sample;
-        if (receiverTrack) sample = receiverTrack.LastSample;
+        if (receiverTrack) sample = receiverTrack.PlayerDisplaySample();
         bool hasPulse = available && locked && !closeApproach && sample && !sample.Expired(now);
         bool hasPulseOrigin = hasPulse;
         int bearing;

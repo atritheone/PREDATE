@@ -170,14 +170,16 @@ class PredateSignalService
         return true;
     }
 
-    static void AddMapPulse(array<PredateSignalTrack> tracks, PredateSignalTrack track, float now)
+    static void AddMapPulse(array<PredateObservation> samples, PredateSignalTrack track, float now, bool hideSelected)
     {
-        if (!track || track.PlayerPulseFormat != 2 || !track.LastSample || track.LastSample.Expired(now)) return;
+        if (!track || (hideSelected && track.Selected)) return;
+        PredateObservation sample = track.PlayerDisplaySample();
+        if (!sample || sample.Expired(now)) return;
         // Sort on the server so the overlay can stack even rivals in the same distance band.
         int position;
-        while (position < tracks.Count() && tracks[position].LastSample.PulseDistance >= track.LastSample.PulseDistance)
+        while (position < samples.Count() && samples[position].PulseDistance >= sample.PulseDistance)
             position++;
-        tracks.InsertAt(track, position);
+        samples.InsertAt(sample, position);
     }
 
     static void WriteMapPulses(PredateSession s, ScriptRPC rpc, bool visible, bool hideSelected)
@@ -188,23 +190,18 @@ class PredateSignalService
             rpc.Write(count);
             return;
         }
-        array<PredateSignalTrack> tracks = {};
+        array<PredateObservation> samples = {};
         float now = s.m_WorldState.SimulationSeconds;
-        AddMapPulse(tracks, s.m_WorldState.PlayerSignal, now);
-        if (s.m_PeerRoster) s.m_PeerRoster.AddMapPulses(tracks, now);
-        if (hideSelected)
-        {
-            for (int index = tracks.Count() - 1; index >= 0; index--)
-                if (tracks[index].Selected) tracks.RemoveOrdered(index);
-        }
-        count = tracks.Count();
+        AddMapPulse(samples, s.m_WorldState.PlayerSignal, now, hideSelected);
+        if (s.m_PeerRoster) s.m_PeerRoster.AddMapPulses(samples, now, hideSelected);
+        count = samples.Count();
         rpc.Write(count);
-        foreach (PredateSignalTrack track : tracks)
+        foreach (PredateObservation sample : samples)
         {
-            rpc.Write(track.SubjectId);
-            int sector = track.LastSample.Bearing;
+            rpc.Write(sample.SubjectId);
+            int sector = sample.Bearing;
             rpc.Write(sector);
-            int distanceBand = Math.Ceil(track.LastSample.PulseDistance / PredateBearingPulse.BAND_METRES);
+            int distanceBand = Math.Ceil(sample.PulseDistance / PredateBearingPulse.BAND_METRES);
             rpc.Write(distanceBand);
         }
     }

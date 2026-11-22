@@ -154,8 +154,12 @@ class PredateReceiverValidation
             result.Check(Fits(menu.m_HistoryRows[0]) && menu.m_HistoryRows[0].IsVisible() && !menu.m_HistoryRows[1].IsVisible());
             state.HasPulse = false;
             result.Check(PredateReceiverText.LostContact(state));
+            menu.Update(0);
+            TextWidget lastKnown = menu.m_MapOverlay.m_LastKnown;
+            result.Check(lastKnown && lastKnown.IsVisible() && Fits(lastKnown), "the latest historical sector retains the selected name");
             state.CloseApproach = true;
-            menu.ShowHistory(state);
+            menu.Update(0);
+            result.Check(lastKnown && !lastKnown.IsVisible(), "the historical nameplate is hidden in Final Approach");
             result.Check(menu.m_HistoryTitle.IsVisible() && menu.m_HistoryRows[0].IsVisible(), "history stays visible on the final approach");
             result.Check(!PredateReceiverText.LostContact(state));
             state.CloseApproach = false;

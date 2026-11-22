@@ -293,10 +293,10 @@ class PredatePeerRoster
         }
     }
 
-    void AddMapPulses(array<PredateSignalTrack> tracks, float now)
+    void AddMapPulses(array<PredateObservation> samples, float now, bool hideSelected)
     {
         foreach (PredatePeerBinding binding : m_Bindings)
-            PredateSignalService.AddMapPulse(tracks, binding.State.PlayerReceiver, now);
+            PredateSignalService.AddMapPulse(samples, binding.State.PlayerReceiver, now, hideSelected);
     }
 
     bool ClearOfActors(vector position, float minimumDistance)
