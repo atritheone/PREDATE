@@ -11,7 +11,7 @@ from build import WORKSHOP
 @cache
 def modern_data():
     resources = (Path(sys._MEIPASS) / "predate-data" if getattr(sys, "frozen", False)
-                 else Path(__file__).resolve().parents[1] / "launcher-app/resources")
+                 else Path(__file__).resolve().parents[1] / "launcher/resources")
     return json.loads((resources / "modern-loadouts.json").read_text(encoding="utf-8"))
 
 

@@ -21,7 +21,7 @@ def inventory_catalog():
     if getattr(sys, "frozen", False):
         path = Path(sys._MEIPASS) / "predate-data/operation-catalog.json"
     else:
-        path = Path(__file__).resolve().parents[1] / "launcher-app/resources/operation-catalog.json"
+        path = Path(__file__).resolve().parents[1] / "launcher/resources/operation-catalog.json"
     base = json.loads(path.read_text(encoding="utf-8"))
     return {item["id"]: item for item in base + loadouts.modern_data()["Catalog"]}
 

@@ -11,7 +11,7 @@ def main():
     args = parser.parse_args()
     executable = ROOT / "PREDATE.exe"
     if not executable.is_file():
-        raise RuntimeError("Build the desktop launcher with npm run package in launcher-app.")
+        raise RuntimeError("Build the desktop launcher with npm run package in launcher.")
     command = [str(executable)]
     if args.resume: command.append("--continue")
     if args.save_quit: command.append("--save-quit")

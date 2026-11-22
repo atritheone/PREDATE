@@ -2,7 +2,9 @@
 from pathlib import Path
 import hashlib
 
+from app_runtime import ROOT
 import release
+import workshop_lasers
 
 
 def optional_paths(values):
@@ -66,6 +68,8 @@ def verify(values, expected):
         if previous_path.resolve() != Path(current['path']):
             raise ValueError('This operation\'s mod order or folders changed. Restore its recorded preset or start a new operation.')
         if previous['files'] != current['files']:
+            if workshop_lasers.allows_companion_upgrade(ROOT, previous, current):
+                continue
             names = sorted(name for name in set(previous['files']) | set(current['files']) if previous['files'].get(name) != current['files'].get(name))
             sample = ', '.join(names[:3])
             raise ValueError(f"Mod content changed for {Path(current['path']).name}: {sample}. Restore the recorded mod version or start a new operation; this saved world was not opened.")

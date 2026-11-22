@@ -1,5 +1,6 @@
 """Select the tested Workshop laser pack and its required local companion."""
 import hashlib
+import json
 from pathlib import Path
 
 
@@ -7,7 +8,36 @@ ITEM_ID = "3704871552"
 WORKSHOP_PBO = "mutatedlasers.pbo"
 COMPANION_PBO = "predatemutatedlasers.pbo"
 COMPANION_FOLDER = "@PredateMutatedLasers"
+COMPANION_BUILD_RECORD = Path("config/workshop-laser-companion.local.json")
+COMPANION_PACKAGE = frozenset(("addons/PredateMutatedLasers.pbo", "addons/PredateMutatedLasers.pbo.PredateLocal.bisign"))
 TESTED_SHA256 = "97958b9583aa7b4edf4e3b5348669026f9894159d975de7fc28a7981a715215b"
+
+
+def companion_build_record(root):
+    try:
+        record = json.loads((root / COMPANION_BUILD_RECORD).read_text(encoding="utf-8"))
+    except (FileNotFoundError, ValueError):
+        return {}
+    if not isinstance(record, dict) or record.get("schema") != 1:
+        return {}
+    if not isinstance(record.get("previous"), list) or not isinstance(record.get("current"), dict):
+        return {}
+    return record
+
+
+def allows_companion_upgrade(root, previous, current):
+    # PREDATE owns this script addon. Workshop files and signing keys stay pinned.
+    if Path(current['path']) != (root / 'mods' / COMPANION_FOLDER).resolve():
+        return False
+    before, after = previous['files'], current['files']
+    if not COMPANION_PACKAGE <= before.keys() or before.keys() != after.keys():
+        return False
+    if any(digest != after[name] for name, digest in before.items() if name not in COMPANION_PACKAGE):
+        return False
+    record = companion_build_record(root)
+    installed = {name: after[name] for name in COMPANION_PACKAGE}
+    saved = {name: before[name] for name in COMPANION_PACKAGE}
+    return record.get('current') == installed and saved in record.get('previous', [])
 
 
 def ready_pair(root, workshop):

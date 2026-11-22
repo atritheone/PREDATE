@@ -277,12 +277,21 @@ def pack_workshop_laser_companion():
     addons, keys = mod / "addons", mod / "keys"
     addons.mkdir(parents=True, exist_ok=True)
     keys.mkdir(exist_ok=True)
+    installed = {name: release.digest(mod / name) for name in workshop_lasers.COMPANION_PACKAGE if (mod / name).is_file()}
+    record = workshop_lasers.companion_build_record(ROOT)
+    previous = record.get("previous", [])
+    if len(installed) == len(workshop_lasers.COMPANION_PACKAGE) and installed not in previous:
+        previous.append(installed)
     with TemporaryDirectory(prefix=".pack-", dir=mod) as temporary:
         pbo, signature = stage_signed_addon(ROOT / "source/compat/PredateMutatedLasers", Path(temporary), "PredateLocal")
+        current = {"addons/" + path.name: release.digest(path) for path in (pbo, signature)}
         require_closed_runtime()
         os.replace(signature, addons / signature.name)
         os.replace(pbo, addons / pbo.name)
     copy_changed(ROOT / "private-signing/PredateLocal.bikey", keys / "PredateLocal.bikey")
+    release.write_changed(ROOT / workshop_lasers.COMPANION_BUILD_RECORD, json.dumps({
+        "schema": 1, "current": current, "previous": [item for item in previous if item != current],
+    }, indent=2, sort_keys=True) + "\n")
     print("Built and signed the Workshop laser compatibility addon.", flush=True)
 
 
@@ -295,7 +304,7 @@ def pack(candidate=False):
     release.write_changed(mod_root/"mod.cpp",'name="PREDATE"; author="PREDATE contributors"; version="0.3.0";')
     manifest = ROOT / "build" / ("candidate-build-manifest.json" if candidate else "build-manifest.json")
     inputs = release.source_fingerprint()
-    modern_loadouts = "launcher-app/resources/modern-loadouts.json"
+    modern_loadouts = "launcher/resources/modern-loadouts.json"
     inputs[modern_loadouts] = release.digest(ROOT / modern_loadouts)
     inputs["config/release-lock.json"] = release.digest(release.LOCK)
     for name in ("build.py", "release.py", "world.py"):

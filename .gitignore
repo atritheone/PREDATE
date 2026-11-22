@@ -18,9 +18,9 @@ __pycache__/
 *.pyc
 *.log
 *.mdmp
-/launcher-app/node_modules/
-/launcher-app/out/
-/launcher-app/release/
-/launcher-app/backend/
+/launcher/node_modules/
+/launcher/out/
+/launcher/release/
+/launcher/backend/
 /PREDATE.exe
 /desktop.ini

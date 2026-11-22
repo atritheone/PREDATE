@@ -39,14 +39,14 @@ Normal play requires Steam to be signed in online. If Steam needs user interacti
 
    If verification fails, identify the missing or mismatched inputs and use matching versions where available. Treat `--accept-dependency-update` as a dependency upgrade. It restages Workshop files and rewrites `config/release-lock.json`. Native mission inputs also need to match `source/mission/base-files.json`.
 
-3. From `launcher-app/`, install the locked dependencies and build the Windows portable launcher.
+3. From `launcher/`, install the locked dependencies and build the Windows portable launcher.
 
    ```powershell
    npm.cmd ci
    npm.cmd run package
    ```
 
-   After packaging succeeds, close any running PREDATE launcher and copy `launcher-app/release/PREDATE.exe` to the repository root.
+   After packaging succeeds, close any running PREDATE launcher and copy `launcher/release/PREDATE.exe` to the repository root.
 
 ## Verify setup
 
@@ -58,4 +58,4 @@ Normal play requires Steam to be signed in online. If Steam needs user interacti
 
 - Preserve existing saves, backups, and local preferences in `world/`, `worlds/`, `backups/`, and `config/*.local.json`. If upgrading an older checkout, save and quit with the existing launcher before moving the root `settings.local.json`, `launcher-settings.local.json`, and `active-release.local.json` into `config/`. Check for destination conflicts before moving files. If the previous session supervisor remains running, verify its process identity and confirm the session is suspended with no active session or queued requests before retiring it. The rebuilt launcher starts the new supervisor when needed.
 - Keep local worlds, credentials, signing keys, staged dependencies, and generated packages out of Git. Follow `.gitignore` and keep `predate.txt` eligible for version control.
-- Run `npm.cmd run build` from `launcher-app/` for launcher changes.
+- Run `npm.cmd run build` from `launcher/` for launcher changes.

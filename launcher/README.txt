@@ -27,7 +27,7 @@ setup on this PC for later. PREDATE Starting Area is the default spawn choice.
 The Chernarus relief and item catalogue come from the installed game. To
 regenerate them, run source/validation/operation_catalog.c as init.c in a
 separate Chernarus mission, then pass that server's profile directory to
-launcher-app/scripts/operation_assets.py.
+launcher/scripts/operation_assets.py.
 
 Architecture:
   src/shared       Typed API and data contracts

@@ -5,6 +5,7 @@ modded class MM_LaserSight_Base
 #ifndef SERVER
     protected ScriptedLightBase m_PredateIRSpot;
     protected bool m_PredateRenderedLaserIR;
+    protected bool m_PredateTrackedPEQVisuals;
     protected static ref array<MM_LaserSight_Base> s_PredatePEQVisuals = {};
 #endif
 
@@ -109,6 +110,13 @@ modded class MM_LaserSight_Base
     }
 
 #ifndef SERVER
+    void ~MM_LaserSight_Base()
+    {
+        // The Workshop destructor calls g_Game.ObjectDelete on this beam.
+        // Engine shutdown already owns the object if the game is gone.
+        if (!GetGame()) m_Mutated_LaserBeam = null;
+    }
+
     override protected vector MM_GetViewerLaserColor()
     {
         if (m_PredateLaserIR) return "0.82 0.94 1";
@@ -135,19 +143,23 @@ modded class MM_LaserSight_Base
         if (m_PredateIRLight) GetGame().GetCallQueue(CALL_CATEGORY_GAMEPLAY).CallLater(PredateUpdateIRLight, 100, true);
     }
 
-    override protected void MM_ClientLaserOn()
+    override protected void MM_EnsureBeamObject()
     {
-        if (s_PredatePEQVisuals.Find(this) < 0) s_PredatePEQVisuals.Insert(this);
-        super.MM_ClientLaserOn();
+        super.MM_EnsureBeamObject();
+        if (!m_Mutated_LaserBeam || m_PredateTrackedPEQVisuals) return;
+        m_PredateTrackedPEQVisuals = true;
+        s_PredatePEQVisuals.Insert(this);
     }
 
     static void PredateReleasePEQVisuals()
     {
+        if (!GetGame()) return;
         foreach (MM_LaserSight_Base module : s_PredatePEQVisuals)
         {
             if (!module) continue;
             module.MM_CleanupLaserVisuals_Client(true);
             module.MM_DeleteDotModels();
+            module.m_PredateTrackedPEQVisuals = false;
         }
         s_PredatePEQVisuals.Clear();
     }
@@ -177,10 +189,15 @@ modded class MM_LaserSight_Base
 
     override void EEDelete(EntityAI parent)
     {
-        int index = s_PredatePEQVisuals.Find(this);
-        if (index >= 0) s_PredatePEQVisuals.Remove(index);
+        if (m_PredateTrackedPEQVisuals)
+        {
+            s_PredatePEQVisuals.RemoveItem(this);
+            m_PredateTrackedPEQVisuals = false;
+        }
         if (GetGame())
         {
+            MM_DeleteBeam();
+            MM_DeleteDotModels();
             GetGame().GetCallQueue(CALL_CATEGORY_GAMEPLAY).Remove(PredateUpdateIRLight);
             if (m_PredateIRSpot) GetGame().ObjectDelete(m_PredateIRSpot);
             m_PredateIRSpot = null;
