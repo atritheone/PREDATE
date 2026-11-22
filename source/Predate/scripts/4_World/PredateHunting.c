@@ -8,7 +8,11 @@ modded class eAIBase
     vector m_PredateWatchPoint;
     float m_PredateWatchUntil;
     protected bool m_PredateFinalApproachPace;
-    protected bool m_PredateFinalApproachStance;
+    protected float m_PredateProneSince = -1;
+    protected vector m_PredatePronePosition;
+    protected float m_PredateProneRetryAt;
+    protected float m_PredateProneExitUntil;
+    protected vector m_PredateProneExit;
     protected int m_PredateTravelLimit;
     protected int m_PredateThreatLimit;
 
@@ -47,20 +51,49 @@ modded class eAIBase
         else SetMovementSpeedLimits(m_PredateTravelLimit, m_PredateThreatLimit);
     }
 
-    void PredateSetFinalApproachStance(bool active)
+    void PredateRecoverProne(float now, bool eligible)
     {
-        m_PredateFinalApproachStance = active;
-        if (!active) return;
-        // Expansion's movement command still checks clearance before raising the stance.
-        if (m_eAI_StancePreference == DayZPlayerConstants.STANCEIDX_PRONE || (m_eAI_StancePreference == -1 && eAI_GetStance() == DayZPlayerConstants.STANCEIDX_PRONE))
+        if (!eligible || eAI_GetStance() != DayZPlayerConstants.STANCEIDX_PRONE || !m_eAI_CommandMove || !GetCommand_Move())
+        {
+            m_PredateProneSince = -1;
+            m_PredateProneRetryAt = 0;
+            m_PredateProneExitUntil = 0;
+            return;
+        }
+
+        vector position = GetPosition();
+        if (now < m_PredateProneExitUntil && vector.DistanceSq(position, m_PredateProneExit) > 0.36) return;
+        m_PredateProneExitUntil = 0;
+        if (m_PredateProneSince < 0 || vector.DistanceSq(position, m_PredatePronePosition) > 1)
+        {
+            m_PredateProneSince = now;
+            m_PredatePronePosition = position;
+            return;
+        }
+        if (now - m_PredateProneSince < 3 || now < m_PredateProneRetryAt || GetWeaponManager().IsRunning()) return;
+
+        // Give the native stance change time to complete before looking for a crawl exit.
+        if (m_eAI_StancePreference != DayZPlayerConstants.STANCEIDX_CROUCH)
+        {
             OverrideStance(DayZPlayerConstants.STANCEIDX_CROUCH);
+            m_PredateProneRetryAt = now + 1.25;
+            return;
+        }
+
+        m_PredateProneRetryAt = now + 5;
+        vector exitPoint;
+        if (!m_eAI_CommandMove.PredateFindProneExit(position, exitPoint)) return;
+
+        eAI_LeaveCover();
+        m_PredateProneExit = exitPoint;
+        m_PredateProneExitUntil = now + 5;
     }
 
-    override bool OverrideStance(int pStanceIdx, bool force = false)
+    bool PredateProneExitPoint(out vector point)
     {
-        if (m_PredateFinalApproachStance && pStanceIdx == DayZPlayerConstants.STANCEIDX_PRONE)
-            return super.OverrideStance(DayZPlayerConstants.STANCEIDX_CROUCH, force);
-        return super.OverrideStance(pStanceIdx, force);
+        if (m_PredateProneExitUntil <= 0 || eAI_GetStance() != DayZPlayerConstants.STANCEIDX_PRONE) return false;
+        point = m_PredateProneExit;
+        return true;
     }
 
     static float PredateScanOffset(int step, float angle)
@@ -226,6 +259,64 @@ modded class eAIBase
         m_PredateAppliedGoal = state.GoalRevision;
         if (PredateServerDiagnostics.TraceOperators)
             Print("[PredateHunter] " + state.Mode + "; reason=" + state.Reason + "; evidence=" + state.EvidenceKey + "; goalRevision=" + state.GoalRevision + "; goal=" + state.Goal + "; operator=" + state.OwnerId + "; simulation=" + m_PredateSimulationTime + "; detour=" + state.HasDetour + "; previousRevision=" + previousRevision + "; actor=" + this + "; " + PredateRouteDiagnostic());
+    }
+}
+
+modded class eAICommandMove
+{
+    protected bool m_PredateCrawlingOut;
+
+    override void PreAnimUpdate(float pDt)
+    {
+        vector exitPoint;
+        if (!m_Unit.PredateProneExitPoint(exitPoint) || m_Unit.IsFalling() || m_Unit.IsFighting())
+        {
+            super.PreAnimUpdate(pDt);
+            return;
+        }
+
+        // The upright navigation path can be blocked overhead even though a crawl fits.
+        if (m_Unit.IsRaised()) m_Unit.RaiseWeapon(false);
+        float priorLimit = GetSpeedLimit();
+        float priorTurn = GetTurnTarget();
+        bool priorForcedTurn = m_ForceTurnTarget;
+        SetSpeedLimit(1);
+        SetTurnTarget((exitPoint - m_Unit.GetPosition()).VectorToAngles()[0], true);
+        SetTargetDirection(0, true);
+        SetSpeedOverrider(true);
+        m_PredateCrawlingOut = true;
+        SetTargetSpeed(1);
+        super.PreAnimUpdate(pDt);
+        m_PredateCrawlingOut = false;
+        SetSpeedLimit(priorLimit);
+        SetTurnTarget(priorTurn, priorForcedTurn);
+    }
+
+    override void SetTargetSpeed(float pTarget)
+    {
+        if (m_PredateCrawlingOut) pTarget = 1;
+        super.SetTargetSpeed(pTarget);
+    }
+
+    bool PredateFindProneExit(vector origin, out vector exitPoint)
+    {
+        float heading = m_Unit.GetOrientation()[0];
+        set<Object> hits = new set<Object>;
+        for (int side = 0; side < 4; side++)
+        {
+            vector point = origin + PredateInformationMath.BearingDirection(heading + side * 90) * 3.5;
+            vector ground;
+            if (!PredateRoutePlanner.Land(point) || !PredateRoutePlanner.Snap(point, 1, ground)) continue;
+            if (Math.AbsFloat(ground[1] - origin[1]) > 0.8 || vector.DistanceSq(origin, ground) < 4) continue;
+            vector hit, normal;
+            int component;
+            hits.Clear();
+            if (DayZPhysics.RaycastRV(ground + "0 0.3 0", ground + "0 1.3 0", hit, normal, component, hits, null, m_Unit, false, false, ObjIntersectView, 0.1) && hits.Count() > 0 && ObjectCanLimitStance(hits[0])) continue;
+            if (DayZPhysics.RaycastRV(origin + "0 0.28 0", ground + "0 0.28 0", hit, normal, component, null, null, m_Unit, false, false, ObjIntersectGeom, 0.12)) continue;
+            exitPoint = ground;
+            return true;
+        }
+        return false;
     }
 }
 

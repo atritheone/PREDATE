@@ -13,3 +13,5 @@ make the ai better at self-preservation.
 server optimisation.
 
 remove multiplayer mechanics.
+
+delay handoff to redeployment until ready.

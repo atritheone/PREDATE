@@ -128,6 +128,15 @@ class PredateHuntRuntime
             }
             Scan(observer, participants, session.m_HuntConfig, now);
         }
+        PredatePeerBinding selected;
+        if (session.m_PeerRoster) selected = session.m_PeerRoster.PlayerLock();
+        eAIBase playerTarget;
+        if (session.PredatePlayerCloseApproach(player, selected))
+        {
+            if (selected) playerTarget = selected.Actor;
+            else playerTarget = session.m_HuntBot;
+        }
+
         int routeBudget = 3;
         int count = participants.Count();
         int routeCursor = session.m_PredateRouteCursor % count;
@@ -136,7 +145,7 @@ class PredateHuntRuntime
             int routeSlot = (routeCursor + offset) % count;
             PredateHuntParticipant hunter = participants[routeSlot];
             if (!hunter.Receiver) continue;
-            if (Think(session, hunter, live, playerId, now, routeBudget > 0))
+            if (Think(session, hunter, live, playerId, now, routeBudget > 0, hunter.Actor == playerTarget))
             {
                 routeBudget--;
                 if (routeBudget == 0) session.m_PredateRouteCursor = routeSlot + 1;
@@ -152,7 +161,7 @@ class PredateHuntRuntime
         return targetId != "" && live.Find(targetId, subjectPosition) && PredateSignalRules.FinalApproach(observer.Position, subjectPosition);
     }
 
-    static bool Think(PredateSession session, PredateHuntParticipant hunter, map<string, vector> live, string playerId, float now, bool canPlan)
+    static bool Think(PredateSession session, PredateHuntParticipant hunter, map<string, vector> live, string playerId, float now, bool canPlan, bool playerCloseApproach)
     {
         eAIBase actor = eAIBase.Cast(hunter.Actor);
         if (!actor || !actor.IsAlive()) return false;
@@ -174,13 +183,13 @@ class PredateHuntRuntime
             PredateRoutePlanner.RecordObservedSectors(actor, hunter.Hunter, now);
             hunter.Hunter.WatchUntil = 0;
         }
-        actor.PredateSetFinalApproachStance(finalApproach && !recover);
         actor.PredateSetFinalApproach(finalApproach && !combat && !recover);
         PredateHunterBrain.Step(hunter.Hunter, position, now, hunter.Memory, track, combat, recover, now < hunter.InterceptedUntil, session.m_WorldState.PlayerLastDeathAt, playerId, subject, receiver.Replanned, limited, finalApproach);
         if (track && track.LastSample && track.LastSample.ObservedAt == now && session.m_PeerRoster)
             session.m_PeerRoster.MarkInterception(session, track.SubjectId, now);
         else if (track && track.LastSample && track.LastSample.ObservedAt == now && track.SubjectId == "player-01")
             PredateSignalService.MarkPlayerHunted(session, now);
+        actor.PredateRecoverProne(now, (finalApproach || playerCloseApproach) && !combat && !recover);
         bool planned;
         if (combat || recover)
         {
