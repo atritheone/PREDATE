@@ -141,7 +141,7 @@ def validate_opponent_count(value):
 
 
 def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, player_loadout='m4a1',
-                     opponent_count=1, footprints=False, spawn=None, setup=None, require_modern_gear=False):
+                     opponent_count=1, footprints=True, spawn=None, setup=None, require_modern_gear=False):
     import operation_setup
     import world
     name = name.strip()
@@ -185,6 +185,7 @@ def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, pl
             'OpponentCount': opponent_count,
             'RandomInitialSpawns': True,
             'EnableFootprints': footprints,
+            'FootprintRulesVersion': 1,
             'EnableOperatorRespawns': True,
             **player_start,
             **rules,

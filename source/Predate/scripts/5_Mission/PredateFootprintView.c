@@ -3,22 +3,27 @@
 class PredateFootprintView
 {
     ImageWidget m_Image;
+    bool m_Loaded;
 
-    void PredateFootprintView(Widget hud)
+    void PredateFootprintView(Widget hud, string name)
     {
         if (!hud) return;
-        m_Image = ImageWidget.Cast(hud.FindAnyWidget("FootprintMark"));
+        m_Image = ImageWidget.Cast(hud.FindAnyWidget(name));
         if (!m_Image) return;
-        m_Image.LoadImageFile(0, "Predate/gui/bootprint_ca.paa");
-        m_Image.SetImage(0);
+        m_Loaded = m_Image.LoadImageFile(0, "Predate/gui/bootprint_ca.paa") && m_Image.SetImage(0);
     }
 
-    bool Update(PlayerBase player, PredateState state, bool visible)
+    void Hide()
+    {
+        if (m_Image) m_Image.Show(false);
+    }
+
+    bool Update(PlayerBase player, vector ground, int heading, float opacity, bool visible)
     {
         if (!m_Image) return false;
         m_Image.Show(false);
-        if (!visible || !state || state.FootprintClue == 0) return false;
-        vector point = state.FootprintGround + "0 0.04 0";
+        if (!visible) return false;
+        vector point = ground + "0 0.04 0";
         vector center = GetGame().GetScreenPosRelative(point);
         if (!OnScreen(center)) return false;
 
@@ -28,12 +33,12 @@ class PredateFootprintView
         int component;
         if (DayZPhysics.RaycastRV(camera, point, contact, normal, component, null, null, player, false, false, ObjIntersectView, 0)) return false;
 
-        vector forward = PredateInformationMath.BearingDirection(state.FootprintHeading);
+        vector forward = PredateInformationMath.BearingDirection(heading);
         vector sideways = Vector(forward[2], 0, -forward[0]);
-        vector toe = Project(point + forward * 0.22);
-        vector heel = Project(point - forward * 0.22);
-        vector left = Project(point - sideways * 0.22);
-        vector right = Project(point + sideways * 0.22);
+        vector toe = Project(point + forward * 0.18);
+        vector heel = Project(point - forward * 0.18);
+        vector left = Project(point - sideways * 0.10);
+        vector right = Project(point + sideways * 0.10);
         if (!OnScreen(toe) || !OnScreen(heel) || !OnScreen(left) || !OnScreen(right)) return false;
 
         float viewportWidth, viewportHeight;
@@ -48,8 +53,6 @@ class PredateFootprintView
         m_Image.SetPos(center[0] - width * 0.5, center[1] - height * 0.5);
         m_Image.SetSize(width, height);
         m_Image.SetRotation(0, 0, Math.Atan2(length[0], -length[1]) * Math.RAD2DEG);
-        float opacity = 0.6;
-        if (state.FootprintClue == 1) opacity = 0.35;
         m_Image.SetAlpha(opacity);
         m_Image.Show(true);
         return true;

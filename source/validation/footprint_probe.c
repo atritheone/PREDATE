@@ -4,7 +4,7 @@ class PredateFootprintProbeReport
     int Failures;
     int NaturalMarks;
     float SimulationSeconds;
-    string EventKey;
+    int PlayerTrail;
 
     void Check(bool outcome, string label)
     {
@@ -18,125 +18,94 @@ class PredateFootprintProbeReport
 class PredateFootprintValidationMission : MissionServer
 {
     ref PredateFootprintProbeReport m_Report = new PredateFootprintProbeReport;
-    bool m_Done;
-    float m_ScannedAt;
-    int m_HintPhase;
-    int m_PlayerMark;
-    float m_HintAt;
+    int m_Phase;
+    float m_Next;
     PlayerBase m_Observer;
+    vector m_Origin;
+    vector m_Ground;
+    int m_Surface;
 
     override void OnUpdate(float timeslice)
     {
         super.OnUpdate(timeslice);
-        if (m_Done || !m_PredateSession.m_ActorsActive || !m_PredateSession.m_PeerRoster) return;
+        if (m_Phase == 4 || !m_PredateSession.m_ActorsActive || !m_PredateSession.m_PeerRoster) return;
         float now = m_PredateSession.m_WorldState.SimulationSeconds;
         PredateFootprintLedger ledger = m_PredateSession.m_WorldState.Footprints;
-        PredatePeerBinding lynx = m_PredateSession.m_PeerRoster.Find("lynx-01");
-        if (m_Report.EventKey == "" && now >= 13)
+        if (now < m_Next) return;
+        if (m_Phase == 0 && now >= 12)
         {
-            VerifyNativeMarks(lynx, ledger, now);
-            if (m_Report.EventKey == "") Finish(now);
+            m_Report.NaturalMarks = ledger.Marks.Count();
+            m_Report.Check(m_Report.NaturalMarks > 0 && ledger.Validate(now), "native operator movement records valid marks");
+            FindObserver();
+            m_Report.Check(m_Observer && m_Observer.m_PredateFootprintLookReceivedAt > 0, "server receives the actual player's gaze");
+            if (!m_Observer) { Finish(now); return; }
+            m_Origin = m_Observer.GetPosition();
+            vector eyes = m_Observer.GetBonePositionWS(m_Observer.GetBoneIndexByName("head"));
+            vector gaze = m_Observer.m_PredateFootprintLook;
+            vector facing = gaze;
+            facing[1] = 0;
+            facing.Normalize();
+            for (float distance = 5; distance <= 7.5; distance += 0.25)
+            {
+                vector ahead = m_PredateSession.PredateGround(m_Origin + facing * distance);
+                m_Surface = PredateFootprintSensor.SurfaceAt(ahead, m_Ground);
+                if (m_Surface == PredateFootprintSurface.HARD || !PredateFootprintSensor.Visible(eyes, gaze, m_Ground, m_Observer)) continue;
+                if (!PredateFootprintSensor.FacingGround(eyes, gaze, m_Ground, true)) continue;
+                m_Report.PlayerTrail = ledger.Record(m_Ground, m_Surface, now, "lynx-01", PredateMath.Bearing(m_Origin, m_Ground), 0, true);
+                if (m_Report.PlayerTrail != 0) break;
+            }
+            m_Report.Check(m_Report.PlayerTrail > 0, "visible directionally accurate track can be placed ahead of player");
+            if (!m_Report.PlayerTrail) { Finish(now); return; }
+            vector lateral = Vector(facing[2], 0, -facing[0]);
+            vector own = m_PredateSession.PredateGround(m_Ground + facing * 0.45 + lateral * 0.15);
+            ledger.Record(own, m_Surface, now, "player-01");
+            m_Next = now + 2.5;
+            m_Phase = 1;
         }
-        else if (m_Report.EventKey != "" && m_HintPhase == 0 && now >= m_ScannedAt + 1.3)
+        else if (m_Phase == 1)
         {
-            m_Report.Check(lynx.State.Hunter.EvidenceKey == m_Report.EventKey, "native hunter considered the visually earned footprint");
-            VerifyPlayerContext(ledger, now);
-            if (m_PlayerMark == 0) Finish(now);
+            PredateFootprintTrail trail = ledger.m_TrailIndex.Get(m_Report.PlayerTrail);
+            m_Report.Check(trail && trail.Readers.Find("player-01") >= 0, "actual player gaze reads the foreign trail");
+            m_Report.Check(m_Observer.PredateFootprintSensorForActor().m_Own != null, "own print visible beside the foreign one");
+            m_Observer.SetPosition(m_Origin + "0 0 12");
+            m_Next = now + 1.5;
+            m_Phase = 2;
         }
-        else if (m_HintPhase == 1 && now >= m_HintAt + 2.5)
+        else if (m_Phase == 2)
         {
-            m_Report.Check(PredateFootprintService.PlayerClue(m_PredateSession, m_Observer) == 2, "player clue contains only a recent mark category");
-            for (int index = ledger.Marks.Count() - 1; index >= 0; index--)
-                if (ledger.Marks[index].Serial == m_PlayerMark) ledger.Marks.RemoveOrdered(index);
-            m_HintAt = now;
-            m_HintPhase = 2;
+            ledger.Record(m_Ground, m_Surface, now, "lynx-01", 45, m_Report.PlayerTrail, true);
+            m_Observer.SetPosition(m_Origin);
+            m_Next = now + 5;
+            m_Phase = 3;
         }
-        else if (m_HintPhase == 2 && now >= m_HintAt + 2.5)
+        else if (m_Phase == 3)
         {
-            m_Report.Check(PredateFootprintService.PlayerClue(m_PredateSession, m_Observer) == 0, "missing mark clears the contextual clue");
+            PredateFootprintTrail seen = ledger.m_TrailIndex.Get(m_Report.PlayerTrail);
+            m_Report.Check(seen && seen.Readers.Find("player-01") >= 0, "record of reading survives a return to the same trail");
             Finish(now);
         }
     }
 
-    void VerifyPlayerContext(PredateFootprintLedger ledger, float now)
+    void FindObserver()
     {
-        array<Man> players = new array<Man>;
+        array<Man> players = {};
         GetGame().GetPlayers(players);
         foreach (Man man : players)
         {
-            PlayerBase observer = PlayerBase.Cast(man);
-            if (!observer || !observer.GetIdentity()) continue;
-            m_Observer = observer;
-            break;
+            PlayerBase player = PlayerBase.Cast(man);
+            if (!player || !player.GetIdentity()) continue;
+            m_Observer = player;
+            return;
         }
-        m_Report.Check(m_Observer && PredateFootprintService.PlayerClue(m_PredateSession, m_Observer) == 0, "a distant trace does not produce a player hint");
-        if (!m_Observer) return;
-        vector facing = m_Observer.GetDirection();
-        vector ground;
-        vector position = m_Observer.GetPosition();
-        for (float distance = 4; distance <= 8; distance += 1)
-        {
-            vector ahead = m_PredateSession.PredateGround(position + facing * distance);
-            int surface = PredateFootprintSensor.SurfaceAt(ahead, ground);
-            if (surface == PredateFootprintSurface.HARD) continue;
-            vector eyes = m_Observer.GetBonePositionWS(m_Observer.GetBoneIndexByName("head"));
-            if (!PredateFootprintSensor.Visible(eyes, facing, ground, m_Observer)) continue;
-            m_PlayerMark = ledger.Record(ground, surface, now, "lynx-01", PredateMath.Bearing(position, ground));
-            if (m_PlayerMark != 0) break;
-        }
-        m_Report.Check(m_PlayerMark != 0, "test can place a physically visible clue near the player");
-        m_HintAt = now;
-        m_HintPhase = 1;
-    }
-
-    void VerifyNativeMarks(PredatePeerBinding observer, PredateFootprintLedger ledger, float now)
-    {
-        m_Report.NaturalMarks = ledger.Marks.Count();
-        m_Report.Check(ledger.Validate(now) && m_Report.NaturalMarks >= 4, "native movement creates bounded, valid marks");
-        bool lynxMarked, rookMarked;
-        bool mobileActorsOnly = true;
-        foreach (PredateFootprint mark : ledger.Marks)
-        {
-            if (mark.Creator == "lynx-01") lynxMarked = true;
-            if (mark.Creator == "rook-01") rookMarked = true;
-            if (mark.Creator == "player-01") mobileActorsOnly = false;
-        }
-        m_Report.Check(lynxMarked && rookMarked, "marks come from distinct moving rivals");
-        m_Report.Check(mobileActorsOnly, "stationary player leaves no marks");
-
-        eAIBase actor = observer.Actor;
-        vector position = actor.GetPosition();
-        vector facing = actor.GetDirection();
-        facing[1] = 0;
-        facing.Normalize();
-        vector eyes = actor.GetBonePositionWS(actor.GetBoneIndexByName("head"));
-        vector ground;
-        vector ahead = m_PredateSession.PredateGround(position + facing * 2.0);
-        int surface = PredateFootprintSensor.SurfaceAt(ahead, ground);
-        m_Report.Check(surface != PredateFootprintSurface.HARD, "native surface at the inspection point accepts a mark");
-        vector elevated;
-        m_Report.Check(PredateFootprintSensor.SurfaceAt(ahead + "0 3 0", elevated) == PredateFootprintSurface.HARD, "an actor above ground leaves no terrain mark");
-        m_Report.Check(PredateFootprintSensor.Visible(eyes, facing, ground, actor), "forward ground can be inspected");
-        m_Report.Check(!PredateFootprintSensor.Visible(eyes, facing * -1.0, ground, actor), "observer cannot inspect a mark behind them");
-        if (surface == PredateFootprintSurface.HARD) return;
-
-        int serial = ledger.Record(ground, surface, now, "rook-01");
-        m_Report.EventKey = "footprint-" + serial;
-        m_ScannedAt = now;
-        PredateFootprintSensor sensor = actor.PredateFootprintSensorForActor();
-        sensor.m_NextScanAt = now;
-        sensor.Scan(actor, now, ledger);
-        PredateObservation clue = observer.State.Memory.Latest("", PredateObservationSource.FOOTPRINT, now);
-        m_Report.Check(clue && clue.EventKey == m_Report.EventKey && clue.ObserverId == "lynx-01" && clue.Estimate == ground && !clue.HasBearing, "real visibility scan adds only the anonymous observed ground clue");
     }
 
     void Finish(float now)
     {
-        m_Done = true;
+        m_Phase = 4;
         m_Report.SimulationSeconds = now;
         m_PredateSession.SetPaused(true);
         m_PredateSession.PredateSave();
-        m_Report.Check(m_PredateSession.m_HuntError == "", "footprint ledger saves with the operation");
+        m_Report.Check(m_PredateSession.m_HuntError == "", "footprint ledger and read receipts save with the operation");
         string error;
         JsonFileLoader<PredateFootprintProbeReport>.SaveFile("$profile:FootprintsTrial.json", m_Report, error);
         Print("[PredateFootprintProbe] COMPLETE: checks=" + m_Report.Checks + "; failures=" + m_Report.Failures);

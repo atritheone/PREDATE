@@ -76,6 +76,10 @@ modded class PlayerBase
     bool m_PredateNativeInsertion;
     bool m_PredateSpawnRejected;
     ref array<int> m_PredateKillNotices = {};
+    string m_PredateFootprintNotice;
+    vector m_PredateFootprintLook;
+    int m_PredateFootprintLookSentAt;
+    int m_PredateFootprintLookReceivedAt;
     bool m_PredateSupplyNotice;
     string m_PredateModuleMessage;
     int m_PredateModuleMessageTime;
@@ -156,6 +160,16 @@ modded class PlayerBase
         rpc.Send(this, PredateProtocol.REQUEST, true);
     }
 
+    void PredateSendFootprintLook()
+    {
+        int now = GetGame().GetTime();
+        if (!GetGame().IsClient() || now < m_PredateFootprintLookSentAt + 250) return;
+        m_PredateFootprintLookSentAt = now;
+        ScriptRPC rpc = new ScriptRPC;
+        rpc.Write(GetGame().GetCurrentCameraDirection());
+        rpc.Send(this, PredateProtocol.FOOTPRINT_LOOK, false);
+    }
+
     override void OnRPC(PlayerIdentity sender, int rpc_type, ParamsReadContext ctx)
     {
         super.OnRPC(sender, rpc_type, ctx);
@@ -163,6 +177,17 @@ modded class PlayerBase
         {
             string message;
             if (ctx.Read(message)) PredateWeaponModuleMessage(message);
+            return;
+        }
+        if (rpc_type == PredateProtocol.FOOTPRINT_LOOK && GetGame().IsServer())
+        {
+            if (!sender || !GetIdentity() || sender.GetId() != GetIdentity().GetId() || !IsAlive() || IsUnconscious()) return;
+            int now = GetGame().GetTime();
+            if (now < m_PredateFootprintLookReceivedAt + 150) return;
+            vector look;
+            if (!ctx.Read(look) || !PredateInformationMath.FiniteVector(look) || look.LengthSq() < 0.8 || look.LengthSq() > 1.2) return;
+            m_PredateFootprintLook = look.Normalized();
+            m_PredateFootprintLookReceivedAt = now;
             return;
         }
         if (rpc_type == PredateProtocol.SESSION_REQUEST && GetGame().IsServer())
@@ -246,8 +271,18 @@ modded class PlayerBase
                 ok = ctx.Read(state.FootprintGround) && ctx.Read(state.FootprintHeading);
                 ok = ok && PredateInformationMath.FiniteVector(state.FootprintGround) && state.FootprintHeading >= 0 && state.FootprintHeading < 360;
             }
+            ok = ok && ctx.Read(state.FootprintsEnabled);
+            ok = ok && ctx.Read(state.OwnFootprint);
+            if (ok && state.OwnFootprint)
+            {
+                ok = ctx.Read(state.OwnFootprintGround) && ctx.Read(state.OwnFootprintHeading) && ctx.Read(state.InspectingOwnFootprint);
+                ok = ok && PredateInformationMath.FiniteVector(state.OwnFootprintGround) && state.OwnFootprintHeading >= 0 && state.OwnFootprintHeading < 360;
+            }
+            string footprintNotice;
+            ok = ok && ctx.Read(footprintNotice);
             if (ok)
             {
+                if (footprintNotice != "") m_PredateFootprintNotice = footprintNotice;
                 m_PredateState = state;
                 foreach (int slot : state.ConfirmedKills)
                     if (m_PredateKillNotices.Find(slot) < 0) m_PredateKillNotices.Insert(slot);

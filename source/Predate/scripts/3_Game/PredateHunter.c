@@ -259,6 +259,8 @@ class PredateHunterBrain
             if (!state.HasGoal || Distance(state.SearchCenter, contact.Estimate) > Math.Max(15, state.SearchRadius)) state.CheckedSectors = 0;
             state.SearchCenter = contact.Estimate;
             state.SearchRadius = Math.Min(200, contact.RadiusAt(now));
+            if (contact.Source == PredateObservationSource.FOOTPRINT && contact.HasBearing && contact.Confidence >= 0.4)
+                state.SearchCenter = contact.Estimate + PredateInformationMath.BearingDirection(contact.Bearing) * 14;
             state.SearchObservedAt = now;
             state.SearchUntil = Math.Min(contact.ExpiresAt, now + 90);
             if (limited) state.SearchUntil = Math.Min(state.SearchUntil, now + 24);
@@ -279,7 +281,8 @@ class PredateHunterBrain
             string reason = "Investigate an observed area; attribution remains unchanged";
             if (contact.Source == PredateObservationSource.FOOTSTEP) reason = "Investigate an area after repeated nearby footsteps";
             if (contact.Source == PredateObservationSource.LIGHT) reason = "Investigate a visible weapon light";
-            Goal(state, ownPosition, contact.Estimate, now, "investigate", reason, contact.EventKey);
+            if (contact.Source == PredateObservationSource.FOOTPRINT) reason = "Investigate locally after reading tracks";
+            Goal(state, ownPosition, state.SearchCenter, now, "investigate", reason, contact.EventKey);
             return;
         }
         if (freshApproach && !workingSensoryClue)

@@ -154,8 +154,9 @@ def layouts():
     footprint = label("FootprintClue", "", .35,.77,.30,.03,"0.77 0.83 0.85 1").replace(
         'ignorepointer 1', 'ignorepointer 1\nvisible 0\n"text halign" center').replace(
         'font "gui/fonts/etelkatextpro22"', 'scaled 0\nfont "gui/fonts/sdf_MetronBook24"\n"exact text" 1\n"exact text size" 14')
-    footprint += widget("ImageWidgetClass", "FootprintMark", 0,0,.01,.01,
-                        'ignorepointer 1\nvisible 0\nmode blend')
+    for name in ("FootprintMark", "OwnFootprintMark"):
+        footprint += widget("ImageWidgetClass", name, 0,0,.01,.01,
+                            'ignorepointer 1\nvisible 0\nmode blend\n"src alpha" 1\n"stretch mode" stretch_w_h\nfilter 1')
     notices = ""
     for index in range(6):
         notices += label(f"HuntNotice{index}", "", 0,index/6,1,1/6,"1 1 1 1").replace(

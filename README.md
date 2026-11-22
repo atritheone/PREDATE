@@ -37,6 +37,8 @@ The hunt persists between sessions. Surviving Operators carry their injuries and
 2. Open the map to see bearing pulses from Operators within 5 km of you when sampled. Each pulse covers a 15° range that can shift between samples. Overlapping arcs stack with nearer Operators inside farther ones. Every pulse has a clickable nameplate on the map. When a group is too dense for all its connecting lines to stay visible, hover over a name to show its line and highlight its arc. Hovering also previews the Operator and sampled distance. Pulse colours run from yellow for distant signals to red for nearby ones. The tracked arc is white with a distance-coloured outline, and the compass readout includes the estimated distance band.
 3. Select a contact to see its historical sectors on the terrain from where you took each reading. Final Approach starts as soon as you are within 250 metres of your tracked Operator. The compass hands off to sight and sound, and earlier sectors stay on the map. Bearing pulses still run every 90 seconds.
 
+Nearby footprints can be read with a brief look. The combat log reports a foreign trail once, with a direction when the marks are clear. Your own prints are visible and labelled on inspection. AI Operators can read and investigate the same clues. Footprint material adapted from [ambientCG Footsteps 002](https://ambientcg.com/view?id=Footsteps002), CC0.
+
 AI Operators get the same Final Approach cue for their own tracked contact. They pause to look and listen, then walk a short search guided by remembered bearings and anything they see or hear. They keep their normal combat and recovery priorities.
 4. Use **Save and Quit** to save the hunt and stop the local server. Select **Continue** in the launcher to resume it.
 

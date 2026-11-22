@@ -36,11 +36,26 @@ class PredateFootprintTests
         ledger.Nearby(site, 125, nearby);
         Check(nearby.Count() == 0, "expired mark cannot be rediscovered");
         ledger.Prune(125);
-        int oldest = ledger.Record(site, PredateFootprintSurface.SAND, 125);
-        for (int markIndex = 0; markIndex < PredateFootprintLedger.MAX_MARKS; markIndex++)
+        int trail = ledger.Record(site, PredateFootprintSurface.SAND, 125, "player-01", 46, 0, true);
+        ledger.Record(site + "0 0 4", PredateFootprintSurface.EARTH, 126, "player-01", 45, trail, true);
+        ledger.Nearby(site, 126, nearby);
+        PredateObservation headed = PredateFootprintLedger.Observe(nearby[0], "raven-01", site, 126, true);
+        Check(headed && headed.Valid("raven-01", 126) && headed.Bearing == 46 && PredateFootprintLedger.Notice(headed) == "Recent Tracks · Headed 46", "the notice and the observer retain the exact track heading");
+        Check(ledger.Read(nearby[0], "raven-01", 126) && !ledger.Read(nearby[1], "raven-01", 126) && ledger.Read(nearby[1], "lynx-01", 126) && !ledger.Read(nearby[0], "player-01", 126), "only the first foreign mark in a passage is read per observer");
+
+        PredateObservationMemory memory = new PredateObservationMemory;
+        memory.OwnerId = "raven-01";
+        memory.Add(headed, 126);
+        PredateHunterState hunter = new PredateHunterState;
+        hunter.OwnerId = "raven-01";
+        PredateHunterBrain.Step(hunter, site - "0 0 4", 126, memory, null, false, false);
+        Check(hunter.HasGoal && hunter.Goal[0] > site[0] && hunter.Goal[2] > site[2], "reading northeast tracks biases the AI search northeast");
+
+        ledger = new PredateFootprintLedger;
+        for (int markIndex = 0; markIndex <= PredateFootprintLedger.CELL_LIMIT; markIndex++)
             ledger.Record(site, PredateFootprintSurface.SNOW, 125);
         ledger.Nearby(site, 125, nearby);
-        Check(nearby.Count() == PredateFootprintLedger.MAX_MARKS && nearby[0].Serial > oldest && ledger.Validate(125), "footprint storage removes the oldest mark without reordering the remaining marks");
+        Check(nearby.Count() == PredateFootprintLedger.CELL_LIMIT && ledger.Validate(125), "local limits bound storage without erasing other areas");
         ledger.Prune(305);
         ledger.Nearby(site, 305, nearby);
         Check(nearby.Count() == 0, "all snow marks age out at their configured lifetime");

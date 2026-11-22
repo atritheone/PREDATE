@@ -64,6 +64,11 @@ class PredateHuntFeed
             player.m_PredateSupplyNotice = false;
         }
         if (!player.IsAlive() || !state || state.NeedsRedeploy) return;
+        if (player.m_PredateFootprintNotice != "")
+        {
+            Post(player.m_PredateFootprintNotice, 0xFFBFC8CB);
+            player.m_PredateFootprintNotice = "";
+        }
         string target;
         if (state.Locked && state.Available) target = state.OperatorId;
         if (target != "")

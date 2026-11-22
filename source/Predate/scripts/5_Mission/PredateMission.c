@@ -345,6 +345,18 @@ class PredateSession
             rpc.Write(footprintGround);
             rpc.Write(footprintHeading);
         }
+        PredateFootprintSensor footprintSensor = player.m_PredateFootprintSensor;
+        bool ownMark = !needsRedeploy && m_HuntConfig.EnableFootprints && footprintSensor && PredateFootprintLedger.Reachable(footprintSensor.m_Own, player.GetPosition(), now);
+        rpc.Write(m_HuntConfig.EnableFootprints);
+        rpc.Write(ownMark);
+        if (ownMark)
+        {
+            rpc.Write(footprintSensor.m_Own.Position);
+            rpc.Write(footprintSensor.m_Own.Heading);
+            rpc.Write(footprintSensor.m_InspectingOwn);
+        }
+        rpc.Write(player.m_PredateFootprintNotice);
+        player.m_PredateFootprintNotice = "";
         rpc.Send(player, PredateProtocol.STATE, true, player.GetIdentity());
         if (first) Print("[Predate] Sent receiver state; target available=" + available);
     }
@@ -563,7 +575,7 @@ class PredateSession
             PredatePeerBinding chosen;
             if (m_PeerRoster) chosen = m_PeerRoster.PlayerLock();
             bool closeApproach = PredatePlayerCloseApproach(player, chosen);
-            if (closeApproach != m_HuntSentCloseApproach || player.m_PredateKillNotices.Count() > 0 || m_HuntStateTimer >= 1)
+            if (closeApproach != m_HuntSentCloseApproach || player.m_PredateKillNotices.Count() > 0 || player.m_PredateFootprintNotice != "" || m_HuntStateTimer >= 1)
             {
                 bool confirmedKill = player.m_PredateKillNotices.Count() > 0;
                 PredateSend(player);

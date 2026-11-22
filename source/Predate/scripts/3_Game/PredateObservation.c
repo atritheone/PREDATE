@@ -118,7 +118,7 @@ class PredateObservation
         // Noise and bullet impact alone never prove who produced them.
         if (IsAudible() && SubjectId != "") return false;
         if (Source == PredateObservationSource.FOOTSTEP && (!HasPosition || HasBearing || VisualContactKey != "" || Radius <= 0)) return false;
-        if (Source == PredateObservationSource.FOOTPRINT && (!HasPosition || HasBearing || SubjectId != "")) return false;
+        if (Source == PredateObservationSource.FOOTPRINT && (!HasPosition || SubjectId != "" || VisualContactKey != "")) return false;
         if ((Source == PredateObservationSource.LIGHT || Source == PredateObservationSource.GLIMPSE) && (!HasPosition || HasBearing || SubjectId != "" || VisualContactKey != "" || Radius <= 0)) return false;
         if (Source == PredateObservationSource.VISUAL && (!HasPosition || (SubjectId == "" && VisualContactKey == ""))) return false;
         return true;

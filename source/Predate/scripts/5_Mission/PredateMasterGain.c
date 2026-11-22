@@ -65,7 +65,25 @@ modded class OptionsMenu
     {
         MissionGameplay mission = MissionGameplay.Cast(GetGame().GetMission());
         if (mission) mission.PredateRestoreMasterSlider();
-        return super.Init();
+        Widget root = super.Init();
+        if (!mission || !IsCLIParam("predateSessionId") || !root || !m_Tabber) return root;
+
+        for (int index = 0; index < m_Tabber.GetTabCount(); index++)
+        {
+            Widget panel = m_Tabber.GetTab(index);
+            if (!panel || !panel.FindAnyWidget("expansion_tab_content")) continue;
+            Widget control = root.FindAnyWidget("Tab_Control_" + index);
+            if (control)
+            {
+                control.Show(false);
+                control.Enable(false);
+            }
+            panel.Show(false);
+            panel.Enable(false);
+            m_Tabber.AlignTabbers();
+            break;
+        }
+        return root;
     }
 }
 #endif

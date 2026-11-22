@@ -2,8 +2,6 @@
 
 ## todo
 
-add signs of movement.
-
 add other maps.
 
 make the ai better at self-preservation.

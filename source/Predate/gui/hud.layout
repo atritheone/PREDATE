@@ -4249,6 +4249,24 @@ ImageWidgetClass FootprintMark {
  ignorepointer 1
 visible 0
 mode blend
+"src alpha" 1
+"stretch mode" stretch_w_h
+filter 1
+ {  }
+}
+ImageWidgetClass OwnFootprintMark {
+ position 0 0
+ size 0.01 0.01
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+mode blend
+"src alpha" 1
+"stretch mode" stretch_w_h
+filter 1
  {  }
 }
  }

@@ -1,6 +1,6 @@
 class PredateProtocol
 {
-    static const int VERSION = 18;
+    static const int VERSION = 19;
     static const int MAX_OPERATORS = 100;
     static const int MAX_BEARING_HISTORY = 4;
     static const int REQUEST = 918601;
@@ -9,6 +9,7 @@ class PredateProtocol
     static const int SESSION_REQUEST = 918604;
     static const int SESSION_ACK = 918605;
     static const int WEAPON_MODULE_LOG = 918606;
+    static const int FOOTPRINT_LOOK = 918608;
     static const int REQUEST_SUICIDE = 6;
     static ref array<string> s_OperatorIds = {
         "raven-01", "lynx-01", "rook-01", "viper-01", "kestrel-01", "jackal-01",
@@ -97,6 +98,11 @@ class PredateState
     int FootprintClue;
     vector FootprintGround;
     int FootprintHeading;
+    bool FootprintsEnabled;
+    bool OwnFootprint;
+    bool InspectingOwnFootprint;
+    vector OwnFootprintGround;
+    int OwnFootprintHeading;
     ref array<ref PredateReceiverSample> History = new array<ref PredateReceiverSample>;
     ref array<ref PredateBearingPulse> Pulses = new array<ref PredateBearingPulse>;
     string Message = "Establishing receiver link...";
@@ -147,6 +153,7 @@ class PredateConfig
     bool EnableSharedSignals;
     bool EnableStrategicHunter;
     bool EnableFootprints;
+    int FootprintRulesVersion;
     bool EnableOperatorRespawns;
     float OperatorRespawnDelay = 120;
 }

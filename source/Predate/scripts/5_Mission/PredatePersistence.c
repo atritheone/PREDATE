@@ -91,6 +91,8 @@ class PredatePersistence
             return Fail(s, "Multi-opponent operations require strategic hunters");
         if (s.m_HuntConfig.ExplicitPlayerStart && s.m_HuntProgress.PlayerPlacementRevision == 0 && !PredateSpawnPlanner.PlayerTerrain(s.m_HuntConfig.PlayerStart))
             return Fail(s, "The selected spawn is outside usable Chernarus ground. Choose a dry, level point for a new operation.");
+        if (s.m_HuntConfig.FootprintRulesVersion == 0)
+            s.m_HuntConfig.EnableFootprints = s.m_HuntConfig.EnableFootprints || s.m_HuntConfig.EnableStrategicHunter;
         if (s.m_HuntConfig.EnableFootprints && !s.m_HuntConfig.EnableStrategicHunter)
             return Fail(s, "Footprint observations require strategic hunters");
         if (!PredateInformationMath.Finite(record.RespawnAt) || record.RespawnAt < 0)

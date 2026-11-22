@@ -326,6 +326,7 @@ modded class MissionGameplay
     TextWidget m_PredateHudText;
     TextWidget m_PredateFootprintClue;
     ref PredateFootprintView m_PredateFootprintView;
+    ref PredateFootprintView m_PredateOwnFootprintView;
     string m_PredateReceiverContents;
     ref PredateCompass m_PredateCompass;
     float m_PredateUiTimer;
@@ -352,7 +353,8 @@ modded class MissionGameplay
         m_PredateHud = GetGame().GetWorkspace().CreateWidgets("Predate/gui/hud.layout");
         if (m_PredateHud) m_PredateHudText = TextWidget.Cast(m_PredateHud.FindAnyWidget("Receiver"));
         if (m_PredateHud) m_PredateFootprintClue = TextWidget.Cast(m_PredateHud.FindAnyWidget("FootprintClue"));
-        m_PredateFootprintView = new PredateFootprintView(m_PredateHud);
+        m_PredateFootprintView = new PredateFootprintView(m_PredateHud, "FootprintMark");
+        m_PredateOwnFootprintView = new PredateFootprintView(m_PredateHud, "OwnFootprintMark");
         m_PredateHuntFeed = new PredateHuntFeed;
         m_PredateCompass = new PredateCompass(m_PredateHud);
         m_PredateCompass.SelfTest();
@@ -473,16 +475,25 @@ modded class MissionGameplay
         if (m_PredateTesting && state && state.Development) PredateTestReceiver(player, state, timeslice);
         if (m_PredateFootprintClue)
         {
-            bool clueVisible = state && state.FootprintClue > 0 && !GetGame().GetUIManager().GetMenu();
-            bool projected = m_PredateFootprintView.Update(player, state, clueVisible);
-            m_PredateFootprintClue.Show(clueVisible && !projected);
-            if (clueVisible && !projected)
+            bool canSeeGround = player && player.IsAlive() && state && !needsRedeploy && !GetGame().GetUIManager().GetMenu();
+            if (canSeeGround)
             {
-                if (state.FootprintClue == 2) m_PredateFootprintClue.SetText("Recent footprints");
-                else m_PredateFootprintClue.SetText("Faint footprints");
+                if (state.FootprintsEnabled) player.PredateSendFootprintLook();
+                float strength = 0.62;
+                if (state.FootprintClue == 1) strength = 0.44;
+                m_PredateFootprintView.Update(player, state.FootprintGround, state.FootprintHeading, strength, state.FootprintClue > 0);
+                bool ownVisible = m_PredateOwnFootprintView.Update(player, state.OwnFootprintGround, state.OwnFootprintHeading, 0.35, state.OwnFootprint);
+                m_PredateFootprintClue.Show(ownVisible && state.InspectingOwnFootprint);
+                if (ownVisible && state.InspectingOwnFootprint) m_PredateFootprintClue.SetText("Your Tracks");
+            }
+            else
+            {
+                m_PredateFootprintView.Hide();
+                m_PredateOwnFootprintView.Hide();
+                m_PredateFootprintClue.Show(false);
             }
         }
-        if (m_PredateFootprintTest && !m_PredateFootprintTest.Update(state, m_PredateFootprintClue, m_PredateFootprintView.m_Image))
+        if (m_PredateFootprintTest && !m_PredateFootprintTest.Update(player, state, m_PredateFootprintView, m_PredateOwnFootprintView, m_PredateFootprintClue, m_PredateHuntFeed))
             m_PredateFootprintTest = null;
         string text = "Map  M";
         if (state && state.Available && state.Locked)
