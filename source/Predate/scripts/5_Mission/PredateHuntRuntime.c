@@ -174,6 +174,7 @@ class PredateHuntRuntime
             PredateRoutePlanner.RecordObservedSectors(actor, hunter.Hunter, now);
             hunter.Hunter.WatchUntil = 0;
         }
+        actor.PredateSetFinalApproachStance(finalApproach && !recover);
         actor.PredateSetFinalApproach(finalApproach && !combat && !recover);
         PredateHunterBrain.Step(hunter.Hunter, position, now, hunter.Memory, track, combat, recover, now < hunter.InterceptedUntil, session.m_WorldState.PlayerLastDeathAt, playerId, subject, receiver.Replanned, limited, finalApproach);
         if (track && track.LastSample && track.LastSample.ObservedAt == now && session.m_PeerRoster)

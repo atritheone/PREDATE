@@ -8,6 +8,7 @@ modded class eAIBase
     vector m_PredateWatchPoint;
     float m_PredateWatchUntil;
     protected bool m_PredateFinalApproachPace;
+    protected bool m_PredateFinalApproachStance;
     protected int m_PredateTravelLimit;
     protected int m_PredateThreatLimit;
 
@@ -46,6 +47,29 @@ modded class eAIBase
         else SetMovementSpeedLimits(m_PredateTravelLimit, m_PredateThreatLimit);
     }
 
+    void PredateSetFinalApproachStance(bool active)
+    {
+        m_PredateFinalApproachStance = active;
+        if (!active) return;
+        // Expansion's movement command still checks clearance before raising the stance.
+        if (m_eAI_StancePreference == DayZPlayerConstants.STANCEIDX_PRONE || (m_eAI_StancePreference == -1 && eAI_GetStance() == DayZPlayerConstants.STANCEIDX_PRONE))
+            OverrideStance(DayZPlayerConstants.STANCEIDX_CROUCH);
+    }
+
+    override bool OverrideStance(int pStanceIdx, bool force = false)
+    {
+        if (m_PredateFinalApproachStance && pStanceIdx == DayZPlayerConstants.STANCEIDX_PRONE)
+            return super.OverrideStance(DayZPlayerConstants.STANCEIDX_CROUCH, force);
+        return super.OverrideStance(pStanceIdx, force);
+    }
+
+    static float PredateScanOffset(int step, float angle)
+    {
+        if (step == 1) return -angle;
+        if (step == 3) return angle;
+        return 0;
+    }
+
     bool PredateTacticalPriority(float now)
     {
         if (m_PredateLastVisualAt >= 0 && now - m_PredateLastVisualAt <= 2) return true;
@@ -82,10 +106,14 @@ modded class eAIBase
             if (toward.LengthSq() > 1)
             {
                 vector angles = toward.VectorToAngles();
-                float relative = ExpansionMath.AngleDiff2(GetOrientation()[0], angles[0]);
+                float scanOffset;
+                if (m_PredateFinalApproachPace) scanOffset = PredateScanOffset(m_PredateLookStep, 45);
+                float scanHeading = angles[0] + scanOffset;
+                float relative = ExpansionMath.AngleDiff2(GetOrientation()[0], scanHeading);
                 if (Math.AbsFloat(relative) > 60)
                 {
                     vector point = m_PredateWatchPoint;
+                    if (scanOffset != 0) point = eyes + PredateInformationMath.BearingDirection(scanHeading) * toward.Length();
                     point[1] = eyes[1];
                     LookAtPosition(point);
                     AimAtPosition(point);
@@ -117,8 +145,7 @@ modded class eAIBase
         }
         float sideLook = 68;
         if (m_PredateRouteActive) sideLook = 55;
-        if (m_PredateLookStep == 1) heading -= sideLook;
-        if (m_PredateLookStep == 3) heading += sideLook;
+        heading += PredateScanOffset(m_PredateLookStep, sideLook);
         vector gaze = Vector(Math.Clamp(heading, -75, 75), 0, 0);
         LookAtDirection(gaze.AnglesToVector());
         AimAtDirection("0 0 1");
