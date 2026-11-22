@@ -47,6 +47,10 @@ class PredateKnowledgeTests
 
     void Run()
     {
+        float daylight = PredateVisualRecognition.DistanceQuality(550, 1000, 1000);
+        float nightVision = PredateVisualRecognition.DistanceQuality(550, 800, 1000);
+        Check(daylight > 0 && daylight == nightVision, "a target within both sight limits builds recognition at the same rate");
+        Check(PredateVisualRecognition.DistanceQuality(850, 800, 1000) == 0 && PredateVisualRecognition.DistanceQuality(850, 1000, 1000) > 0, "the night sight limit still blocks more distant targets");
         PredateObservationMemory memory = new PredateObservationMemory;
         memory.OwnerId = "raven-01";
         PredateObservation observation = Visual("visual-1", 10, "50 0 60");

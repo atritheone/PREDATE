@@ -3,6 +3,8 @@
 modded class eAIBase
 {
     protected static const float PREDATE_NVG_RANGE = 800.0;
+    protected static const float PREDATE_PERIPHERAL_RANGE = 250.0;
+    protected static const float PREDATE_PERIPHERAL_HALF_ANGLE = 100.0;
     bool m_PredateCombatEnabled;
     bool m_PredateKnowledgeEnabled;
     string m_PredateOperatorId;
@@ -263,6 +265,7 @@ modded class eAIBase
         PlayerBase selected;
         float closest = m_eAI_ThreatDistanceLimit * m_eAI_ThreatDistanceLimit;
         vector own = GetPosition();
+        bool allowPeripheral = !exclude && !m_PredateVisualTarget && m_PredateSimulationTime >= m_PredateGlanceUntil;
         // The roster cursor is independent of the native one-player update.
         for (int i = 0; i < 4 && m_PredateSightCursor; i++)
         {
@@ -272,16 +275,22 @@ modded class eAIBase
             if ((person.IsAI() && person.IsUnconscious()) || !PlayerIsEnemy(person) || person.Expansion_IsInSafeZone()) continue;
             float distanceSq = vector.DistanceSq(own, person.GetPosition());
             if (distanceSq > closest) continue;
-            float quality = PredateVisualQuality(person);
+            bool peripheral;
+            float quality = PredateVisualQuality(person, allowPeripheral, peripheral);
             if (quality <= 0) continue;
-            PredateRecognize(eAI_GetTargetInformationState(person.GetTargetInformation(), false), person, quality);
+            PredateRecognize(eAI_GetTargetInformationState(person.GetTargetInformation(), false), person, quality, peripheral);
+            if (peripheral)
+            {
+                allowPeripheral = m_PredateSimulationTime >= m_PredateGlanceUntil;
+                continue;
+            }
             closest = distanceSq;
             selected = person;
         }
         return selected;
     }
 
-    bool PredateRecognize(eAITargetInformationState state, PlayerBase person, float quality)
+    bool PredateRecognize(eAITargetInformationState state, PlayerBase person, float quality, bool peripheral = false)
     {
         if (!state) return false;
         if (!state.m_PredateRecognition)
@@ -290,8 +299,8 @@ modded class eAIBase
             state.m_PredateRecognition = new PredateVisualRecognition;
         }
         PredateVisualRecognition recognition = state.m_PredateRecognition;
-        bool confirmed = recognition.Sample(m_PredateSimulationTime, quality);
-        if (confirmed || quality <= 0 || recognition.Score < 0.2 || !m_PredateMemory) return confirmed;
+        bool confirmed = !peripheral && recognition.Sample(m_PredateSimulationTime, quality);
+        if (confirmed || quality <= 0 || (!peripheral && recognition.Score < 0.2) || !m_PredateMemory) return confirmed;
         if (recognition.RecordedAt >= 0 && m_PredateSimulationTime - recognition.RecordedAt < 8) return false;
         vector estimate = person.GetPosition();
         float radius = Math.Max(12, vector.Distance(GetPosition(), estimate) * 0.08);
@@ -326,8 +335,9 @@ modded class eAIBase
             Print("[PredateAI] operator=" + m_PredateOperatorId + "; simulation=" + m_PredateSimulationTime + "; action=" + action);
     }
 
-    float PredateVisualQuality(PlayerBase person)
+    float PredateVisualQuality(PlayerBase person, bool allowPeripheral = false, out bool peripheral = false)
     {
+        peripheral = false;
         if (IsUnconscious() || person.Expansion_HasAdminToolInvisibility()) return 0;
         string eyeBone = "Head";
         if (IsRaised()) eyeBone = "Neck";
@@ -336,19 +346,28 @@ modded class eAIBase
         vector sight = body - eyes;
         float distance = sight.Length();
         float limit = eAI_GetVisibilityDistanceLimit(person);
-        if (distance < 0.1 || distance > limit) return 0;
-        float angle = PredateMath.RelativeBearing(PredateMath.CameraHeading(sight), PredateMath.CameraHeading(GetLookDirection()));
+        // Lighting controls whether the target is in range. A shorter sight
+        // limit should not reduce recognition of a target still inside it.
+        float recognitionRange = Math.Min(m_eAI_ThreatDistanceLimit, 1100.0);
+        float quality = PredateVisualRecognition.DistanceQuality(distance, limit, recognitionRange);
+        if (quality <= 0) return 0;
+        float angle = Math.AbsFloat(PredateMath.RelativeBearing(PredateMath.CameraHeading(sight), PredateMath.CameraHeading(GetLookDirection())));
         float halfAngle = eAI_CalculateFOVHalfAngleH(distance);
-        if (Math.AbsFloat(angle) > halfAngle) return 0;
+        if (angle > halfAngle)
+        {
+            // A side glimpse can turn the observer toward a nearby candidate.
+            // Direct sight checks still require the usual recognition cone.
+            if (!allowPeripheral || distance > PREDATE_PERIPHERAL_RANGE || angle > PREDATE_PERIPHERAL_HALF_ANGLE) return 0;
+            peripheral = true;
+        }
         bool bodyVisible = PredateContactRay(person, eyes, body);
         string secondBone = "Head";
         if (bodyVisible) secondBone = "spine3";
         vector secondPoint = person.GetBonePositionWS(person.GetBoneIndexByName(secondBone));
         bool secondVisible = PredateContactRay(person, eyes, secondPoint);
         if (!secondVisible && !bodyVisible) return 0;
-        float quality = Math.Lerp(5, 0.65, distance / limit);
         if (!secondVisible || !bodyVisible) quality *= 0.65;
-        quality *= Math.Lerp(1, 0.55, Math.AbsFloat(angle) / halfAngle);
+        quality *= Math.Lerp(1, 0.55, Math.Min(1, angle / halfAngle));
         if (person.Expansion_GetActualVelocity().LengthSq() >= 1) quality *= 1.25;
         return quality;
     }

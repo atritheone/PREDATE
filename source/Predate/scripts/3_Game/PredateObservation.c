@@ -18,6 +18,12 @@ class PredateVisualRecognition
     float VisibleAt = -1;
     float RecordedAt = -1;
 
+    static float DistanceQuality(float distance, float visibilityLimit, float recognitionRange)
+    {
+        if (distance < 0.1 || distance > visibilityLimit || recognitionRange <= 0) return 0;
+        return Math.Lerp(5, 0.65, Math.Clamp(distance / recognitionRange, 0, 1));
+    }
+
     bool Sample(float now, float quality)
     {
         if (SampleAt == now) return quality > 0 && Score >= 1;

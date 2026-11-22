@@ -88,8 +88,22 @@ modded class eAIBase
 
     override bool eAI_UpdateLookDirectionPreference()
     {
-        if (!m_PredateStrategicControl || !m_PredateCombatEnabled || m_eAI_IsFightingFSM || GetCurrentCommandID() != DayZPlayerConstants.COMMANDID_MOVE || !m_eAI_CommandMove || m_eAI_CommandMove.GetBlockingObject())
+        if (!m_PredateCombatEnabled || m_eAI_IsFightingFSM || GetCurrentCommandID() != DayZPlayerConstants.COMMANDID_MOVE || !m_eAI_CommandMove || m_eAI_CommandMove.GetBlockingObject())
             return super.eAI_UpdateLookDirectionPreference();
+
+        if (!m_PredateVisualTarget && m_PredateSimulationTime < m_PredateGlanceUntil)
+        {
+            vector glance = m_PredateGlancePoint;
+            vector glanceEyes = GetBonePositionWS(GetBoneIndexByName("Head"));
+            glance[1] = glanceEyes[1];
+            if (vector.DistanceSq(glance, GetPosition()) > 1)
+            {
+                LookAtPosition(glance);
+                AimAtDirection("0 0 1");
+                return true;
+            }
+        }
+        if (!m_PredateStrategicControl) return super.eAI_UpdateLookDirectionPreference();
 
         int now = GetGame().GetTime();
         if (now >= m_PredateNextLookAt)
@@ -123,17 +137,6 @@ modded class eAIBase
                     LookAtDirection(Vector(relative, Math.Clamp(angles[1], -25, 25), 0).AnglesToVector());
                     AimAtDirection("0 0 1");
                 }
-                return true;
-            }
-        }
-        if (m_PredateRouteActive && m_PredateSimulationTime < m_PredateGlanceUntil)
-        {
-            vector towardClue = m_PredateGlancePoint - GetPosition();
-            float relativeClue = ExpansionMath.AngleDiff2(GetOrientation()[0], towardClue.VectorToAngles()[0]);
-            if (towardClue.LengthSq() > 1 && Math.AbsFloat(relativeClue) <= 100)
-            {
-                LookAtDirection(Vector(Math.Clamp(relativeClue, -75, 75), 0, 0).AnglesToVector());
-                AimAtDirection("0 0 1");
                 return true;
             }
         }

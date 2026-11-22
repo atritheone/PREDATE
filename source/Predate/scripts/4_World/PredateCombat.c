@@ -125,9 +125,14 @@ modded class eAIBase
     EntityAI m_PredateAimPauseTarget;
     vector m_PredateAimPausePosition;
 
+    bool PredateHoldingAim(eAITarget target)
+    {
+        return m_PredateCombatEnabled && target && target.m_LOS && m_PredateAimPauseTarget && target.GetEntity() == m_PredateAimPauseTarget && m_PredateVisualTarget == m_PredateAimPauseTarget && m_PredateSimulationTime < m_PredateAimPauseUntil && !m_eAI_IsInDangerByArea && !eAI_IsSideStepping();
+    }
+
     override void OverrideTargetPosition(eAITarget target, bool isFinal = true)
     {
-        if (m_PredateCombatEnabled && target && target.m_LOS && m_PredateAimPauseTarget && target.GetEntity() == m_PredateAimPauseTarget && m_PredateSimulationTime < m_PredateAimPauseUntil && !m_eAI_IsInDangerByArea && !eAI_IsSideStepping() && GetCurrentCommandID() == DayZPlayerConstants.COMMANDID_MOVE)
+        if (PredateHoldingAim(target) && GetCurrentCommandID() == DayZPlayerConstants.COMMANDID_MOVE)
         {
             OverrideTargetPosition(m_PredateAimPausePosition, true, 0.25, false);
             return;
@@ -352,6 +357,17 @@ modded class eAIBase
         m_PredateAimPauseUntil = 0;
         if (PredateServerDiagnostics.TraceOperators && (m_PredateFiredShots <= 10 || m_PredateFiredShots % 20 == 0))
             Print("[Predate] Deliberate shot " + m_PredateFiredShots + "; range=" + Math.Round(distance) + "m; minimum pause=" + interval + "s.");
+    }
+}
+
+modded class eAICommandMove
+{
+    override void SetSpeedLimit(float pSpeedIdx)
+    {
+        // Expansion can keep jogging with a hold-position waypoint or a
+        // walking limit while raised. Zero makes this brief stop effective.
+        if (pSpeedIdx != 0 && m_Unit.PredateHoldingAim(m_Unit.GetTarget())) pSpeedIdx = 0;
+        super.SetSpeedLimit(pSpeedIdx);
     }
 }
 
