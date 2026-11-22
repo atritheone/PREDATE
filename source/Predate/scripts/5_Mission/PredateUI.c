@@ -155,7 +155,7 @@ class PredateTrackerMenu : UIScriptedMenu
         else if (state.Pulses.Count() == 0) m_Bearing.SetText("No pulse");
         else m_Bearing.SetText("");
         if (state.Locked && !state.CanDeploy)
-            m_Timing.SetText("Sample age " + Math.Floor(state.Age).ToString() + "s    |    Next pulse " + Math.Ceil(state.NextPulse).ToString() + "s");
+            m_Timing.SetText("Sample age " + Math.Floor(state.Age).ToString() + "s    |    Next Pulse " + Math.Ceil(state.NextPulse).ToString() + "s");
         else if (m_ConfirmReplacement) m_Timing.SetText("Keep your gear for the next hunt?");
         else if (state.CanDeploy) m_Timing.SetText("Start another hunt to bring in an Operator.");
         else m_Timing.SetText("");
@@ -490,10 +490,10 @@ modded class MissionGameplay
             if (state.CloseApproach) text = "Final Approach - Track by Sight";
             else if (state.HasPulse)
             {
-                text = PredateProtocol.DisplayName(state.OperatorId) + "  |  " + PredateBearingPulse.RangeText(state.Bearing);
+                text = PredateProtocol.DisplayName(state.OperatorId) + "  |  " + PredateBearingPulse.RangeText(state.Bearing, " – ");
                 PredateBearingPulse tracked = state.TrackedPulse();
-                if (tracked) text += "  |  " + tracked.DistanceText();
-                text += "  |  Next pulse " + Math.Ceil(state.NextPulse).ToString() + "s";
+                if (tracked) text += "  |  " + tracked.DistanceText(" – ");
+                text += "  |  Next Pulse " + Math.Ceil(state.NextPulse).ToString() + "s";
             }
         }
         if (PredatePresentationOptions.Current().HighContrast) m_PredateHudText.SetColor(0xFFFFFFFF);

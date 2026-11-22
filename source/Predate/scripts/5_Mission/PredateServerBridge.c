@@ -89,6 +89,18 @@ class PredateServerBridge
             PlayerBase player = PlayerBase.Cast(man);
             if (!player) continue;
             if (!player.GetIdentity()) continue;
+            if (player.m_PredateSuicideRequested)
+            {
+                player.m_PredateSuicideRequested = false;
+                if (m_Session.m_Paused && !m_Session.m_Suspending && !player.m_PredateSessionQuitRequested && m_Session.m_HuntReady && m_Session.m_HuntError == "" && !m_Session.m_WorldState.PlayerAwaitingRedeploy && player.IsAlive() && player.IsPlayerLoaded())
+                {
+                    bool allowedDamage = player.GetAllowDamage();
+                    // Accept this deliberate life change while gameplay stays held.
+                    player.SetAllowDamage(true);
+                    player.SetHealth("", "Health", 0);
+                    player.SetAllowDamage(allowedDamage);
+                }
+            }
             m_Status.Players++;
             m_Status.PlayerHealth = player.GetHealth("", "Health");
             m_Status.PlayerBlood = player.GetHealth("", "Blood");

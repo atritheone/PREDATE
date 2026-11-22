@@ -8,6 +8,7 @@
     {
       "Id": "spectral", "Name": "Spectral",
       "Body": "TShirt_White", "Legs": "CanvasPants_Beige", "Feet": "WorkingBoots_Brown",
+      "PresetLegs": "PredateSpectralTrousers", "PresetPouches": "PredateRiflePouches_Desert",
       "Mask": "BalaclavaMask_Black",
       "Vest": "PlateCarrierVest_Desert", "Pouches": "PlateCarrierPouches_Desert", "Gloves": "TacticalGloves_Black",
       "Eyewear": "PredateOperatorHeadstrap_Black", "NightVision": "PredateOperatorNVG_Black",
@@ -16,6 +17,7 @@
     {
       "Id": "ghost", "Name": "Ghost",
       "Body": "Hoodie_Grey", "Legs": "PredateChinos_Brown", "Feet": "WorkingBoots_Brown",
+      "PresetLegs": "PredateGhostTrousers", "PresetPouches": "PredateRiflePouches_Black",
       "Mask": "BalaclavaMask_Black",
       "Vest": "PlateCarrierVest_Black", "Pouches": "PlateCarrierPouches_Black", "Gloves": "TacticalGloves_Black",
       "Eyewear": "PredateOperatorHeadstrap_Black", "NightVision": "PredateOperatorNVG_Black",
@@ -24,6 +26,7 @@
     {
       "Id": "operator", "Name": "Operator",
       "Body": "Hoodie_Black", "Legs": "Jeans_BlueDark", "Feet": "Sneakers_White",
+      "PresetLegs": "PredateOperatorTrousers", "PresetPouches": "PredateRiflePouches_Desert",
       "Mask": "BalaclavaMask_Black",
       "Vest": "PlateCarrierVest_Desert", "Pouches": "PlateCarrierPouches_Desert", "Gloves": "TacticalGloves_Black",
       "Eyewear": "PredateOperatorHeadstrap_Tan", "NightVision": "PredateOperatorNVG_Tan",
@@ -32,6 +35,7 @@
     {
       "Id": "original-uniform", "Name": "File",
       "Body": "TTsKOJacket_Camo", "Legs": "TTSKOPants", "Feet": "MilitaryBoots_Black",
+      "PresetPouches": "PredateRiflePouches",
       "Headgear": "Mich2001Helmet", "InRotation": false
     },
     {"Id": "white-tee", "Name": "White T-shirt", "Body": "TShirt_White", "Legs": "Jeans_Black", "Feet": "Sneakers_Black", "Mask": "BalaclavaMask_Black", "InRotation": false, "Legacy": true},

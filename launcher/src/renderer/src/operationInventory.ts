@@ -323,10 +323,12 @@ interface ClothingPreset {
   Name: string
   Body: string
   Legs: string
+  PresetLegs?: string
   Feet: string
   Mask?: string
   Vest?: string
   Pouches?: string
+  PresetPouches?: string
   Gloves?: string
   Headgear?: string
   Eyewear?: string
@@ -344,7 +346,11 @@ function clothingPreset(id: string): ClothingPreset {
 }
 
 function wornClothing(outfit: ClothingPreset): Inventory {
-  return { Body: newItem(outfit.Body), Legs: newItem(outfit.Legs), Feet: newItem(outfit.Feet) }
+  return {
+    Body: newItem(outfit.Body),
+    Legs: newItem(outfit.PresetLegs ?? outfit.Legs),
+    Feet: newItem(outfit.Feet),
+  }
 }
 
 function outfitMount(outfit: ClothingPreset): ['Headgear' | 'Eyewear', string] {
@@ -385,7 +391,9 @@ function issuedPlayerGear(outfit: ClothingPreset, kitId: string): Inventory {
       : (outfit.NightVision ?? standardGoggles)
   mount.attachments.NVG = newItem(goggles)
   const vest = newItem(outfit.Vest ?? 'PlateCarrierVest')
-  vest.attachments.VestPouch = newItem(outfit.Pouches ?? 'PlateCarrierPouches')
+  vest.attachments.VestPouch = newItem(
+    outfit.PresetPouches ?? outfit.Pouches ?? 'PlateCarrierPouches',
+  )
   return {
     [mountSlot]: mount,
     Vest: vest,
@@ -522,9 +530,10 @@ export function starterInventory(id: string, outfitId: string): Inventory {
     ...Array<string>(presets.StartingBandages).fill('BandageDressing'),
     ...Array<string>(presets.StartingMorphine).fill('Morphine'),
   ]
-  for (const id of supplies) pack(newItem(id), [pouches])
+  const suppliesContainer = outfit.Legacy ? pouches : root.Legs
+  for (const id of supplies) pack(newItem(id), [suppliesContainer])
 
-  const rifleMagazineContainers = [root.Legs, root.Body]
+  const rifleMagazineContainers = outfit.Legacy ? [root.Legs, root.Body] : [pouches]
   const sidearmMagazineContainers = [root.Hips]
   const spareLimit = modern ? modernLoadouts.Equipment.SpareMagazines : playerSpareMagazines
   for (const [id, count, containers] of [

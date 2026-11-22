@@ -45,7 +45,9 @@ class PredateReceiverValidation
         player.SetIsInThirdPerson(true);
         result.Check(player.CameraHandler(0) == DayZPlayerCameras.DAYZCAMERA_1ST && !player.IsInThirdPerson());
         result.Check(state.HasPulseOrigin && state.PulseOrigin[0] == 4500 && state.PulseOrigin[2] == 6500 && state.BearingError > 0 && state.Intercepted);
-        result.Check(Fits(mission.m_PredateHudText) && mission.m_PredateReceiverContents.Contains("Raven") && mission.m_PredateReceiverContents.Contains("250–500 m") && mission.m_PredateReceiverContents.Contains("Next"), "the compass readout fits the tracked pulse range");
+        string bearing = PredateBearingPulse.RangeText(state.Bearing, " – ");
+        string readout = mission.m_PredateReceiverContents;
+        result.Check(Fits(mission.m_PredateHudText) && readout.Contains("Raven") && readout.Contains(bearing) && readout.Contains("250 – 500 m") && readout.Contains("Next Pulse "), "the compass readout fits the tracked pulse range");
         PredateHuntFeed feed = mission.m_PredateHuntFeed;
         result.Check(HuntWarningVisible(feed));
         player.m_PredateKillNotices.Insert(0);
@@ -56,13 +58,12 @@ class PredateReceiverValidation
         result.Check(feed.m_Rows[0].GetColor() == 0xFFFFFFFF);
         PredateState death = new PredateState;
         death.NeedsRedeploy = true;
-        feed.Update(player, death, 0);
         int noticeCount = feed.m_Notices.Count();
         feed.Update(player, death, 0);
-        result.Check(feed.m_Notices[0].Text == "You are KIA." && feed.m_Rows[0].GetColor() == PredateHuntFeed.DEATH && feed.m_Notices.Count() == noticeCount);
+        result.Check(feed.m_Notices.Count() == noticeCount, "player death adds no notice");
         feed.Show(false);
         feed.Update(player, state, 7);
-        result.Check(feed.m_Notices.Count() == noticeCount - 1 && HuntWarningVisible(feed), "live notices remain queued and the death notice clears");
+        result.Check(feed.m_Notices.Count() == noticeCount && HuntWarningVisible(feed), "live notices remain queued while the feed is hidden");
         feed.Show(true);
         feed.Update(player, state, 7);
         result.Check(!feed.m_Rows[0].IsVisible());

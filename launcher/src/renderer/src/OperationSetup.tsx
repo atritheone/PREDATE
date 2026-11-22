@@ -97,7 +97,7 @@ export function readOperationDraft(): OperationDraft {
       draft.playerOutfit = clothingPresets.find(
         (outfit) =>
           worn.Body?.id === outfit.Body &&
-          worn.Legs?.id === outfit.Legs &&
+          (worn.Legs?.id === outfit.Legs || worn.Legs?.id === (outfit.PresetLegs ?? outfit.Legs)) &&
           worn.Feet?.id === outfit.Feet &&
           (!outfit.Vest || worn.Vest?.id === outfit.Vest),
       )?.Id

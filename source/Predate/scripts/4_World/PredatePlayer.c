@@ -4,6 +4,15 @@ class PredatePlayerLifeEvents
     static ref ScriptInvoker LocalDeath = new ScriptInvoker;
 }
 
+modded class EmoteManager
+{
+    override bool CanPlayEmote(int id)
+    {
+        if (id == EmoteConstants.ID_EMOTE_SUICIDE && IsCLIParam("predateSessionId")) return false;
+        return super.CanPlayEmote(id);
+    }
+}
+
 modded class DayZPlayerImplement
 {
 #ifndef SERVER
@@ -61,6 +70,7 @@ modded class PlayerBase
     string m_PredateRequestedOperator = "raven-01";
     bool m_PredateReceivedState;
     bool m_PredateSessionQuitRequested;
+    bool m_PredateSuicideRequested;
     bool m_PredateStagedForDeployment;
     bool m_PredateDeathRecorded;
     bool m_PredateNativeInsertion;
@@ -186,6 +196,11 @@ modded class PlayerBase
             if (!ctx.Read(operatorId)) return;
             if (ctx.Read(request) && PredateProtocol.AcceptRequest(version, operatorId, request))
             {
+                if (request == PredateProtocol.REQUEST_SUICIDE)
+                {
+                    m_PredateSuicideRequested = true;
+                    return;
+                }
                 m_PredateRequest = request;
                 m_PredateRequestedOperator = operatorId;
                 Print("[Predate] Received receiver request " + request);

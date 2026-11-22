@@ -18,10 +18,27 @@ class PredateDeathPresentation
     }
 }
 
+modded class GesturesMenu
+{
+    override protected void GetGestureItems(out array<ref GestureMenuItem> gesture_items, GestureCategories category)
+    {
+        super.GetGestureItems(gesture_items, category);
+        if (!IsCLIParam("predateSessionId")) return;
+        for (int index = 0; index < gesture_items.Count(); index++)
+        {
+            if (gesture_items[index].GetID() != EmoteConstants.ID_EMOTE_SUICIDE) continue;
+            gesture_items.RemoveOrdered(index);
+            return;
+        }
+    }
+}
+
 modded class InGameMenu
 {
+    static const int PREDATE_SUICIDE_DIALOG = 918607;
     bool m_PredateDeploymentScreen;
     bool m_PredateRedeployPending;
+    bool m_PredateSuicidePending;
     bool m_PredateDeploymentTest;
     Widget m_PredateDeathOptions;
     Widget m_PredatePauseBrand;
@@ -69,6 +86,7 @@ modded class InGameMenu
         {
             ButtonSetText(m_ExitButton, "Save and Quit");
             ButtonSetText(m_ContinueButton, "Resume");
+            ButtonSetText(m_RestartButton, "Suicide");
         }
         return root;
     }
@@ -117,12 +135,12 @@ modded class InGameMenu
             GetGame().GetMission().Continue();
             return;
         }
+        if (agent) m_RestartButton.Show(PredateCanSuicide(player, agent));
         if (!agent || (!agent.m_UserPaused && !agent.m_ResumePending)) return;
         m_ContinueButton.Show(true);
         m_ContinueButton.Enable(!agent.m_ResumePending);
         if (agent.m_ResumePending) ButtonSetText(m_ContinueButton, "Resuming...");
         else ButtonSetText(m_ContinueButton, "Resume");
-        m_RestartButton.Show(false);
         m_RespawnButton.Show(false);
         m_SeparatorPanel.Show(false);
     }
@@ -193,6 +211,38 @@ modded class InGameMenu
         else GameRespawn(true);
     }
 
+    bool PredateCanSuicide(PlayerBase player, PredateClientAgent agent)
+    {
+        if (!agent || !agent.m_UserPaused || !agent.m_ServerFrozen || agent.m_ResumePending || agent.m_QuitRequested || agent.m_PauseDisconnected) return false;
+        if (m_PredateSuicidePending || !player || !player.IsAlive() || !player.IsPlayerLoaded()) return false;
+        return player.m_PredateState && !player.m_PredateState.NeedsRedeploy;
+    }
+
+    override protected void OnClick_Restart()
+    {
+        PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
+        if (!agent)
+        {
+            super.OnClick_Restart();
+            return;
+        }
+        if (!PredateCanSuicide(PlayerBase.Cast(GetGame().GetPlayer()), agent)) return;
+        GetGame().GetUIManager().ShowDialog("Suicide", "End this life? You can redeploy in the same hunt.",
+            PREDATE_SUICIDE_DIALOG, DBT_YESNO, DBB_NO, DMT_QUESTION, this);
+    }
+
+    override bool OnModalResult(Widget w, int x, int y, int code, int result)
+    {
+        if (code != PREDATE_SUICIDE_DIALOG) return super.OnModalResult(w, x, y, code, result);
+        PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+        if (result == DBB_YES && PredateCanSuicide(player, GetDayZGame().m_PredateClientAgent))
+        {
+            m_PredateSuicidePending = true;
+            player.PredateRequest(PredateProtocol.REQUEST_SUICIDE);
+        }
+        return true;
+    }
+
     override bool OnKeyDown(Widget w, int x, int y, int key)
     {
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
@@ -228,6 +278,8 @@ modded class MissionGameplay
     {
         if (!m_PredateDeathCard || m_PredateDeathMenuAt > 0 || player != GetGame().GetPlayer() || IsPlayerRespawning() || GetDayZGame().IsLoading()) return;
         m_PredateDeathMenuAt = GetGame().GetTime() + PREDATE_DEATH_CARD_MS;
+        PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
+        if (agent && agent.m_UserPaused) agent.RequestResume();
         CloseAllMenus();
         PredateDeathPresentation.FitTitle(m_PredateDeathCard);
         Widget title = m_PredateDeathCard.FindAnyWidget("DeathTitle");

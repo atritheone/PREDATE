@@ -37,7 +37,7 @@ modded class MM_LaserSight_Base
             case 5:
                 m_MM_FlashModeSynch = !m_MM_FlashModeSynch;
                 m_MM_FlashStrobeSynch = false;
-                status = "White light";
+                status = "White Light";
                 active = m_MM_FlashModeSynch;
                 break;
             case 6:
@@ -50,7 +50,7 @@ modded class MM_LaserSight_Base
                 break;
             case 8:
                 m_PredateIRLight = !m_PredateIRLight;
-                status = "IR illuminator";
+                status = "IR Illuminator";
                 active = m_PredateIRLight;
                 break;
         }
@@ -62,14 +62,14 @@ modded class MM_LaserSight_Base
             else player.PredateWeaponModuleMessage("Laser Mode Visible");
             return;
         }
-        if (active) player.PredateWeaponModuleMessage(status + " on");
-        else player.PredateWeaponModuleMessage(status + " off");
+        if (active) player.PredateWeaponModuleMessage(status + " On");
+        else player.PredateWeaponModuleMessage(status + " Off");
     }
 
     protected string PredateLaserModeName()
     {
-        if (m_PredateLaserIR) return "IR laser";
-        return "Visible laser";
+        if (m_PredateLaserIR) return "IR Laser";
+        return "Visible Laser";
     }
 
     void PredateUseOperatorModule(bool ready, bool gogglesActive, bool dark)

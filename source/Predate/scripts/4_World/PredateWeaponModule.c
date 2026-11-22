@@ -50,8 +50,8 @@ class PredateWeaponModule extends UniversalLight
 
     protected void ReportMode(PlayerBase player)
     {
-        string state = " off";
-        if (GetCompEM().IsSwitchedOn()) state = " on";
+        string state = " Off";
+        if (GetCompEM().IsSwitchedOn()) state = " On";
         player.PredateWeaponModuleMessage(ModeName() + state);
     }
 
@@ -59,11 +59,11 @@ class PredateWeaponModule extends UniversalLight
     {
         switch (m_PredateMode)
         {
-            case PredateWeaponModuleMode.VISIBLE_LASER: return "Visible laser";
-            case PredateWeaponModuleMode.INFRARED_LASER: return "IR laser";
-            case PredateWeaponModuleMode.INFRARED_LIGHT: return "IR illuminator";
+            case PredateWeaponModuleMode.VISIBLE_LASER: return "Visible Laser";
+            case PredateWeaponModuleMode.INFRARED_LASER: return "IR Laser";
+            case PredateWeaponModuleMode.INFRARED_LIGHT: return "IR Illuminator";
         }
-        return "White light";
+        return "White Light";
     }
 
     override bool IsLightSource()

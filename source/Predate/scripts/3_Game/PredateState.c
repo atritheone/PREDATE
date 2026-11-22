@@ -9,6 +9,7 @@ class PredateProtocol
     static const int SESSION_REQUEST = 918604;
     static const int SESSION_ACK = 918605;
     static const int WEAPON_MODULE_LOG = 918606;
+    static const int REQUEST_SUICIDE = 6;
     static ref array<string> s_OperatorIds = {
         "raven-01", "lynx-01", "rook-01", "viper-01", "kestrel-01", "jackal-01",
         "fox-01", "wolf-01", "osprey-01", "marten-01", "hawk-01", "badger-01",
@@ -32,7 +33,7 @@ class PredateProtocol
         if (version != VERSION) return false;
         if (request == 1 || request == 2) return OperatorSlot(operatorId) >= 0;
         if (operatorId != "raven-01") return false;
-        return request >= 1 && request <= 5;
+        return request >= 3 && request <= REQUEST_SUICIDE;
     }
 
     static int OperatorSlot(string id)
@@ -115,14 +116,16 @@ class PredateConfig
 {
     static const float DEFAULT_THREAT_DISTANCE = 1000;
     static const float DEFAULT_HEARING_DISTANCE = 600;
+    static const float DEFAULT_AI_ACCURACY_MIN = 0.60;
+    static const float DEFAULT_AI_ACCURACY_MAX = 1.0;
     int SchemaVersion;
     int StartHour = -1;
     int StartMinute;
     float PulseInterval = 60;
     float BearingErrorDegrees = 3;
     float FinalApproachRadius = 200;
-    float BotAccuracyMin = 0.80;
-    float BotAccuracyMax = 0.95;
+    float BotAccuracyMin = DEFAULT_AI_ACCURACY_MIN;
+    float BotAccuracyMax = DEFAULT_AI_ACCURACY_MAX;
     int CombatTuningRevision;
     string PlayerLoadout = "m4a1";
     bool RequireModernGear;

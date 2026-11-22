@@ -135,15 +135,16 @@ class PredatePersistence
             if (s.m_HuntProgress.BotCreated != (record.LifeState != "unspawned"))
                 return Fail(s, "Conflicting operator creation state");
         }
-        if (s.m_HuntConfig.CombatTuningRevision < 1)
+        int combatRevision = s.m_HuntConfig.CombatTuningRevision;
+        if (combatRevision < 2 && s.m_HuntConfig.ThreatDistance == 600)
+            s.m_HuntConfig.ThreatDistance = PredateConfig.DEFAULT_THREAT_DISTANCE;
+        if (combatRevision < 3)
         {
-            s.m_HuntConfig.BotAccuracyMin = 0.80;
-            s.m_HuntConfig.BotAccuracyMax = 0.95;
-        }
-        if (s.m_HuntConfig.CombatTuningRevision < 2)
-        {
-            if (s.m_HuntConfig.ThreatDistance == 600) s.m_HuntConfig.ThreatDistance = PredateConfig.DEFAULT_THREAT_DISTANCE;
-            s.m_HuntConfig.CombatTuningRevision = 2;
+            if (combatRevision < 1 || s.m_HuntConfig.BotAccuracyMin == 0.80)
+                s.m_HuntConfig.BotAccuracyMin = PredateConfig.DEFAULT_AI_ACCURACY_MIN;
+            if (combatRevision < 1 || s.m_HuntConfig.BotAccuracyMax == 0.95)
+                s.m_HuntConfig.BotAccuracyMax = PredateConfig.DEFAULT_AI_ACCURACY_MAX;
+            s.m_HuntConfig.CombatTuningRevision = 3;
         }
         s.m_HuntConfig.PulseInterval = Math.Clamp(s.m_HuntConfig.PulseInterval, 10, 600);
         s.m_HuntConfig.FinalApproachRadius = Math.Clamp(s.m_HuntConfig.FinalApproachRadius, 1, 2000);

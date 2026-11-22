@@ -225,16 +225,16 @@ class PredateBearingPulse
         return ARGB(255, 255, Math.Round(52 + 168 * fraction), Math.Round(42 + 30 * fraction));
     }
 
-    string DistanceText()
+    string DistanceText(string separator = "–")
     {
         int start = (DistanceBand - 1) * BAND_METRES;
         int end = DistanceBand * BAND_METRES;
-        return start.ToString() + "–" + end.ToString() + " m";
+        return start.ToString() + separator + end.ToString() + " m";
     }
 
-    static string RangeText(int start)
+    static string RangeText(int start, string separator = "–")
     {
-        return PredateMath.BearingDigits(start) + "–" + PredateMath.BearingDigits((start + DEGREES) % 360) + "°";
+        return PredateMath.BearingDigits(start) + separator + PredateMath.BearingDigits((start + DEGREES) % 360) + "°";
     }
 }
 

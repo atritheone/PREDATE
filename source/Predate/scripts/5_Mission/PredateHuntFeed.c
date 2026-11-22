@@ -9,7 +9,6 @@ class PredateHuntFeed
 {
     static const int NORMAL = 0xFFFFFFFF;
     static const int HUNTED = 0xFFFFB253;
-    static const int DEATH = 0xFFFF6666;
     static const int ROWS = 6;
     ref array<TextWidget> m_Rows = new array<TextWidget>;
     ref array<ref PredateHuntNotice> m_Notices = new array<ref PredateHuntNotice>;
@@ -18,7 +17,6 @@ class PredateHuntFeed
     bool m_WasHunted;
     string m_Target;
     bool m_HadBearing;
-    bool m_DeathObserved;
     bool m_Visible = true;
 
     void PredateHuntFeed()
@@ -65,15 +63,7 @@ class PredateHuntFeed
             Post("Supplies replenished.");
             player.m_PredateSupplyNotice = false;
         }
-        bool dead = !player.IsAlive() || (state && state.NeedsRedeploy);
-        if (dead && !m_DeathObserved) Post("You are KIA.", DEATH);
-        if (!dead && state && m_DeathObserved)
-        {
-            for (int notice = m_Notices.Count() - 1; notice >= 0; notice--)
-                if (m_Notices[notice].Color == DEATH) m_Notices.RemoveOrdered(notice);
-        }
-        if (state || dead) m_DeathObserved = dead;
-        if (dead || !state) return;
+        if (!player.IsAlive() || !state || state.NeedsRedeploy) return;
         string target;
         if (state.Locked && state.Available) target = state.OperatorId;
         if (target != "")

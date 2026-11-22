@@ -101,13 +101,13 @@ modded class PlayerBase
             capacity = weapon.GetInternalMagazineMaxCartridgeCount(muzzle);
         }
         else return "No magazine inserted";
-        if (rounds <= 0) return "Magazine  empty";
-        if (capacity <= 0) return "Magazine  unknown";
-        if (rounds >= capacity) return "Magazine  full";
+        if (rounds <= 0) return "Magazine  Empty";
+        if (capacity <= 0) return "Magazine  Unknown";
+        if (rounds >= capacity) return "Magazine  Full";
         float fraction = rounds / (capacity * 1.0);
-        if (fraction > 0.66) return "Magazine  mostly full";
-        if (fraction > 0.33) return "Magazine  about half";
-        return "Magazine  low";
+        if (fraction > 0.66) return "Magazine  Mostly Full";
+        if (fraction > 0.33) return "Magazine  About Half";
+        return "Magazine  Low";
     }
 
     override void CommandHandler(float pDt, int pCurrentCommandID, bool pCurrentCommandFinished)
@@ -130,7 +130,7 @@ modded class PlayerBase
             m_PredateCheckingWeapon = weapon;
             m_PredateMagazineMessageWeapon = weapon;
             m_PredateMagazineCheckFinish = now + 1000;
-            m_PredateMagazineMessage = "Checking magazine...";
+            m_PredateMagazineMessage = "Checking Magazine...";
             m_PredateMagazineMessageUntil = now + 1000;
         }
         if (m_PredateMagazineCheckFinish > 0 && weapon != m_PredateCheckingWeapon)

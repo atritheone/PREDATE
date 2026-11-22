@@ -78,7 +78,7 @@ modded class IngameHud
             if (mode != m_PredateFeedbackMode || muzzle != m_PredateFeedbackMuzzle)
             {
                 string modeName = Widget.TranslateString(weapon.GetCurrentModeName(muzzle));
-                m_PredateModeFeedback.SetText("Fire mode  " + modeName);
+                m_PredateModeFeedback.SetText("Fire Mode  " + modeName);
                 m_PredateModeUntil = now + 1100;
             }
             if (Math.AbsFloat(zeroing - m_PredateFeedbackZeroing) > 0.1 || muzzle != m_PredateFeedbackMuzzle)

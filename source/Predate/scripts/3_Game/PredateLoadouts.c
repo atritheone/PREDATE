@@ -63,10 +63,12 @@ class PredateOutfit
     string Name;
     string Body;
     string Legs;
+    string PresetLegs;
     string Feet;
     string Mask;
     string Vest;
     string Pouches;
+    string PresetPouches;
     string Gloves;
     string Headgear;
     string Eyewear;
@@ -192,7 +194,7 @@ class PredateLoadoutCatalog
         {
             if (!outfit || outfit.Id == "" || outfit.Id == "varied" || outfit.Name == "" || outfitIds.Find(outfit.Id) >= 0) return Invalid("Invalid outfit ID");
             if (!ClassExists(outfit.Body) || !ClassExists(outfit.Legs) || !ClassExists(outfit.Feet)) return Invalid("Invalid starting outfit: " + outfit.Id);
-            array<string> equipment = {outfit.Mask, outfit.Vest, outfit.Pouches, outfit.Gloves, outfit.Headgear, outfit.Eyewear, outfit.NightVision};
+            array<string> equipment = {outfit.Mask, outfit.Vest, outfit.Pouches, outfit.Gloves, outfit.Headgear, outfit.Eyewear, outfit.NightVision, outfit.PresetLegs, outfit.PresetPouches};
             foreach (string item : equipment)
                 if (item != "" && !ClassExists(item)) return Invalid("Missing outfit equipment: " + item);
             outfitIds.Insert(outfit.Id);

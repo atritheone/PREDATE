@@ -14,4 +14,4 @@ make the ai better at self-preservation.
 
 server optimisation.
 
-check hud string formatting.
+remove multiplayer mechanics. 
