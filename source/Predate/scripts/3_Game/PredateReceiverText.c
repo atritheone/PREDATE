@@ -5,8 +5,8 @@ class PredateReceiverText
     static string CompassReadout(PredateState state)
     {
         if (!state || !state.Available || !state.Locked) return "Map  M";
-        if (state.CloseApproach) return "Final Approach - Track by Sight";
         string text = PredateProtocol.DisplayName(state.OperatorId);
+        if (state.CloseApproach) return text + " | Final Approach - Track Manual";
         if (state.HasPulse)
         {
             text += "  |  " + PredateBearingPulse.RangeText(state.Bearing, " – ");

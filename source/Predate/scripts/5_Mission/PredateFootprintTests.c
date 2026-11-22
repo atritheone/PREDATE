@@ -32,7 +32,7 @@ class PredateFootprintTests
         bool anonymous = first && first.Valid("raven-01", 5) && first.SubjectId == "" && first.HasPosition && !first.HasBearing;
         Check(anonymous, "visible mark yields an anonymous observation");
         PredateObservation older = PredateFootprintLedger.Observe(mark, "lynx-01", site, 90, true);
-        Check(first && older && first.ObserverId != older.ObserverId && older.Confidence < first.Confidence && older.Radius > first.Radius, "each observer gets its own clue and old marks carry more uncertainty");
+        Check(first && older && first.ObserverId != older.ObserverId && older.Confidence < first.Confidence && older.Radius > first.Radius && PredateFootprintLedger.Notice(older) == "Enemy Tracks", "each observer gets its own clue and old marks use the Enemy Tracks notice");
         ledger.Nearby(site, 125, nearby);
         Check(nearby.Count() == 0, "expired mark cannot be rediscovered");
         ledger.Prune(125);

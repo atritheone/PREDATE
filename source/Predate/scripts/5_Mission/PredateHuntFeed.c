@@ -42,6 +42,11 @@ class PredateHuntFeed
         }
     }
 
+    void PostLostSignal(string target)
+    {
+        Post("Lost " + PredateProtocol.DisplayName(target) + "'s signal.");
+    }
+
     void Observe(PlayerBase player, PredateState state)
     {
         if (!player) return;
@@ -63,6 +68,13 @@ class PredateHuntFeed
             Post("Supplies replenished.");
             player.m_PredateSupplyNotice = false;
         }
+        foreach (int lostSlot : player.m_PredateLostSignalNotices)
+        {
+            string lostTarget = PredateProtocol.OperatorAt(lostSlot);
+            PostLostSignal(lostTarget);
+            if (lostTarget == m_Target) m_HadBearing = false;
+        }
+        player.m_PredateLostSignalNotices.Clear();
         if (!player.IsAlive() || !state || state.NeedsRedeploy) return;
         if (player.m_PredateFootprintNotice != "")
         {
@@ -75,7 +87,7 @@ class PredateHuntFeed
         {
             string name = PredateProtocol.DisplayName(target);
             if (target != m_Target) Post("Tracking " + name + ".");
-            else if (!state.CloseApproach && !state.HasPulse && m_HadBearing) Post("Lost " + name + "’s trail.");
+            else if (!state.CloseApproach && !state.HasPulse && m_HadBearing) PostLostSignal(target);
         }
         m_Target = target;
         m_HadBearing = state.HasPulse;

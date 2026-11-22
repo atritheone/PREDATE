@@ -113,6 +113,7 @@ class PredateOperatorRegistry
 class PredateOperatorDeaths
 {
     static ref array<string> Keys = new array<string>;
+    static ref ScriptInvoker Defeated = new ScriptInvoker;
     static bool Contains(string key) { return Keys.Find(key) >= 0; }
 }
 
@@ -136,6 +137,7 @@ modded class eAIBase
                     if (!credited && grenade) credited = grenade.m_PredateExplosionOwner;
                     if (credited && credited.GetIdentity() && credited.m_PredateKillNotices.Find(slot) < 0)
                         credited.m_PredateKillNotices.Insert(slot);
+                    PredateOperatorDeaths.Defeated.Invoke(slot);
                 }
             }
         }

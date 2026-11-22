@@ -429,7 +429,7 @@ class PredateOperatorService
         s.m_HuntBot.DisableSimulation(s.m_Paused || !s.m_ActorsActive);
         s.m_HuntBot.m_eAI_EnableFlankingOutsideCombat = false;
         s.m_HuntBot.m_eAI_MaxFlankingDistance = 200;
-        s.m_HuntGroup.SetName(s.m_HuntProgress.Operator.Signature);
+        s.m_HuntGroup.SetName(PredateProtocol.SignatureFor(s.m_HuntProgress.Operator.Id));
         s.m_HuntGroup.m_BaseName = s.m_HuntProgress.Operator.StorageKey;
         s.m_HuntGroup.m_Persist = true;
         if (eAIGroup.s_PersistentGroups.Find(s.m_HuntGroup) == -1)
@@ -516,7 +516,7 @@ class PredateOperatorService
                     string configError;
                     if (!JsonFileLoader<PredateConfig>.SaveFile("$profile:PredateConfig.json", s.m_HuntConfig, configError))
                     {
-                        PredatePersistence.Fail(s, "Could not save Raven's insertion: " + configError);
+                        PredatePersistence.Fail(s, "Could not save " + PredateProtocol.DisplayName(record.Id) + "'s insertion: " + configError);
                         return;
                     }
                 }

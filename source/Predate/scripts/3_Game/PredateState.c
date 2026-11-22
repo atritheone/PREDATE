@@ -1,6 +1,6 @@
 class PredateProtocol
 {
-    static const int VERSION = 19;
+    static const int VERSION = 20;
     static const int MAX_OPERATORS = 100;
     static const int MAX_BEARING_HISTORY = 4;
     static const int REQUEST = 918601;
@@ -10,7 +10,9 @@ class PredateProtocol
     static const int SESSION_ACK = 918605;
     static const int WEAPON_MODULE_LOG = 918606;
     static const int FOOTPRINT_LOOK = 918608;
+    static const int SIGNAL_LOST = 918609;
     static const int REQUEST_SUICIDE = 6;
+    // These IDs associate saved actors, receiver tracks and evidence with each slot.
     static ref array<string> s_OperatorIds = {
         "raven-01", "lynx-01", "rook-01", "viper-01", "kestrel-01", "jackal-01",
         "fox-01", "wolf-01", "osprey-01", "marten-01", "hawk-01", "badger-01",
@@ -27,6 +29,18 @@ class PredateProtocol
         "finch-01", "crossbill-01", "redstart-01", "nightjar-01", "bittern-01", "stork-01", "pelican-01",
         "gannet-01", "petrel-01", "albatross-01", "cormorant-01", "shark-01", "marlin-01", "bonito-01",
         "tuna-01", "sturgeon-01", "grayling-01", "barbel-01", "perch-01", "zander-01", "swordfish-01"
+    };
+    protected static ref array<string> s_OperatorCallsigns = {
+        "Deadbolt", "Blackout", "Static", "Cinder", "Lockjaw", "Cipher", "Vesper", "Shard", "Cutout", "Lowlight",
+        "Breach", "Ashfall", "Switchback", "Null", "Coldwire", "Torque", "Latch", "Stray", "Havoc", "Needle",
+        "Overcast", "Hush", "Slate", "Standoff", "Flint", "Nightshift", "Rime", "Suture", "Dusk", "Spall",
+        "Gravel", "Baffle", "Brim", "Undertow", "Ballast", "Scrim", "Rafter", "Torsion", "Grit", "Tungsten",
+        "Longwave", "Squall", "Fuse", "Drift", "Fault", "Riven", "Relay", "Silt", "Wiretap", "Detour",
+        "Serrate", "Morrow", "Rampart", "Axle", "Chisel", "Gutter", "Hitch", "Pylon", "Ravel", "Sentry",
+        "Tangent", "Brass", "Frostline", "Hemlock", "Keystone", "Spur", "Scour", "Ironclad", "Knell", "Crosstalk",
+        "Scaffold", "Plumb", "Quench", "Cobalt", "Solder", "Loam", "Dross", "Flare", "Kerosene", "Wedge",
+        "Vortex", "Trace", "Obsidian", "Quiver", "Sluice", "Warden", "Blindside", "Levee", "Omen", "Shiver",
+        "Gallows", "Sundown", "Drydock", "Rust", "Kiln", "Hollow", "Spindle", "Soot", "Redline", "Scarp"
     };
 
     static bool AcceptRequest(int version, string operatorId, int request)
@@ -50,6 +64,15 @@ class PredateProtocol
 
     static string SignatureFor(string id)
     {
+        string name = DisplayName(id);
+        if (name == "") return "";
+        name.ToUpper();
+        return name + "-01";
+    }
+
+    // The save schema includes the original ID in uppercase as part of its identity.
+    static string PersistentSignatureFor(string id)
+    {
         if (OperatorSlot(id) < 0) return "";
         id.ToUpper();
         return id;
@@ -57,10 +80,9 @@ class PredateProtocol
 
     static string DisplayName(string id)
     {
-        if (OperatorSlot(id) < 0) return "";
-        string first = id.Substring(0, 1);
-        first.ToUpper();
-        return first + id.Substring(1, id.Length() - 4);
+        int slot = OperatorSlot(id);
+        if (slot < 0 || slot >= s_OperatorCallsigns.Count()) return "";
+        return s_OperatorCallsigns[slot];
     }
 }
 
@@ -78,7 +100,7 @@ class PredateState
     string OperatorId = "raven-01";
     bool Development;
     bool CanDeploy;
-    string Signature = "RAVEN-01";
+    string Signature;
     bool Available;
     bool Locked;
     bool HasPulse;
@@ -94,6 +116,8 @@ class PredateState
     bool SuppliesRefreshed;
     bool NeedsRedeploy;
     bool DeploymentSpawnRejected;
+    bool HasDeploymentPosition;
+    vector DeploymentPosition;
     int AvailableOperators = -1;
     int FootprintClue;
     vector FootprintGround;

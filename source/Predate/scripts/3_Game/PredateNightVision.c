@@ -1,25 +1,23 @@
 #ifndef SERVER
 modded class PPERequester_CameraNV
 {
-    static bool s_PredatePanoramic;
-    protected bool m_PredateDesaturated;
+    static bool s_PredateWhitePhosphor;
+    protected bool m_PredateWhitePhosphor;
     protected bool m_PredatePoweredImage;
 
     override protected void SetNVMode(int mode)
     {
-        if (m_PredateDesaturated)
-        {
-            SetTargetValueFloatDefault(PostProcessEffectType.Glow, PPEGlow.PARAM_SATURATION);
-            m_PredateDesaturated = false;
-        }
+        m_PredateWhitePhosphor = false;
         m_PredatePoweredImage = false;
         super.SetNVMode(mode);
         PredateNightVisionDimming.SetEnabled(m_PredatePoweredImage);
+        PredateWhitePhosphor.SetEnabled(m_PredateWhitePhosphor);
     }
 
     override protected void OnStop(Param par = null)
     {
         PredateNightVisionDimming.SetEnabled(false);
+        PredateWhitePhosphor.SetEnabled(false);
         super.OnStop(par);
     }
 
@@ -33,12 +31,7 @@ modded class PPERequester_CameraNV
     {
         super.ApplyGlassesProfile(exposure, noiseMult);
         m_PredatePoweredImage = true;
-        if (!s_PredatePanoramic) return;
-        SetTargetValueColor(PostProcessEffectType.Glow, PPEGlow.PARAM_COLORIZATIONCOLOR,
-            {0.77, 0.89, 1.0, 0.0}, PPEGlow.L_23_NVG, PPOperators.MULTIPLICATIVE);
-        SetTargetValueFloat(PostProcessEffectType.Glow, PPEGlow.PARAM_SATURATION, false,
-            0.12, PPEGlow.L_22_SANDSTORM_NVG, PPOperators.LOWEST);
-        m_PredateDesaturated = true;
+        m_PredateWhitePhosphor = s_PredateWhitePhosphor;
     }
 
     bool PredateCanSeeInfrared()
@@ -57,6 +50,29 @@ modded class PPERequester_CameraNV
                 return PPERequesterBank.IsRequesterRunning(PPERequesterBank.REQ_CAMERANV);
         }
         return false;
+    }
+}
+
+class PredateWhitePhosphor extends PPERequester_GameplayBase
+{
+    static int s_RequesterId = PPERequesterBank.INVALID;
+
+    static void SetEnabled(bool enabled)
+    {
+        PPERequesterBase requester = PPERequesterBank.GetRequester(s_RequesterId);
+        if (!requester || enabled == requester.IsRequesterRunning()) return;
+        if (enabled) requester.Start();
+        else requester.Stop();
+    }
+
+    override protected void OnStart(Param par = null)
+    {
+        super.OnStart(par);
+        // Override both the scene colour and the phosphor tint applied by goggle mods.
+        SetTargetValueColor(PostProcessEffectType.Glow, PPEGlow.PARAM_COLORIZATIONCOLOR,
+            {1.0, 1.0, 1.0, 0.0}, PPEGlow.L_23_NVG + 1, PPOperators.SET);
+        SetTargetValueFloat(PostProcessEffectType.Glow, PPEGlow.PARAM_SATURATION, false,
+            0.0, PPEGlow.L_23_NVG + 1, PPOperators.SET);
     }
 }
 
@@ -105,6 +121,7 @@ modded class PPERequesterRegistrations
         super.RegisterAdditionalRequesters();
         PredateGoggleScopeBlur.s_RequesterId = PPERequesterBank.RegisterRequester(PredateGoggleScopeBlur);
         PredateNightVisionDimming.s_RequesterId = PPERequesterBank.RegisterRequester(PredateNightVisionDimming);
+        PredateWhitePhosphor.s_RequesterId = PPERequesterBank.RegisterRequester(PredateWhitePhosphor);
     }
 }
 #endif

@@ -47,13 +47,21 @@ class PredateReceiverValidation
         result.Check(state.HasPulseOrigin && state.PulseOrigin[0] == 4500 && state.PulseOrigin[2] == 6500 && state.BearingError > 0 && state.Intercepted);
         string bearing = PredateBearingPulse.RangeText(state.Bearing, " – ");
         string readout = mission.m_PredateReceiverContents;
-        result.Check(Fits(mission.m_PredateHudText) && readout.Contains("Raven") && readout.Contains(bearing) && readout.Contains("250 – 500 m") && readout.Contains("Next Pulse "), "the compass readout fits the tracked pulse range");
+        result.Check(Fits(mission.m_PredateHudText) && readout.Contains("Deadbolt") && readout.Contains(bearing) && readout.Contains("200 – 400 m") && readout.Contains("Next Pulse "), "the compass readout fits the tracked pulse range");
+        PredateState closeTrack = new PredateState;
+        closeTrack.OperatorId = "kite-01";
+        closeTrack.Available = true;
+        closeTrack.Locked = true;
+        closeTrack.CloseApproach = true;
+        mission.m_PredateHudText.SetText(PredateReceiverText.CompassReadout(closeTrack));
+        result.Check(Fits(mission.m_PredateHudText), "the named Final Approach line fits the compass");
+        mission.m_PredateHudText.SetText(readout);
         PredateHuntFeed feed = mission.m_PredateHuntFeed;
         result.Check(HuntWarningVisible(feed));
         player.m_PredateKillNotices.Insert(0);
         feed.Update(player, state, 0);
-        result.Check(feed.m_Notices[0].Text == "Raven is KIA." && Fits(feed.m_Rows[0]) && feed.m_Rows[0].GetColor() == PredateHuntFeed.NORMAL && HuntWarningVisible(feed));
-        feed.Post("Tracking Lynx.");
+        result.Check(feed.m_Notices[0].Text == "Deadbolt is KIA." && Fits(feed.m_Rows[0]) && feed.m_Rows[0].GetColor() == PredateHuntFeed.NORMAL && HuntWarningVisible(feed));
+        feed.Post("Tracking Blackout.");
         feed.Update(player, state, 0);
         result.Check(feed.m_Rows[0].GetColor() == 0xFFFFFFFF);
         PredateState death = new PredateState;
@@ -67,6 +75,24 @@ class PredateReceiverValidation
         feed.Show(true);
         feed.Update(player, state, 7);
         result.Check(!feed.m_Rows[0].IsVisible());
+        PredateState tracked = new PredateState;
+        tracked.Locked = true;
+        tracked.Available = true;
+        tracked.OperatorId = "fox-01";
+        string signalLoss = "Lost " + PredateProtocol.DisplayName(tracked.OperatorId) + "'s signal.";
+        tracked.HasPulse = true;
+        feed.Update(player, tracked, 0);
+        tracked.HasPulse = false;
+        feed.Update(player, tracked, 0);
+        result.Check(feed.m_Notices[0].Text == signalLoss && Fits(feed.m_Rows[0]), "losing a bearing posts the named signal notice");
+        tracked.HasPulse = true;
+        feed.Update(player, tracked, 7);
+        tracked.HasPulse = false;
+        player.m_PredateLostSignalNotices.Insert(PredateProtocol.OperatorSlot(tracked.OperatorId));
+        feed.Update(player, tracked, 0);
+        feed.Update(player, tracked, 0);
+        result.Check(feed.m_Notices.Count() == 1 && feed.m_Notices[0].Text == signalLoss, "an operator's defeat posts one signal-loss notice even when its bearing ends in the same update");
+        feed.Update(player, state, 7);
         CheckReadyInteraction(result, player);
         mission.PredateToggleMap();
         PredateTrackerMenu menu = PredateTrackerMenu.Cast(GetGame().GetUIManager().GetMenu());
@@ -85,7 +111,7 @@ class PredateReceiverValidation
                 result.Check(PredateBearingPulse.Contains(pulse.Start, 0) && pulse.Start == state.Bearing && pulse.DistanceBand == 2);
                 mission.m_PredateCompass.Render(pulse.Start + 7.5, state, 0);
                 result.Check(mission.m_PredateCompass.m_Sector.GetColor() == pulse.Color());
-                result.Check(pulse.DistanceText() == "250–500 m");
+                result.Check(pulse.DistanceText() == "200–400 m");
                 result.Check(state.NextPulse > 0 && state.NextPulse <= 90);
                 result.Check(menu.m_MapOverlay.m_Bearings.Count() == 24);
                 result.Check(menu.m_MapOverlay.m_Bearings[0].IsVisible() && Fits(menu.m_MapOverlay.m_Bearings[0]));
@@ -266,7 +292,7 @@ class PredateReceiverValidation
             PredateBearingPulse dense = new PredateBearingPulse;
             dense.OperatorId = PredateProtocol.OperatorAt(slot);
             dense.Start = crowdedBearing;
-            dense.DistanceBand = 20 - slot / 5;
+            dense.DistanceBand = PredateBearingPulse.MAX_BAND - slot / 4;
             example.Pulses.Insert(dense);
         }
         example.Locked = true;
@@ -300,7 +326,7 @@ class PredateReceiverValidation
             PredateBearingPulse typical = new PredateBearingPulse;
             typical.OperatorId = PredateProtocol.OperatorAt(exampleSlot);
             typical.Start = bearings[exampleSlot];
-            typical.DistanceBand = 20 - exampleSlot / 2;
+            typical.DistanceBand = PredateBearingPulse.MAX_BAND - exampleSlot / 2;
             example.Pulses.Insert(typical);
         }
         overlay.Draw(player, example, menu.m_MapScale, false);

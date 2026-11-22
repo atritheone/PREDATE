@@ -10,6 +10,7 @@ modded class MissionServer
         m_PredateSession = new PredateSession;
         m_PredateSession.Init();
         PredatePlayerLifeEvents.Death.Insert(PredateRecordPlayerDeath);
+        PredateOperatorDeaths.Defeated.Insert(PredateRecordOperatorDeath);
         PredateServerPauseDriver.Poll.Insert(PredatePollPausedServer);
     }
 
@@ -35,6 +36,7 @@ modded class MissionServer
     override void OnMissionFinish()
     {
         PredatePlayerLifeEvents.Death.Remove(PredateRecordPlayerDeath);
+        PredateOperatorDeaths.Defeated.Remove(PredateRecordOperatorDeath);
         PredateServerPauseDriver.Poll.Remove(PredatePollPausedServer);
         PredateServerPauseDriver.Held = false;
         if (m_PredateSession) m_PredateSession.Finish();
@@ -44,6 +46,23 @@ modded class MissionServer
     void PredateRecordPlayerDeath(PlayerBase player)
     {
         PredateDeployment.ObserveDeath(m_PredateSession, player);
+    }
+
+    void PredateRecordOperatorDeath(int slot)
+    {
+        if (!m_PredateSession || !m_PredateSession.m_HuntReady || !m_PredateSession.m_WorldState || m_PredateSession.m_WorldState.PlayerAwaitingRedeploy) return;
+        if (!PredateSignalService.RetireDefeatedSignal(m_PredateSession, slot, true)) return;
+
+        array<Man> players = {};
+        GetGame().GetPlayers(players);
+        foreach (Man man : players)
+        {
+            PlayerBase player = PlayerBase.Cast(man);
+            if (!player || !player.GetIdentity() || !player.IsAlive()) continue;
+            ScriptRPC rpc = new ScriptRPC;
+            rpc.Write(slot);
+            rpc.Send(player, PredateProtocol.SIGNAL_LOST, true, player.GetIdentity());
+        }
     }
 
     override PlayerBase CreateCharacter(PlayerIdentity identity, vector pos, ParamsReadContext ctx, string characterName)

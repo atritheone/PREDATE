@@ -355,7 +355,7 @@ class PredatePeerRetargetMission : MissionServer
             PredateSignalTrack peer = receiver.Find("lynx-01");
             m_Result.Check(human && human.LastSample && peer && peer.LastSample, "both player and Operator appear on this receiver");
             m_Result.Check(receiver.TargetId == "lynx-01", "nearer Operator wins the first decision");
-            m_Result.Check(human && human.LastSample && human.LastSample.DistanceBand == 3, "human pulse has the expected band");
+            m_Result.Check(human && human.LastSample && human.LastSample.DistanceBand == 4, "human pulse has the expected band");
             m_Result.Check(peer && peer.LastSample && peer.LastSample.DistanceBand == 2, "Operator pulse has the expected band");
             m_Result.Check(human && human.LastSample && !human.LastSample.HasPosition && human.LastSample.PulseDistance == 0, "no private position or exact range in the pulse");
             if (human && human.LastSample) m_PlayerSample = human.LastSample.EventKey;

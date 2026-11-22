@@ -132,7 +132,8 @@ modded class InGameMenu
         }
         if (m_PredateDeploymentScreen && player && player.m_PredateState)
         {
-            GetGame().GetMission().Continue();
+            MissionGameplay gameplay = MissionGameplay.Cast(GetGame().GetMission());
+            if (gameplay && !gameplay.m_PredateRedeployCovered) gameplay.Continue();
             return;
         }
         if (agent) m_RestartButton.Show(PredateCanSuicide(player, agent));
@@ -200,6 +201,8 @@ modded class InGameMenu
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
         if (m_PredateRedeployPending || !PredateNeedsRedeploy(player)) return;
         m_PredateRedeployPending = true;
+        MissionGameplay gameplay = MissionGameplay.Cast(GetGame().GetMission());
+        if (gameplay) gameplay.PredateBeginRedeployCover(player);
         if (player.m_PredateState) player.m_PredateState.DeploymentSpawnRejected = false;
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
         if (agent)
@@ -273,10 +276,12 @@ modded class MissionGameplay
     Widget m_PredateDeathCard;
     int m_PredateDeathMenuAt;
     bool m_PredateDeathValidation;
+    bool m_PredateRedeployCovered;
+    PlayerBase m_PredateRedeployCorpse;
 
     void PredateBeginDeathCard(DayZPlayerImplement player)
     {
-        if (!m_PredateDeathCard || m_PredateDeathMenuAt > 0 || player != GetGame().GetPlayer() || IsPlayerRespawning() || GetDayZGame().IsLoading()) return;
+        if (!m_PredateDeathCard || m_PredateRedeployCovered || m_PredateDeathMenuAt > 0 || player != GetGame().GetPlayer() || IsPlayerRespawning() || GetDayZGame().IsLoading()) return;
         m_PredateDeathMenuAt = GetGame().GetTime() + PREDATE_DEATH_CARD_MS;
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
         if (agent && agent.m_UserPaused) agent.RequestResume();
@@ -294,6 +299,60 @@ modded class MissionGameplay
         bool fullscreen = Math.AbsFloat(x) < 1 && Math.AbsFloat(y) < 1 && Math.AbsFloat(screenWidth - width) < 1 && Math.AbsFloat(screenHeight - height) < 1;
         bool styled = fullscreen && title && title.GetColor() == 0xFF000000 && m_PredateDeathCard.GetColor() == 0xFFFF0000;
         Print("[PredateDeploymentTest] Death card shown; styled=" + styled);
+    }
+
+    void PredateBeginRedeployCover(PlayerBase player)
+    {
+        m_PredateRedeployCovered = true;
+        if (!player.IsAlive()) m_PredateRedeployCorpse = player;
+        if (m_PredateDeathCard)
+        {
+            PredateDeathPresentation.FitTitle(m_PredateDeathCard);
+            m_PredateDeathCard.Show(true);
+        }
+        if (m_PredateDeathValidation)
+        {
+            bool visible = m_PredateDeathCard && m_PredateDeathCard.IsVisible();
+            Print("[PredateDeploymentTest] Redeploy cover shown; visible=" + visible);
+        }
+    }
+
+    bool PredateHoldRedeploy(PlayerBase player, PredateState state)
+    {
+        if (!m_PredateRedeployCovered) return false;
+        if (IsPlayerRespawning() || GetDayZGame().IsLoading() || !player) return true;
+        if (!player.IsAlive())
+        {
+            if (player == m_PredateRedeployCorpse) return true;
+            m_PredateRedeployCovered = false;
+            m_PredateRedeployCorpse = null;
+            m_PredateDeathMenuAt = 0;
+            PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
+            if (agent) agent.m_DeployAfterRespawn = false;
+            PredateBeginDeathCard(player);
+            return true;
+        }
+        if (!state || !player.IsPlayerLoaded()) return true;
+        if (state.NeedsRedeploy && state.DeploymentSpawnRejected)
+        {
+            m_PredateRedeployCovered = false;
+            m_PredateRedeployCorpse = null;
+            return false;
+        }
+        if (state.NeedsRedeploy || !state.HasDeploymentPosition || !player.GetCurrentPlayerCamera()) return true;
+        if (player.GetDayZPlayerInventory().IsProcessing()) return true;
+        if (PredateHunterBrain.Distance(player.GetPosition(), state.DeploymentPosition) > 5) return true;
+
+        m_PredateRedeployCovered = false;
+        m_PredateRedeployCorpse = null;
+        Continue();
+        PredateHideDeathCard();
+        if (m_PredateDeathValidation)
+        {
+            bool visible = m_PredateDeathCard && m_PredateDeathCard.IsVisible();
+            Print("[PredateDeploymentTest] Redeploy cover released; visible=" + visible);
+        }
+        return false;
     }
 
     bool PredateDeathCardWaiting()
@@ -324,7 +383,7 @@ modded class MissionGameplay
 
     override void Pause()
     {
-        if (PredateDeathCardWaiting())
+        if (PredateDeathCardWaiting() || m_PredateRedeployCovered)
         {
             m_PauseQueued = false;
             return;

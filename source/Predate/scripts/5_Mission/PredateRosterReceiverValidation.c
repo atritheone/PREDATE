@@ -132,7 +132,7 @@ class PredateRosterReceiverValidation
             m_Result.InRange = m_Count;
             bool countCovered = m_Count <= rosterSize;
             if (rosterSize >= 30) countCovered = m_Count < rosterSize;
-            m_Result.Check(countCovered && m_First != m_Second && PredateProtocol.DisplayName("raven-01") == "Raven", "only in-range rivals have named arcs");
+            m_Result.Check(countCovered && m_First != m_Second && PredateProtocol.DisplayName("raven-01") == "Deadbolt", "only in-range rivals have named arcs");
             m_Result.Check(!state.Locked && state.History.Count() == 0, "untracked arcs show sectors without bearing history");
             m_Phase = 1;
             SchedulePulse(m_First, false);

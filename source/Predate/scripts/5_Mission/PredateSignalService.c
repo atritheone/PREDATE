@@ -108,22 +108,31 @@ class PredateSignalService
         track.Reception = PredatePulseReception.UNAVAILABLE;
     }
 
+    static bool RetireDefeatedSignal(PredateSession session, int slot, bool trackedOnly)
+    {
+        PredateSignalTrack track = session.m_WorldState.PlayerSignal;
+        PredatePeerBinding peer;
+        if (slot != 0)
+        {
+            if (!session.m_PeerRoster || slot < 1 || slot > session.m_PeerRoster.m_Bindings.Count()) return false;
+            peer = session.m_PeerRoster.m_Bindings[slot - 1];
+            track = peer.State.PlayerReceiver;
+        }
+        if (!track || (trackedOnly && !track.Selected)) return false;
+
+        ClearDefeatedSignal(track);
+        if (peer) peer.State.InterceptedUntil = 0;
+        else
+        {
+            session.m_WorldState.BotInterceptionUntil = 0;
+            SyncReceiverProgress(session);
+        }
+        return true;
+    }
+
     static void ConfirmPlayerKills(PredateSession session, array<int> kills)
     {
-        foreach (int slot : kills)
-        {
-            if (slot == 0)
-            {
-                ClearDefeatedSignal(session.m_WorldState.PlayerSignal);
-                session.m_WorldState.BotInterceptionUntil = 0;
-                SyncReceiverProgress(session);
-                continue;
-            }
-            if (!session.m_PeerRoster || slot > session.m_PeerRoster.m_Bindings.Count()) continue;
-            PredatePeerBinding peer = session.m_PeerRoster.m_Bindings[slot - 1];
-            ClearDefeatedSignal(peer.State.PlayerReceiver);
-            peer.State.InterceptedUntil = 0;
-        }
+        foreach (int slot : kills) RetireDefeatedSignal(session, slot, false);
     }
 
     static void WriteHistory(PredateSession s, ScriptRPC rpc, bool visible, PredateSignalTrack track)

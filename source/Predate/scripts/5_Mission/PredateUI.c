@@ -404,6 +404,7 @@ modded class MissionGameplay
 
     override void OnUpdate(float timeslice)
     {
+        if (m_PredateRedeployCovered && !IsInputExcludeActive("menu")) AddActiveInputExcludes({"menu"});
         PlayerBase beforeUpdate = PlayerBase.Cast(GetGame().GetPlayer());
         if (beforeUpdate && !beforeUpdate.IsAlive()) PredateBeginDeathCard(beforeUpdate);
         UIScriptedMenu previousMenu = GetGame().GetUIManager().GetMenu();
@@ -435,7 +436,8 @@ modded class MissionGameplay
                 }
             }
         }
-        bool deploying = IsPlayerRespawning() || (agent && agent.m_DeployAfterRespawn);
+        bool coveringRedeploy = PredateHoldRedeploy(player, state);
+        bool deploying = coveringRedeploy || IsPlayerRespawning() || (agent && agent.m_DeployAfterRespawn);
         if (m_PredateHuntFeed)
         {
             m_PredateHuntFeed.Show(player && !needsRedeploy && !deploying && !GetGame().GetUIManager().GetMenu());

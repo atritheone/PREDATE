@@ -32,7 +32,7 @@ class PredatePeerRoster
         PredatePeerState peer = new PredatePeerState;
         string id = PredateProtocol.OperatorAt(slot);
         peer.Operator.Id = id;
-        peer.Operator.Signature = PredateProtocol.SignatureFor(id);
+        peer.Operator.Signature = PredateProtocol.PersistentSignatureFor(id);
         peer.Operator.StorageKey = StorageKey(slot);
         peer.Start = start;
         peer.Memory.OwnerId = id;
@@ -145,7 +145,7 @@ class PredatePeerRoster
     {
         int slot = index + 1;
         string id = PredateProtocol.OperatorAt(slot);
-        return peer.Operator.Id == id && peer.Operator.Signature == PredateProtocol.SignatureFor(id) && peer.Operator.StorageKey == StorageKey(slot, peer.Operator.Deployment);
+        return peer.Operator.Id == id && peer.Operator.Signature == PredateProtocol.PersistentSignatureFor(id) && peer.Operator.StorageKey == StorageKey(slot, peer.Operator.Deployment);
     }
 
     bool BindNative(PredateSession session, PredatePeerBinding binding, out string error)
@@ -184,7 +184,7 @@ class PredatePeerRoster
             error = "Invalid native actor for " + record.Id;
             return false;
         }
-        group.SetName(record.Signature);
+        group.SetName(PredateProtocol.SignatureFor(record.Id));
         group.m_BaseName = record.StorageKey;
         group.m_Persist = true;
         if (eAIGroup.s_PersistentGroups.Find(group) == -1) eAIGroup.s_PersistentGroups.Insert(group);

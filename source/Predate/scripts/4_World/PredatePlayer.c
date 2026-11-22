@@ -75,7 +75,10 @@ modded class PlayerBase
     bool m_PredateDeathRecorded;
     bool m_PredateNativeInsertion;
     bool m_PredateSpawnRejected;
+    bool m_PredateHasDeploymentPosition;
+    vector m_PredateDeploymentPosition;
     ref array<int> m_PredateKillNotices = {};
+    ref array<int> m_PredateLostSignalNotices = {};
     string m_PredateFootprintNotice;
     vector m_PredateFootprintLook;
     int m_PredateFootprintLookSentAt;
@@ -173,6 +176,13 @@ modded class PlayerBase
     override void OnRPC(PlayerIdentity sender, int rpc_type, ParamsReadContext ctx)
     {
         super.OnRPC(sender, rpc_type, ctx);
+        if (rpc_type == PredateProtocol.SIGNAL_LOST && GetGame().IsClient() && this == GetGame().GetPlayer())
+        {
+            int lostSlot;
+            if (ctx.Read(lostSlot) && PredateProtocol.OperatorAt(lostSlot) != "" && m_PredateLostSignalNotices.Find(lostSlot) < 0)
+                m_PredateLostSignalNotices.Insert(lostSlot);
+            return;
+        }
         if (rpc_type == PredateProtocol.WEAPON_MODULE_LOG && GetGame().IsClient() && this == GetGame().GetPlayer())
         {
             string message;
@@ -280,6 +290,9 @@ modded class PlayerBase
             }
             string footprintNotice;
             ok = ok && ctx.Read(footprintNotice);
+            ok = ok && ctx.Read(state.HasDeploymentPosition);
+            if (ok && state.HasDeploymentPosition)
+                ok = ctx.Read(state.DeploymentPosition) && PredateInformationMath.FiniteVector(state.DeploymentPosition);
             if (ok)
             {
                 if (footprintNotice != "") m_PredateFootprintNotice = footprintNotice;

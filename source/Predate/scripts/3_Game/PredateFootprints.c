@@ -212,7 +212,7 @@ class PredateFootprintLedger
 
     static string Notice(PredateObservation clue)
     {
-        string text = "Faint Tracks";
+        string text = "Enemy Tracks";
         if (clue.Confidence >= 0.4) text = "Recent Tracks";
         if (!clue.HasBearing) return text;
         int heading = clue.Bearing;

@@ -74,7 +74,15 @@ class PredateObservation
     float MapRadius;
     float PulseDistance;
     int DistanceBand;
+    int DistanceBandWidth;
     int OverlapLane;
+
+    int DistanceBandMetres()
+    {
+        // Older AI saves record only the band index, using 250-metre bands.
+        if (DistanceBandWidth == 0) return 250;
+        return DistanceBandWidth;
+    }
 
     PredateObservation Copy()
     {
@@ -100,6 +108,7 @@ class PredateObservation
         copied.MapRadius = MapRadius;
         copied.PulseDistance = PulseDistance;
         copied.DistanceBand = DistanceBand;
+        copied.DistanceBandWidth = DistanceBandWidth;
         copied.OverlapLane = OverlapLane;
         return copied;
     }
@@ -119,7 +128,8 @@ class PredateObservation
         if (MapRadius != 0 && (Source != PredateObservationSource.SIGNAL || owner != "player-01" || !PredatePulseArea.Valid(MapCenter, MapRadius))) return false;
         if (!PredateInformationMath.Finite(PulseDistance) || PulseDistance < 0 || PulseDistance > PredateBearingPulse.REACH) return false;
         if (PulseDistance > 0 && (Source != PredateObservationSource.SIGNAL || owner != "player-01" || MapRadius != 0)) return false;
-        if (DistanceBand < 0 || DistanceBand > PredateBearingPulse.MAX_BAND || OverlapLane < 0 || OverlapLane > PredateProtocol.MAX_OPERATORS) return false;
+        if (DistanceBandWidth != 0 && (DistanceBandWidth != PredateBearingPulse.BAND_METRES || DistanceBand == 0)) return false;
+        if (DistanceBand < 0 || DistanceBand > PredateBearingPulse.REACH / DistanceBandMetres() || OverlapLane < 0 || OverlapLane > PredateProtocol.MAX_OPERATORS) return false;
         if (DistanceBand > 0 && (Source != PredateObservationSource.SIGNAL || PulseDistance != 0 || MapRadius != 0 || BearingError != PredateBearingPulse.DEGREES / 2.0)) return false;
         // Noise and bullet impact alone never prove who produced them.
         if (IsAudible() && SubjectId != "") return false;

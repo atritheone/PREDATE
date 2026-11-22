@@ -69,7 +69,7 @@ class PredateSignalTrack
         // default object. Only that exact empty representation means absent.
         PredateObservation sample = LastSample;
         if (!sample) return;
-        if (sample.MapCenter != vector.Zero || sample.MapRadius != 0 || sample.PulseDistance != 0) return;
+        if (sample.MapCenter != vector.Zero || sample.MapRadius != 0 || sample.PulseDistance != 0 || sample.DistanceBand != 0 || sample.DistanceBandWidth != 0) return;
         if (sample.Serial == 0 && sample.EventKey == "" && sample.ObserverId == "" && sample.SubjectId == "" && sample.Source == 0 && sample.ObservedAt == 0 && sample.ExpiresAt == 0 && sample.Confidence == 0 && sample.Magnitude == 0 && !sample.HasPosition && !sample.HasBearing && sample.Estimate == vector.Zero && sample.Origin == vector.Zero && sample.Radius == 0 && sample.Bearing == 0 && sample.BearingError == 0)
             LastSample = null;
     }
@@ -196,8 +196,8 @@ class PredateBearingPulse
     static const int DEGREES = 15;
     static const float INTERVAL = 90;
     static const float REACH = 5000;
-    static const int BAND_METRES = 250;
-    static const int MAX_BAND = 20;
+    static const int BAND_METRES = 200;
+    static const int MAX_BAND = 25;
     string OperatorId;
     int Start;
     int DistanceBand;
@@ -251,7 +251,7 @@ class PredateBearingPulse
 
 class PredateSignalRules
 {
-    static const float FINAL_APPROACH_METRES = 250;
+    static const float FINAL_APPROACH_METRES = 200;
 
     static bool FinalApproach(vector observer, vector subject)
     {
@@ -292,7 +292,11 @@ class PredateSignalRules
         observation.BearingError = PredateBearingPulse.DEGREES / 2.0;
         float distance = Math.Min(PredateBearingPulse.REACH, Math.Sqrt(distanceSquared));
         if (track.OwnerId == "player-01") observation.PulseDistance = distance;
-        else observation.DistanceBand = Math.Ceil(distance / PredateBearingPulse.BAND_METRES);
+        else
+        {
+            observation.DistanceBand = Math.Ceil(distance / PredateBearingPulse.BAND_METRES);
+            observation.DistanceBandWidth = PredateBearingPulse.BAND_METRES;
+        }
         observation.MapCenter = vector.Zero;
         observation.MapRadius = 0;
         return observation;

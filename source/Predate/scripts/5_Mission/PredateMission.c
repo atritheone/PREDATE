@@ -357,6 +357,8 @@ class PredateSession
         }
         rpc.Write(player.m_PredateFootprintNotice);
         player.m_PredateFootprintNotice = "";
+        rpc.Write(player.m_PredateHasDeploymentPosition);
+        if (player.m_PredateHasDeploymentPosition) rpc.Write(player.m_PredateDeploymentPosition);
         rpc.Send(player, PredateProtocol.STATE, true, player.GetIdentity());
         if (first) Print("[Predate] Sent receiver state; target available=" + available);
     }
@@ -499,7 +501,7 @@ class PredateSession
             m_HuntProgress.Operator.LifeState = "defeated";
             m_HuntProgress.Selected = false;
             m_HuntProgress.HasPulse = false;
-            Print("[Predate] RAVEN-01 eliminated.");
+            Print("[Predate] " + PredateProtocol.SignatureFor("raven-01") + " eliminated.");
             PredateRequestCheckpoint();
         }
         SoloApplyCombatRules(m_HuntBot);
@@ -554,7 +556,7 @@ class PredateSession
             else if (request == 1 && requestedOperator == "raven-01" && m_WorldState.PlayerSignal.Reception != PredatePulseReception.UNAVAILABLE)
             {
                 PredateSignalService.Select(this, true);
-                Print("[Predate] Player selected RAVEN-01.");
+                Print("[Predate] Player selected " + PredateProtocol.SignatureFor(requestedOperator) + ".");
                 PredateSave();
             }
             else if (request == 2 && requestedOperator == "raven-01")

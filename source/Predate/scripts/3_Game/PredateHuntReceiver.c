@@ -74,15 +74,16 @@ class PredateHuntSelection
 {
     static vector SectorCenter(PredateObservation sample)
     {
-        float range = (sample.DistanceBand - 0.5) * PredateBearingPulse.BAND_METRES;
+        float range = (sample.DistanceBand - 0.5) * sample.DistanceBandMetres();
         float center = PredateMath.WrapHeading(sample.Bearing + PredateBearingPulse.DEGREES / 2.0);
         return sample.Origin + PredateInformationMath.BearingDirection(center) * range;
     }
 
     static float SectorRadius(PredateObservation sample, float now)
     {
-        float outer = sample.DistanceBand * PredateBearingPulse.BAND_METRES;
-        return PredateBearingPulse.BAND_METRES / 2.0 + outer * Math.Sin(sample.BearingError * Math.DEG2RAD) + (now - sample.ObservedAt) * 1.5;
+        int width = sample.DistanceBandMetres();
+        float outer = sample.DistanceBand * width;
+        return width / 2.0 + outer * Math.Sin(sample.BearingError * Math.DEG2RAD) + (now - sample.ObservedAt) * 1.5;
     }
 
     static void Score(PredateHuntLead lead, string id, PredateObservation evidence, vector own, float now)
@@ -98,7 +99,8 @@ class PredateHuntSelection
         if (!other) return true;
         PredateObservation a = candidate.Evidence;
         PredateObservation b = other.Evidence;
-        if (a.ObservedAt == b.ObservedAt && a.DistanceBand == b.DistanceBand && PredateBearingPulse.Overlap(a.Bearing, b.Bearing))
+        bool sameBand = a.DistanceBand == b.DistanceBand && a.DistanceBandMetres() == b.DistanceBandMetres();
+        if (a.ObservedAt == b.ObservedAt && sameBand && PredateBearingPulse.Overlap(a.Bearing, b.Bearing))
         {
             if (a.OverlapLane != b.OverlapLane) return a.OverlapLane > b.OverlapLane;
         }
@@ -108,7 +110,7 @@ class PredateHuntSelection
             if (other.Distance + other.Uncertainty < candidate.Distance - candidate.Uncertainty) return false;
             // Fresh, distinct distance bands give a useful ranking even where
             // their bearing wedges touch. Ambiguous estimates favour a held lock.
-            if (a.ObservedAt == b.ObservedAt && a.DistanceBand != b.DistanceBand)
+            if (a.ObservedAt == b.ObservedAt && !sameBand)
                 return candidate.Distance < other.Distance;
         }
         if (candidate.Id == current || other.Id == current) return candidate.Id == current;

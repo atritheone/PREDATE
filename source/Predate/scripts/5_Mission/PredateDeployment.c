@@ -29,6 +29,7 @@ class PredateDeployment
         if (!session || !session.m_HuntReady || session.m_HuntError != "" || !player || player.m_PredateDeathRecorded || !player.GetIdentity()) return;
         if (player.IsAlive() && player.GetHealth("", "Health") > 0) return;
         player.m_PredateDeathRecorded = true;
+        player.m_PredateHasDeploymentPosition = false;
         PredateWorldState state = session.m_WorldState;
         RememberCharacter(state, player);
         if (state.PlayerAwaitingRedeploy) return;
@@ -324,6 +325,8 @@ class PredateDeployment
         state.HasPlayerDeathPosition = false;
         player.m_PredateNativeInsertion = false;
         player.m_PredateSpawnRejected = false;
+        player.m_PredateDeploymentPosition = player.GetPosition();
+        player.m_PredateHasDeploymentPosition = true;
         player.Save();
         session.PredateSave();
         Print("[Predate] Player redeployed into life " + state.PlayerLife + "; operator state retained.");
