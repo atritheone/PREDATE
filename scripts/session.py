@@ -17,7 +17,7 @@ import world
 import world_pause
 from client_window import ClientLaunchFocus
 
-from app_runtime import ROOT, command as helper_command
+from app_runtime import ROOT, command as helper_command, saves_directory
 RUNTIME = ROOT / "session-runtime"
 STATUS = RUNTIME / "status.json"
 MANAGER = RUNTIME / "manager.json"
@@ -548,6 +548,7 @@ class Supervisor:
                      session_id=self.session_id)
 
     def serve(self):
+        saves_directory(ROOT)
         handle = platform_win.singleton(ROOT)
         if handle is None: return
         store.atomic_json(MANAGER, world.process_identity(os.getpid()))

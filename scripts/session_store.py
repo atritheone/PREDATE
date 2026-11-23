@@ -20,7 +20,7 @@ import release
 import workshop_lasers
 from contextlib import closing
 
-from app_runtime import ROOT
+from app_runtime import ROOT, saves_directory
 SCHEMA = 1
 DEFAULTS = {"schema": SCHEMA, "selected_world": "main", "reconnect_grace": 30,
             "offline": False, "extra_mods": [], "backup_limit": 20,
@@ -104,7 +104,7 @@ def save_preferences(values):
 def world_path(profile):
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", profile):
         raise ValueError("Invalid world identifier")
-    return ROOT / "world" if profile == "main" else ROOT / "worlds" / profile
+    return ROOT / "world" if profile == "main" else saves_directory(ROOT) / profile
 
 
 def existing_world_path(profile):
@@ -127,7 +127,7 @@ def metadata(profile):
 def worlds():
     import world
     values = [] if world.stable_fallback() else [metadata("main")]
-    for path in sorted((ROOT / "worlds").glob("*/operation.json")):
+    for path in sorted(saves_directory(ROOT).glob("*/operation.json")):
         item = read_json(path)
         if item and item.get("kind") == "operation": values.append(item)
     return values
@@ -137,7 +137,7 @@ def delete_operation(profile):
     if profile == "main":
         raise ValueError("The original hunt is protected.")
     path = existing_world_path(profile)
-    if path.resolve() != ROOT.resolve() / "worlds" / profile:
+    if path.resolve() != ROOT.resolve() / path.parent.name / profile:
         raise ValueError("Select a save stored in the hunt folder.")
     info = metadata(profile)
     if info.get("id") != profile or info.get("kind") != "operation":

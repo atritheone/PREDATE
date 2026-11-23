@@ -4,10 +4,40 @@ from pathlib import Path
 import sys
 import subprocess
 import ctypes
+from ctypes import wintypes
 import threading
 
 ROOT = Path(os.environ.get("PREDATE_ROOT", Path(__file__).resolve().parents[1])).resolve()
 _spawn_lock = threading.RLock()
+
+
+def saves_directory(root):
+    """Move legacy operation folders as a single unit once their owner has stopped."""
+    saves = root / "saves"
+    legacy = root / "worlds"
+    if not legacy.exists():
+        return saves
+
+    import platform_win
+
+    handle = platform_win.singleton(root)
+    if handle is None:
+        return legacy if legacy.exists() else saves
+    try:
+        if not legacy.exists():
+            return saves
+        if saves.exists() or saves.is_symlink():
+            raise RuntimeError("Both worlds and saves exist. Move the legacy operations into saves after checking for conflicts.")
+        if not legacy.is_dir() or legacy.resolve() != root.resolve() / "worlds":
+            raise RuntimeError("The legacy worlds folder must be stored inside the PREDATE installation.")
+        if any(platform_win.find_processes(name) for name in ("DayZ_x64.exe", "DayZServer_x64.exe", "DayZDiag_x64.exe")):
+            return legacy
+        legacy.rename(saves)
+        return saves
+    finally:
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel.CloseHandle(handle)
 
 
 def command(module, *arguments, windowless=False):

@@ -21,7 +21,7 @@ import zlib
 import uuid
 import os
 
-from app_runtime import ROOT, command as helper_command, spawn
+from app_runtime import ROOT, command as helper_command, saves_directory, spawn
 from release import DEPENDENCIES
 WORLD = ROOT / "world"
 PROFILE = WORLD / "profile"
@@ -48,7 +48,7 @@ def select_profile(name):
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", name):
         raise ValueError("Profile names use lowercase letters, digits and hyphens (1–32 characters).")
     PROFILE_NAME = name
-    WORLD = ROOT / "world" if name == "main" else ROOT / "worlds" / name
+    WORLD = ROOT / "world" if name == "main" else saves_directory(ROOT) / name
     PROFILE = WORLD / "profile"
     STORAGE = WORLD / "storage"
     MISSION = WORLD / "mission" / "solo.chernarusplus"
@@ -85,7 +85,7 @@ def launch_mods():
 
 
 def existing_profiles():
-    return ["main"] + sorted(p.name for p in (ROOT / "worlds").glob("*")
+    return ["main"] + sorted(p.name for p in saves_directory(ROOT).glob("*")
                              if p.is_dir() and (p / "settings.local.json").exists())
 
 

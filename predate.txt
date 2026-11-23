@@ -4,12 +4,6 @@
 
 add other maps.
 
-make the ai better at self-preservation.
-
-	make ai not use flashlight or ir flashlight in open spaces.
-	
-	stop ai using large open spaces for transit if not necessary.
-
 server optimisation.
 
 add scoring.
