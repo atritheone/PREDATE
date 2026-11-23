@@ -4229,7 +4229,7 @@ FrameWidgetClass HuntedIndicator {
 visible 0
 priority 11
  { PanelWidgetClass HuntedLeft {
- position 0.16 0
+ position 0.16 0.023
  size 0.24 0.02
  hexactpos 0
  vexactpos 0
@@ -4241,7 +4241,7 @@ style rover_sim_colorable
  {  }
 }
 PanelWidgetClass HuntedRight {
- position 0.6 0
+ position 0.6 0.023
  size 0.24 0.02
  hexactpos 0
  vexactpos 0

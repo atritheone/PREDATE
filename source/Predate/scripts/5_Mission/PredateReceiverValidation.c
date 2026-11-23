@@ -375,16 +375,21 @@ class PredateReceiverValidation
         if (!indicator) return;
         Widget left = indicator.FindAnyWidget("HuntedLeft");
         Widget right = indicator.FindAnyWidget("HuntedRight");
+        Widget border = compass.m_FinalApproachOutline.FindAnyWidget("OutlineTop");
         result.Check(left && left.GetColor() == PredateHuntFeed.HUNTED, "the left line matches the combat log");
         result.Check(right && right.GetColor() == PredateHuntFeed.HUNTED, "the right line matches the combat log");
-        if (left && right)
+        result.Check(border != null, "the Final Approach border is available");
+        if (left && right && border)
         {
             float leftX, leftY, leftWidth, leftHeight, rightX, rightY, rightWidth, rightHeight;
+            float unused, borderY, borderHeight;
             left.GetPos(leftX, leftY);
             left.GetSize(leftWidth, leftHeight);
             right.GetPos(rightX, rightY);
             right.GetSize(rightWidth, rightHeight);
-            result.Check(leftY == 0 && rightY == 0 && leftHeight == rightHeight, "both lines sit along the top edge");
+            border.GetPos(unused, borderY);
+            border.GetSize(unused, borderHeight);
+            result.Check(Math.AbsFloat(leftY - borderY - borderHeight) < 0.001 && leftY == rightY && leftHeight == rightHeight, "both orange lines touch the bottom of the top border");
             result.Check(leftX > 0 && leftX + leftWidth < 0.5 && rightX > 0.5 && rightX + rightWidth < 1, "the lines leave space for the heading and corners");
         }
 
@@ -392,6 +397,11 @@ class PredateReceiverValidation
         untracked.Intercepted = true;
         compass.Update(player, untracked, 0);
         result.Check(indicator.IsVisible(), "the indicator shows without a selected target");
+        untracked.Available = true;
+        untracked.Locked = true;
+        untracked.CloseApproach = true;
+        compass.Update(player, untracked, 0);
+        result.Check(indicator.IsVisible() && compass.m_FinalApproachOutline.IsVisible(), "both indicators show during a hunted Final Approach");
         untracked.Intercepted = false;
         compass.Update(player, untracked, 0);
         result.Check(!indicator.IsVisible(), "the indicator clears when the hunted state ends");
