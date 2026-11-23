@@ -107,6 +107,13 @@ def world_path(profile):
     return ROOT / "world" if profile == "main" else ROOT / "worlds" / profile
 
 
+def existing_world_path(profile):
+    path = world_path(profile)
+    if profile != "main" and not path.is_dir():
+        raise ValueError("That hunt no longer exists.")
+    return path
+
+
 def metadata(profile):
     path = world_path(profile) / "operation.json"
     saved = read_json(path)
@@ -118,11 +125,44 @@ def metadata(profile):
 
 
 def worlds():
-    values = [metadata("main")]
+    import world
+    values = [] if world.stable_fallback() else [metadata("main")]
     for path in sorted((ROOT / "worlds").glob("*/operation.json")):
         item = read_json(path)
         if item and item.get("kind") == "operation": values.append(item)
     return values
+
+
+def delete_operation(profile):
+    if profile == "main":
+        raise ValueError("The original hunt is protected.")
+    path = existing_world_path(profile)
+    if path.resolve() != ROOT.resolve() / "worlds" / profile:
+        raise ValueError("Select a save stored in the hunt folder.")
+    info = metadata(profile)
+    if info.get("id") != profile or info.get("kind") != "operation":
+        raise ValueError("That hunt no longer exists.")
+
+    selected = preferences()["selected_world"] == profile
+    fallback = next((item["id"] for item in worlds() if item["id"] != profile), "") if selected else ""
+    staging = Path(tempfile.mkdtemp(prefix=".deleted-", dir=path.parent))
+    removed = staging / path.name
+    try:
+        path.rename(removed)
+        try:
+            if selected:
+                save_preferences({"selected_world": fallback})
+        except Exception:
+            removed.rename(path)
+            raise
+    except Exception:
+        if not removed.exists():
+            staging.rmdir()
+        raise
+    try:
+        shutil.rmtree(staging)
+    except OSError as error:
+        print(f"Could not clean up deleted hunt files in {staging}: {error}", flush=True)
 
 
 def new_id():
@@ -275,7 +315,8 @@ def backups():
             kind = operation.get("kind", "operation")
             # Integration checks retire their temporary operation after exercising
             # the real New/Restore actions; keep those snapshots out of normal UI.
-            if metadata(operation["id"]).get("kind") == "validation": kind = "validation"
+            current = read_json(world_path(operation["id"]) / "operation.json", {})
+            if current.get("kind") == "validation": kind = "validation"
             result.append({"file": path.name, "name": info["operation"]["name"],
                            "created": info["created"], "bytes": path.stat().st_size,
                            "kind": kind})

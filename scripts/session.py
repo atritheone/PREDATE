@@ -53,11 +53,17 @@ def request(action, **values):
     if action in {"new", "continue"} and not platform_win.find_processes("steam.exe"):
         raise RuntimeError("Steam is not running. Open Steam, then try again.")
     ensure_manager()
+    required = None
     if action == "new" and "setup" in values:
+        required = ("operation_setup_version", OPERATION_SETUP_VERSION)
+    elif action == "delete":
+        required = ("can_delete_saves", True)
+    if required:
+        capability, expected = required
         deadline = time.monotonic() + 2
-        while state().get("operation_setup_version") != OPERATION_SETUP_VERSION:
+        while state().get(capability) != expected:
             if time.monotonic() >= deadline:
-                raise RuntimeError("An older PREDATE session is still running. Restart the session supervisor before using custom operation settings.")
+                raise RuntimeError("An older PREDATE session is still running. Restart the session supervisor and try again.")
             time.sleep(0.1)
     identifier = uuid.uuid4().hex
     store.atomic_json(RUNTIME / "requests" / (identifier + ".json"),
@@ -114,7 +120,7 @@ class Supervisor:
         self.last_backup = None
         self.last_activity = time.monotonic()
         self.data = {"phase": "idle", "message": "Ready to continue", "profile": None, "error": "",
-                     "operation_setup_version": OPERATION_SETUP_VERSION}
+                     "operation_setup_version": OPERATION_SETUP_VERSION, "can_delete_saves": True}
         self.quit_waiters = []
         self.pause_preparing = None
         self.pause_resume_sequence = None
@@ -159,6 +165,7 @@ class Supervisor:
             "Password": world.settings()["join_password"] if action in ("connect", "server-ready") else ""})
 
     def start_operation(self, profile, launcher_pid=None, diagnostics=None):
+        store.existing_world_path(profile)
         if self.profile and self.profile != profile:
             self.save_quit()
         if self.profile == profile and world.running() and self.client_alive():
@@ -336,7 +343,7 @@ class Supervisor:
 
     def dispatch(self, command):
         action = command.get("action")
-        if action not in {"continue", "quit", "new", "restore", "backup"}:
+        if action not in {"continue", "quit", "new", "restore", "backup", "delete"}:
             self.result(command, False, error="Unknown session action")
             return
         if self.job and self.job.is_alive():
@@ -350,9 +357,23 @@ class Supervisor:
         self.job = threading.Thread(target=self.run_job, args=(command,), daemon=False)
         self.job.start()
 
+    def delete_operation(self, profile):
+        if self.session_id or self.client_alive() or (RUNTIME / "active-session.json").exists():
+            raise RuntimeError("Save and quit the current hunt before deleting saves.")
+        store.existing_world_path(profile)
+        self.configure(profile, validate=False)
+        if world.running():
+            raise RuntimeError("Save and quit the current hunt before deleting saves.")
+        store.delete_operation(profile)
+        if self.profile == profile:
+            self.profile = None
+            self.last_backup = None
+        if self.data.get("profile") == profile:
+            self.publish("idle", "Ready to continue", profile=None, session_id=None, backup=None, error="")
+
     def run_job(self, command):
+        action = command["action"]
         try:
-            action = command["action"]
             if action == "continue":
                 self.start_operation(command.get("profile") or store.preferences()["selected_world"],
                                      command.get("launcher_pid"), command.get("diagnostics"))
@@ -372,16 +393,21 @@ class Supervisor:
                              profile=info["id"], error="")
             elif action == "backup":
                 profile = command.get("profile") or store.preferences()["selected_world"]
+                store.existing_world_path(profile)
                 self.configure(profile)
                 if world.running():
                     raise RuntimeError("Use Save and Quit to create a consistent snapshot of an active world")
                 path = store.snapshot(profile)
                 self.publish(message="Validated snapshot created: " + path.name)
+            elif action == "delete":
+                self.delete_operation(command["profile"])
             if command.get("failure"):
                 self.publish("error", command["failure"], error=command["failure"])
             self.result(command)
         except Exception as error:
-            if self.cancel.is_set():
+            if action == "delete":
+                self.result(command, False, error=str(error))
+            elif self.cancel.is_set():
                 self.result(command, cancelled=True)
             else:
                 if self.profile and not self.client_alive() and world.running():
@@ -390,7 +416,7 @@ class Supervisor:
                 self.publish("error", str(error), error=str(error))
                 self.result(command, False, error=str(error))
         finally:
-            if self.cancel.is_set() and self.profile:
+            if self.cancel.is_set():
                 try:
                     self.save_quit()
                     for item in self.quit_waiters: self.result(item)
@@ -542,7 +568,7 @@ class Supervisor:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["serve", "continue", "quit", "new", "restore", "backup", "status"])
+    parser.add_argument("action", choices=["serve", "continue", "quit", "new", "restore", "backup", "delete", "status"])
     parser.add_argument("--profile")
     parser.add_argument("--name")
     parser.add_argument("--backup")

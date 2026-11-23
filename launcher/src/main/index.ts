@@ -19,8 +19,10 @@ function validateAction(value: unknown): SessionAction {
   if (!value || typeof value !== 'object') throw new Error('Invalid session action')
   const action = value as Record<string, unknown>
   if ('diagnostics' in action) throw new Error('Server diagnostics require a launcher flag')
-  if (!['continue', 'quit', 'new', 'restore', 'backup'].includes(String(action.action)))
+  if (!['continue', 'quit', 'new', 'restore', 'backup', 'delete'].includes(String(action.action)))
     throw new Error('Unknown session action')
+  if (action.action === 'delete' && typeof action.profile !== 'string')
+    throw new Error('Select a save to delete.')
   if (
     action.profile !== undefined &&
     (typeof action.profile !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(action.profile))
@@ -85,10 +87,11 @@ function trusted(event: Electron.IpcMainInvokeEvent): void {
 async function continueFromShortcut(): Promise<void> {
   try {
     const overview = await backend.overview()
-    await backend.perform(
-      { action: 'continue', profile: overview.preferences.selected_world },
-      serverDiagnostics,
-    )
+    const operation =
+      overview.operations.find(({ id }) => id === overview.preferences.selected_world) ??
+      overview.operations[0]
+    if (operation)
+      await backend.perform({ action: 'continue', profile: operation.id }, serverDiagnostics)
   } catch (error) {
     window?.webContents.send(
       'predate:continue-error',
@@ -362,8 +365,8 @@ async function createWindow(): Promise<void> {
       title: document.title,
       bridge: typeof window.predate?.overview === 'function',
       navigation: Array.from(document.querySelectorAll('nav button')).map(button => button.textContent),
-      operationCount: document.querySelectorAll('#operation option').length,
-      huntLabel: document.getElementById('operation')?.labels?.[0]?.firstChild?.textContent?.trim(),
+      operationCount: document.querySelectorAll('#hunt-options li').length,
+      huntLabel: document.getElementById('hunt-label')?.textContent?.trim(),
       continueVisible: !!document.querySelector('button.play'),
       imageCount: document.images.length,
       wordmarkLoaded: !!wordmark?.naturalWidth,

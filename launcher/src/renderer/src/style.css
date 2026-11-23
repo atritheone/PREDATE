@@ -223,7 +223,7 @@ button.play {
 
 nav {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   margin-top: 20px;
   border: 1px solid var(--edge);
@@ -258,6 +258,131 @@ nav button {
 button.quiet {
   border-color: transparent;
   background: transparent;
+}
+
+.hunt-field {
+  anchor-name: --hunt-field;
+  position: relative;
+  display: flex;
+  min-height: 39px;
+  border: 1px solid var(--edge);
+  background: var(--field);
+}
+
+.hunt-trigger,
+.hunt-option {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 400;
+  letter-spacing: normal;
+  white-space: nowrap;
+  text-align: left;
+  text-overflow: ellipsis;
+  text-transform: none;
+}
+
+.hunt-trigger {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hunt-trigger span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hunt-field:has(.hunt-delete) .hunt-trigger span {
+  margin-inline-end: 32px;
+}
+
+.hunt-trigger::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin: 0 2px 3px;
+  border: solid var(--muted);
+  border-width: 0 1px 1px 0;
+  transform: rotate(45deg);
+}
+
+.hunt-picker:has(.hunt-options:popover-open) .hunt-trigger::after {
+  transform: rotate(225deg);
+}
+
+.hunt-options {
+  position-anchor: --hunt-field;
+  position-area: block-end;
+  position-try-fallbacks: flip-block;
+  inset: auto;
+  width: anchor-size(width);
+  max-height: min(210px, 40dvh);
+  margin: 3px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  scrollbar-color: var(--edge) transparent;
+  scrollbar-width: thin;
+  list-style: none;
+  border: 1px solid var(--edge);
+  background: var(--field);
+  box-shadow: 0 8px 24px #0009;
+}
+
+.hunt-options li {
+  display: flex;
+}
+
+.hunt-options li + li {
+  border-top: 1px solid var(--rule);
+}
+
+.hunt-option[aria-current='true'] {
+  background: #10223a;
+  color: var(--blue);
+}
+
+button.hunt-delete {
+  flex: 0 0 32px;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+button.hunt-delete:hover:not(:disabled) {
+  background: #491e2d;
+  color: #ffd1d3;
+}
+
+.hunt-field .hunt-delete {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 30px;
+  width: 32px;
+}
+
+.delete-dialog p {
+  overflow-wrap: anywhere;
+}
+
+button.danger {
+  background: #491e2d;
+  border-color: #98555d;
+  color: #ffd1d3;
+}
+
+button.danger:hover:not(:disabled) {
+  background: #642a3c;
+  border-color: #f1a3ab;
 }
 
 .stack {

@@ -36,8 +36,6 @@ def initialize():
 def overview():
     operations = store.worlds()
     preferences = store.preferences()
-    if world.stable_fallback():
-        operations = [item for item in operations if item["id"] != "main"]
     imported = session.read_native(session.RUNTIME / "original-import.json").get("profile")
     operations = [
         {**item, "name": "Current Hunt"}
@@ -72,7 +70,9 @@ def dispatch(method, params):
         if not isinstance(params, dict) or set(params) - allowed: raise ValueError("Unsupported action parameters")
         values = dict(params)
         action = values.pop("action", None)
-        if action not in {"continue", "quit", "new", "restore", "backup"}: raise ValueError("Unsupported action")
+        if action not in {"continue", "quit", "new", "restore", "backup", "delete"}: raise ValueError("Unsupported action")
+        if action == "delete" and (set(values) != {"profile"} or not isinstance(values["profile"], str)):
+            raise ValueError("Select a save to delete.")
         if 'loadout' in values:
             if action != 'new': raise ValueError('A starting kit applies only to a new operation')
             loadouts.get(values['loadout'])

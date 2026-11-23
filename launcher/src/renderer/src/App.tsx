@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import type { Overview, Preferences, SessionAction, SessionStatus } from '../../shared/types'
+import type { Operation, Overview, Preferences, SessionAction, SessionStatus } from '../../shared/types'
 import wordmark from '../../../../flash/predate_wordmark.png'
+import { HuntPicker } from './HuntPicker'
 import { LauncherMusic } from './LauncherMusic'
 import { OperationSetup, readOperationDraft } from './OperationSetup'
 
@@ -37,6 +38,7 @@ const actionErrors: Record<SessionAction['action'], string> = {
   quit: 'Couldn’t finish saving. Try Save and Quit again.',
   backup: 'Couldn’t create a backup. Try again.',
   restore: 'Couldn’t restore the backup. Try another backup.',
+  delete: 'Couldn’t delete the save. Try again.',
 }
 
 const huntListError = 'Couldn’t load your hunts. Try again.'
@@ -47,6 +49,7 @@ const playerValidation = [
   /^(?:Invalid (?:container|position|quantity|placement|cargo position|(?:operation|hunt) name|new (?:operation|hunt) settings)|Use (?:an operation|a hunt) name|Set (?:a valid|whether|a respawn))/i,
   /^(?:Choose (?:a spawn|one, three|1, 3)|Unknown Chernarus spawn|Both Chernarus coordinates|The selected spawn|That operation already exists)/i,
   /^(?:Unsupported launcher settings|Backup retention|Compass|This operation.s mod|Mod content changed|Mod changed while|Additional mod is selected|Use Save and Quit|Select a starting kit|Select a backup)/i,
+  /^(?:Save and quit the current hunt before deleting saves|That hunt no longer exists|The original hunt is protected|Select a save)/i,
   /\b(?:does not fit in|is incompatible with)\b/i,
 ]
 
@@ -74,7 +77,7 @@ function errorMessage(error: unknown, fallback: string): string {
   if (/^This snapshot requires a different game/i.test(message))
     return 'This backup was made with a different version of the game.'
   if (/^An older PREDATE session/i.test(message))
-    return 'Restart your computer, then reopen PREDATE to use the new setup options.'
+    return 'Restart your computer, then reopen PREDATE and try again.'
 
   // Keep player-facing validation details while leaving startup and runtime diagnostics in the logs.
   if (
@@ -218,6 +221,46 @@ function Settings({
   )
 }
 
+function DeleteSaveDialog({
+  name,
+  close,
+  confirm,
+}: {
+  name: string
+  close: () => void
+  confirm: () => void
+}): ReactNode {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    dialog.current?.showModal()
+  }, [])
+
+  return (
+    <dialog
+      ref={dialog}
+      className="gear-picker preset-dialog delete-dialog"
+      aria-labelledby="delete-save-title"
+      aria-describedby="delete-save-description"
+      onCancel={close}
+    >
+      <div className="stack">
+        <h2 id="delete-save-title">Delete Save?</h2>
+        <p id="delete-save-description">
+          Permanently delete <strong>{name}</strong>? Existing backups will be kept.
+        </p>
+        <div className="setup-actions">
+          <button onClick={close} autoFocus>
+            Cancel
+          </button>
+          <button className="danger" onClick={confirm}>
+            Delete Save
+          </button>
+        </div>
+      </div>
+    </dialog>
+  )
+}
+
 export function App(): ReactNode {
   const [page, setPage] = useState<Page>('Continue')
   const heading = useRef<HTMLHeadingElement>(null)
@@ -231,6 +274,7 @@ export function App(): ReactNode {
   const [draft, setDraft] = useState(readOperationDraft)
   const [backupFile, setBackupFile] = useState('')
   const [restoreName, setRestoreName] = useState('Restored Hunt')
+  const [deleteTarget, setDeleteTarget] = useState<Operation | null>(null)
 
   const refresh = useCallback(async (selectPreferred = false): Promise<void> => {
     const result = await window.predate.overview()
@@ -240,6 +284,7 @@ export function App(): ReactNode {
       const preferred = selectPreferred || !current ? result.preferences.selected_world : current
       return (
         result.operations.find((item) => item.id === preferred)?.id ??
+        result.operations.find((item) => item.id === result.preferences.selected_world)?.id ??
         result.operations[0]?.id ??
         ''
       )
@@ -294,6 +339,7 @@ export function App(): ReactNode {
         setPage('Continue')
       }
       if (action.action === 'backup') setNotice('Backup created')
+      if (action.action === 'delete') setNotice('Save deleted')
     } catch (error) {
       setError(errorMessage(error, actionErrors[action.action]))
     } finally {
@@ -364,22 +410,14 @@ export function App(): ReactNode {
               </h1>
               {overview ? (
                 <>
-                  <label className="field">
-                    Hunt
-                    <select
-                      id="operation"
-                      value={selected}
-                      disabled={busy || !operation}
-                      onChange={(event) => setSelected(event.target.value)}
-                    >
-                      {!operation && <option value="">No Saved Hunts</option>}
-                      {overview.operations.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <HuntPicker
+                    hunts={overview.operations}
+                    selected={operation}
+                    disabled={busy}
+                    deleteDisabled={busy || inHunt}
+                    select={setSelected}
+                    requestDelete={setDeleteTarget}
+                  />
                   <button
                     className="primary play"
                     disabled={busy || !operation || operationRunning}
@@ -516,6 +554,16 @@ export function App(): ReactNode {
           )}
         </footer>
       </div>
+      {deleteTarget && (
+        <DeleteSaveDialog
+          name={deleteTarget.name}
+          close={() => setDeleteTarget(null)}
+          confirm={() => {
+            setDeleteTarget(null)
+            void perform({ action: 'delete', profile: deleteTarget.id })
+          }}
+        />
+      )}
       <LauncherMusic inHunt={inHunt} />
     </div>
   )

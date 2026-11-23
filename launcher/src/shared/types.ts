@@ -128,6 +128,7 @@ export function isOpponentCount(value: unknown): value is OpponentCount {
 export type SessionAction =
   | { action: 'continue'; profile: string }
   | { action: 'quit' }
+  | { action: 'delete'; profile: string }
   | {
       action: 'new'
       name: string
