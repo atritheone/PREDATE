@@ -8,8 +8,11 @@ class PredateInsertionScore
 
     bool ImprovesOn(int priority, int operators, int approachBand, float distanceFromDeath)
     {
-        if (operators != Operators) return operators > Operators;
+        int contactTier = Math.Min(2, operators);
+        int previousContactTier = Math.Min(2, Operators);
+        if (contactTier != previousContactTier) return contactTier > previousContactTier;
         if (priority != Priority) return priority > Priority;
+        if (operators != Operators) return operators > Operators;
         if (approachBand != ApproachBand) return approachBand < ApproachBand;
         return operators == 0 && distanceFromDeath < DistanceFromDeath;
     }
@@ -50,9 +53,10 @@ class PredateDeployment
     }
 
     static const float MINIMUM_DISTANCE = 1500;
-    static const float PREFERRED_CONTACT_DISTANCE = 3200;
-    static const float NEW_AREA_DISTANCE = 3000;
+    static const float PREFERRED_DEATH_DISTANCE = 5000;
+    static const float FALLBACK_DEATH_DISTANCE = 3500;
     static const float REGION_WIDTH = 2600;
+    static const int INSERTION_HISTORY_SIZE = 3;
 
     static void LivingOperators(PredateSession session, array<vector> occupied)
     {
@@ -67,11 +71,10 @@ class PredateDeployment
         LivingOperators(session, occupied);
     }
 
-    static bool RateSite(vector point, array<vector> occupied, float snapAllowance, out int operators, out int approachBand, out float nearest)
+    static bool RateSite(vector point, array<vector> occupied, float snapAllowance, out int operators, out int approachBand)
     {
         operators = 0;
         approachBand = 0;
-        nearest = PredateBearingPulse.REACH;
         if (occupied.Count() == 0) return true;
         float minRange = MINIMUM_DISTANCE - snapAllowance;
         float maxRange = PredateBearingPulse.REACH + snapAllowance;
@@ -85,7 +88,6 @@ class PredateDeployment
             if (squared > maxRange * maxRange) continue;
             operators++;
             float range = Math.Max(MINIMUM_DISTANCE, Math.Sqrt(squared) - snapAllowance);
-            nearest = Math.Min(nearest, range);
             totalDistance += range;
         }
         if (operators == 0) return false;
@@ -93,31 +95,44 @@ class PredateDeployment
         return true;
     }
 
-    static int SitePriority(int operators, float nearest, float distanceFromDeath)
+    static int SitePriority(vector point, int operators, float distanceFromDeath, array<vector> previous, float snapAllowance)
     {
         if (operators == 0) return 0;
-        int priority;
-        if (nearest <= PREFERRED_CONTACT_DISTANCE) priority += 2;
-        if (distanceFromDeath >= NEW_AREA_DISTANCE) priority++;
-        return priority;
+        int distanceTier;
+        if (distanceFromDeath + snapAllowance >= PREFERRED_DEATH_DISTANCE) distanceTier = 2;
+        else if (distanceFromDeath + snapAllowance >= FALLBACK_DEATH_DISTANCE) distanceTier = 1;
+        bool newRegion = true;
+        foreach (vector position : previous)
+        {
+            if (PredateHunterBrain.Distance(point, position) + snapAllowance >= REGION_WIDTH) continue;
+            newRegion = false;
+            break;
+        }
+        // A fresh area at least 3.5 km out beats revisiting a previous landing area.
+        if (distanceTier > 0)
+        {
+            if (newRegion) return distanceTier + 3;
+            return distanceTier + 1;
+        }
+        if (newRegion) return 1;
+        return 0;
     }
 
-    static void ConsiderSite(vector point, vector origin, array<vector> occupied, array<Object> exclusions, PredateInsertionScore best)
+    static void ConsiderSite(vector point, vector origin, array<vector> previous, array<vector> occupied, array<Object> exclusions, PredateInsertionScore best)
     {
         const float snapRadius = 8;
         int operators, approachBand;
-        float nearest;
-        if (!RateSite(point, occupied, snapRadius, operators, approachBand, nearest)) return;
+        if (!RateSite(point, occupied, snapRadius, operators, approachBand)) return;
         float distance = PredateHunterBrain.Distance(point, origin);
-        int priority = SitePriority(operators, nearest, distance + snapRadius);
+        int priority = SitePriority(point, operators, distance, previous, snapRadius);
         if (!best.ImprovesOn(priority, operators, approachBand, distance - snapRadius)) return;
         if (!PredateSpawnPlanner.PlayerTerrain(point)) return;
         float ground = GetGame().SurfaceY(point[0], point[2]);
         vector sampled;
         if (!PredateRoutePlanner.Snap(Vector(point[0], ground, point[2]), snapRadius, sampled)) return;
-        if (!RateSite(sampled, occupied, 0, operators, approachBand, nearest)) return;
+        if (!RateSite(sampled, occupied, 0, operators, approachBand)) return;
         distance = PredateHunterBrain.Distance(sampled, origin);
-        priority = SitePriority(operators, nearest, distance);
+        priority = SitePriority(sampled, operators, distance, previous, 0);
         if (!best.ImprovesOn(priority, operators, approachBand, distance) || !PredateSpawnPlanner.PlayerTerrain(sampled)) return;
         ground = GetGame().SurfaceY(sampled[0], sampled[2]);
         if (Math.AbsFloat(sampled[1] - ground) > 0.8) return;
@@ -130,7 +145,7 @@ class PredateDeployment
         best.Position = sampled;
     }
 
-    static bool RegionalInsertion(vector origin, array<vector> occupied, array<Object> exclusions, out vector site, out int contacts)
+    static bool RegionalInsertion(vector origin, array<vector> previous, array<vector> occupied, array<Object> exclusions, out vector site, out int contacts)
     {
         float limit = GetGame().GetWorld().GetWorldSize() - 10;
         array<ref PredateInsertionScore> regions = {};
@@ -146,7 +161,7 @@ class PredateDeployment
                 for (int attempt = 0; attempt < samplesPerRegion; attempt++)
                 {
                     vector point = Vector(Math.RandomFloat(east, farEast), 0, Math.RandomFloat(north, farNorth));
-                    ConsiderSite(point, origin, occupied, exclusions, region);
+                    ConsiderSite(point, origin, previous, occupied, exclusions, region);
                 }
                 if (region.Operators < 1) continue;
                 regions.Insert(region);
@@ -154,18 +169,25 @@ class PredateDeployment
             }
         }
 
-        // Keep a useful share of the contacts available in the busiest region.
-        int minimumContacts = Math.Min(mostContacts, Math.Max(2, Math.Ceil(mostContacts * 0.60)));
+        // Require multiple contacts when possible, then compare density within the best areas for variety.
+        int contactFloor = Math.Min(mostContacts, 2);
         int bestPriority = -1;
+        int strongestAreaContacts;
+        foreach (PredateInsertionScore area : regions)
+        {
+            if (area.Operators < contactFloor || area.Priority < bestPriority) continue;
+            if (area.Priority > bestPriority)
+            {
+                bestPriority = area.Priority;
+                strongestAreaContacts = 0;
+            }
+            strongestAreaContacts = Math.Max(strongestAreaContacts, area.Operators);
+        }
+        int minimumContacts = Math.Max(contactFloor, Math.Ceil(strongestAreaContacts * 0.60));
         int eligibleRegions;
         foreach (PredateInsertionScore candidate : regions)
         {
-            if (candidate.Operators < minimumContacts || candidate.Priority < bestPriority) continue;
-            if (candidate.Priority > bestPriority)
-            {
-                bestPriority = candidate.Priority;
-                eligibleRegions = 0;
-            }
+            if (candidate.Operators < minimumContacts || candidate.Priority != bestPriority) continue;
             eligibleRegions++;
             if (Math.RandomInt(0, eligibleRegions) != 0) continue;
             site = candidate.Position;
@@ -182,14 +204,14 @@ class PredateDeployment
         LivingOperators(session, occupied);
         array<Object> exclusions = {};
         if (staged) exclusions.Insert(staged);
-        return FindInsertion(origin, session.m_HuntConfig.PlayerStart, occupied, exclusions, site);
+        return FindInsertion(origin, session.m_HuntConfig.PlayerStart, session.m_WorldState.RecentPlayerInsertions, occupied, exclusions, site);
     }
 
-    static bool FindInsertion(vector origin, vector initial, array<vector> occupied, array<Object> exclusions, out vector site)
+    static bool FindInsertion(vector origin, vector initial, array<vector> previous, array<vector> occupied, array<Object> exclusions, out vector site)
     {
         vector regionalSite;
         int regionalContacts;
-        bool foundRegion = occupied.Count() > 0 && RegionalInsertion(origin, occupied, exclusions, regionalSite, regionalContacts);
+        bool foundRegion = occupied.Count() > 0 && RegionalInsertion(origin, previous, occupied, exclusions, regionalSite, regionalContacts);
         if (foundRegion && (regionalContacts >= 2 || occupied.Count() == 1))
         {
             site = regionalSite;
@@ -198,8 +220,8 @@ class PredateDeployment
 
         // Look for narrow pockets that the random map samples can miss.
         PredateInsertionScore best = new PredateInsertionScore;
-        ConsiderSite(origin, origin, occupied, exclusions, best);
-        ConsiderSite(initial, origin, occupied, exclusions, best);
+        ConsiderSite(origin, origin, previous, occupied, exclusions, best);
+        ConsiderSite(initial, origin, previous, occupied, exclusions, best);
 
         // Search around every Operator, including areas far from the death.
         array<float> radii = {MINIMUM_DISTANCE + 2, 1550, 1750, 2250, 3000, 4000, PredateBearingPulse.REACH - 2};
@@ -207,11 +229,11 @@ class PredateDeployment
         {
             float heading = PredateMath.Bearing(position, origin);
             float direct = Math.Clamp(PredateHunterBrain.Distance(position, origin), MINIMUM_DISTANCE + 2, PredateBearingPulse.REACH - 2);
-            ConsiderSite(position + PredateInformationMath.BearingDirection(heading) * direct, origin, occupied, exclusions, best);
+            ConsiderSite(position + PredateInformationMath.BearingDirection(heading) * direct, origin, previous, occupied, exclusions, best);
             foreach (float radius : radii)
             {
                 for (int sector = 0; sector < 24; sector++)
-                    ConsiderSite(position + PredateInformationMath.BearingDirection(heading + sector * 15) * radius, origin, occupied, exclusions, best);
+                    ConsiderSite(position + PredateInformationMath.BearingDirection(heading + sector * 15) * radius, origin, previous, occupied, exclusions, best);
             }
         }
 
@@ -221,7 +243,7 @@ class PredateDeployment
             float worldSize = GetGame().GetWorld().GetWorldSize();
             for (float east = 250; east < worldSize; east += 500)
                 for (float north = 250; north < worldSize; north += 500)
-                    ConsiderSite(Vector(east, 0, north), origin, occupied, exclusions, best);
+                    ConsiderSite(Vector(east, 0, north), origin, previous, occupied, exclusions, best);
         }
         else if (occupied.Count() == 0)
         {
@@ -230,7 +252,7 @@ class PredateDeployment
             {
                 if (best.Operators == 0 && ring >= best.DistanceFromDeath + 8) break;
                 for (int index = 0; index < 24; index++)
-                    ConsiderSite(origin + PredateInformationMath.BearingDirection(index * 15) * ring, origin, occupied, exclusions, best);
+                    ConsiderSite(origin + PredateInformationMath.BearingDirection(index * 15) * ring, origin, previous, occupied, exclusions, best);
             }
         }
         if (foundRegion && best.Operators < 2)
@@ -246,7 +268,7 @@ class PredateDeployment
             for (int pass = 0; pass < 4; pass++)
             {
                 for (int direction = 0; direction < 8; direction++)
-                    ConsiderSite(center + PredateInformationMath.BearingDirection(direction * 45) * step, origin, occupied, exclusions, best);
+                    ConsiderSite(center + PredateInformationMath.BearingDirection(direction * 45) * step, origin, previous, occupied, exclusions, best);
                 if (best.Position == center) break;
                 center = best.Position;
             }
@@ -326,6 +348,8 @@ class PredateDeployment
         player.m_PredateNativeInsertion = false;
         player.m_PredateSpawnRejected = false;
         player.m_PredateDeploymentPosition = player.GetPosition();
+        state.RecentPlayerInsertions.Insert(player.m_PredateDeploymentPosition);
+        if (state.RecentPlayerInsertions.Count() > INSERTION_HISTORY_SIZE) state.RecentPlayerInsertions.RemoveOrdered(0);
         player.m_PredateHasDeploymentPosition = true;
         player.Save();
         session.PredateSave();

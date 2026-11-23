@@ -8,6 +8,14 @@ modded class KeybindingsMenu
         // DayZ caches this map. Filter it while the tabs and their matching panels are built.
         InputUtils.InitInputMetadata();
         map<int, ref array<int>> sorting = InputUtils.GetInputActionSortingMap();
+        map<int, ref array<int>> original = new map<int, ref array<int>>;
+        foreach (int originalGroup, array<int> originalActions : sorting)
+            original.Insert(originalGroup, originalActions);
+        array<int> unsorted = InputUtils.GetUnsortedInputActions();
+        array<int> originalUnsorted = {};
+        originalUnsorted.Copy(unsorted);
+        array<int> multiplayer = {};
+        PredateSoloInterface.MultiplayerInputs(multiplayer);
         UAInput fire = GetUApi().GetInputByName("UAFire");
         int weapons = -1;
         int standard = -1;
@@ -43,10 +51,20 @@ modded class KeybindingsMenu
         }
         if (predateBindings) sorting.Set(predate, hidden);
         if (expansionBindings) sorting.Set(expansion, hidden);
+        foreach (int group, array<int> actions : sorting)
+        {
+            if (!actions) continue;
+            array<int> filtered = new array<int>;
+            filtered.Copy(actions);
+            foreach (int multiplayerAction : multiplayer)
+                filtered.RemoveItem(multiplayerAction);
+            if (filtered.Count() != actions.Count()) sorting.Set(group, filtered);
+        }
+        foreach (int hiddenAction : multiplayer) unsorted.RemoveItem(hiddenAction);
         Widget root = super.Init();
-        if (predateBindings) sorting.Set(predate, predateBindings);
-        if (expansionBindings) sorting.Set(expansion, expansionBindings);
-        if (predateBindings && standardBindings) sorting.Set(weapons, standardBindings);
+        foreach (int restoredGroup, array<int> restoredActions : original)
+            sorting.Set(restoredGroup, restoredActions);
+        unsorted.Copy(originalUnsorted);
         return root;
     }
 }

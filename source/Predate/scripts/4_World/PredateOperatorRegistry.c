@@ -137,7 +137,7 @@ modded class eAIBase
                     if (!credited && grenade) credited = grenade.m_PredateExplosionOwner;
                     if (credited && credited.GetIdentity() && credited.m_PredateKillNotices.Find(slot) < 0)
                         credited.m_PredateKillNotices.Insert(slot);
-                    PredateOperatorDeaths.Defeated.Invoke(slot);
+                    PredateOperatorDeaths.Defeated.Invoke(slot, credited);
                 }
             }
         }

@@ -26,8 +26,24 @@ modded class MainMenu
     override Widget Init()
     {
         Widget root = super.Init();
+        if (IsCLIParam("predateSessionId"))
+        {
+            m_Play.Show(false);
+            m_ChooseServer.Show(false);
+        }
         PredateMaskMenu();
         return root;
+    }
+
+    override bool OnClick(Widget w, int x, int y, int button)
+    {
+        if ((w == m_Play || w == m_ChooseServer) && IsCLIParam("predateSessionId")) return true;
+        return super.OnClick(w, x, y, button);
+    }
+
+    override void OpenMenuServerBrowser()
+    {
+        if (!IsCLIParam("predateSessionId")) super.OpenMenuServerBrowser();
     }
 
     override void OnShow()

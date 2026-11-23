@@ -74,6 +74,11 @@ class PredatePersistence
             return Fail(s, "Invalid simulation clock");
         if (s.m_WorldState.PlayerLife < 1 || !PredateInformationMath.Finite(s.m_WorldState.PlayerLastDeathAt) || s.m_WorldState.PlayerLastDeathAt < -1 || s.m_WorldState.PlayerLastDeathAt > s.m_WorldState.SimulationSeconds || (s.m_WorldState.HasPlayerDeathPosition && !PredateInformationMath.FiniteVector(s.m_WorldState.PlayerDeathPosition)))
             return Fail(s, "Invalid player deployment record");
+        if (!s.m_WorldState.RecentPlayerInsertions) s.m_WorldState.RecentPlayerInsertions = new array<vector>;
+        if (s.m_WorldState.RecentPlayerInsertions.Count() > PredateDeployment.INSERTION_HISTORY_SIZE)
+            return Fail(s, "Invalid saved redeployment history.");
+        foreach (vector insertion : s.m_WorldState.RecentPlayerInsertions)
+            if (!PredateInformationMath.FiniteVector(insertion)) return Fail(s, "Invalid saved redeployment position.");
         if (!PredateInformationMath.Finite(s.m_WorldState.PlayerLifeStartedAt) || s.m_WorldState.PlayerLifeStartedAt < 0 || s.m_WorldState.PlayerLifeStartedAt > s.m_WorldState.SimulationSeconds)
             return Fail(s, "Invalid player deployment start time");
         if (!s.m_WorldState.PlayerSupplies) s.m_WorldState.PlayerSupplies = new PredateSupplyPlan;

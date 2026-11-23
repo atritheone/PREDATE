@@ -227,7 +227,7 @@ storageAutoFix = 0;
 steamQueryPort = QUERY_PORT;
 logAverageFps = 60;
 logMemory = 60;
-adminLogPlayerList = 1;
+adminLogPlayerList = 0;
 class Missions
 {
     class DayZ
@@ -325,8 +325,9 @@ def process_failure(identity, logdir=None):
     return None
 
 
-def first_person_config(config):
-    for name, value in (("disable3rdPerson", 1), ("thirdPersonView", 0)):
+def managed_server_config(config):
+    for name, value in (("disable3rdPerson", 1), ("thirdPersonView", 0),
+                        ("disableVoN", 1), ("adminLogPlayerList", 0)):
         config, count = re.subn(rf"(?im)^[ \t]*{name}\s*=\s*[^;\r\n]+;", f"{name} = {value};", config)
         if not count:
             config = f"{name} = {value};\n" + config
@@ -348,8 +349,10 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
         session_id = session_id or uuid.uuid4().hex
     # Offline operation uses the ordinary local executable and omits BattlEye.
     config = CONFIG.read_text(encoding="utf-8")
-    config = re.sub(r"BattlEye\s*=\s*\d+;", f"BattlEye = {0 if offline else 1};", config)
-    CONFIG.write_text(first_person_config(config), encoding="utf-8")
+    updated_config = re.sub(r"BattlEye\s*=\s*\d+;", f"BattlEye = {0 if offline else 1};", config)
+    updated_config = managed_server_config(updated_config)
+    if updated_config != config:
+        CONFIG.write_text(updated_config, encoding="utf-8")
     # Refuse occupied ports instead of starting against another instance.
     for port in [PORT, QUERY_PORT, RCON_PORT]:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:

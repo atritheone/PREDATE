@@ -67,6 +67,7 @@ modded class PlayerBase
 {
     ref PredateState m_PredateState;
     int m_PredateRequest;
+    int m_PredateTrackingChoice;
     string m_PredateRequestedOperator = "raven-01";
     bool m_PredateReceivedState;
     bool m_PredateSessionQuitRequested;
@@ -254,6 +255,7 @@ modded class PlayerBase
             ok = ok && state.Signature == PredateProtocol.SignatureFor(state.OperatorId);
             ok = ok && ctx.Read(state.Available);
             ok = ok && ctx.Read(state.Locked);
+            ok = ok && ctx.Read(state.TrackingChoice);
             ok = ok && ctx.Read(state.HasPulse);
             ok = ok && ctx.Read(state.CloseApproach);
             ok = ok && ctx.Read(state.Bearing);

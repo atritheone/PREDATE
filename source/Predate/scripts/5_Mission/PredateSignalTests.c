@@ -93,7 +93,7 @@ class PredateSignalTests
         display.CloseApproach = true;
         Check(PredateReceiverText.Origin(display, "4530 200 6540") == "Bearings freeze between pulses.", "close approach hides historical-origin guidance");
         display.OperatorId = "pelican-01";
-        Check(PredateReceiverText.CompassReadout(display) == "Sluice | Final Approach - Track Manual", "Final Approach keeps the selected operator on the compass");
+        Check(PredateReceiverText.CompassReadout(display) == PredateProtocol.DisplayName(display.OperatorId) + " | Final Approach - Track Manual", "Final Approach keeps the selected operator on the compass");
         display.OperatorId = "raven-01";
         display.CloseApproach = false;
         display.Locked = false;

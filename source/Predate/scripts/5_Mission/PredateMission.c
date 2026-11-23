@@ -258,6 +258,7 @@ class PredateSession
         string operatorId = "raven-01";
         int availableOperators = -1;
         PredatePeerBinding chosen;
+        bool defeated = m_HuntProgress.Defeated || (m_HuntBot && !m_HuntBot.IsAlive());
         if (m_PeerRoster)
         {
             availableOperators = 0;
@@ -266,13 +267,19 @@ class PredateSession
             {
                 receiverTrack = chosen.State.PlayerReceiver;
                 operatorId = chosen.State.Operator.Id;
+                defeated = chosen.State.Operator.LifeState == "defeated" || (chosen.Actor && !chosen.Actor.IsAlive());
             }
-            if (receiverReady && m_WorldState.PlayerSignal) availableOperators = m_PeerRoster.AvailableCount(this);
         }
         string signature = PredateProtocol.SignatureFor(operatorId);
         bool development = m_Development && !m_PeerRoster;
+        if (receiverReady && receiverTrack && receiverTrack.Selected && (defeated || receiverTrack.Reception == PredatePulseReception.UNAVAILABLE))
+        {
+            PredateSignalService.RetireDefeatedSignal(this, PredateProtocol.OperatorSlot(operatorId), true);
+            PredateRequestCheckpoint();
+        }
+        if (m_PeerRoster && receiverReady && m_WorldState.PlayerSignal) availableOperators = m_PeerRoster.AvailableCount(this);
         bool available = receiverReady && receiverTrack && receiverTrack.Reception != PredatePulseReception.UNAVAILABLE;
-        bool locked = receiverReady && receiverTrack && receiverTrack.Selected;
+        bool locked = available && receiverTrack.Selected;
         bool canDeploy = receiverReady && !available && m_HuntProgress.Defeated && !m_PeerRoster && !m_HuntConfig.EnableOperatorRespawns;
         bool closeApproach = available && locked && PredatePlayerCloseApproach(player, chosen);
         bool intercepted = receiverReady && m_HuntConfig.EnableSharedSignals && m_WorldState.PlayerInterceptionUntil > m_WorldState.SimulationSeconds;
@@ -298,8 +305,7 @@ class PredateSession
         string message;
         if (needsRedeploy) message = "Deployment ended";
         else if (!receiverReady) message = "Waiting for receiver initialization...";
-        else if (locked && available) message = "Tracking " + PredateProtocol.DisplayName(operatorId);
-        else if (locked) message = PredateProtocol.DisplayName(operatorId) + "’s signal ended.";
+        else if (locked) message = "Tracking " + PredateProtocol.DisplayName(operatorId);
         else if (availableOperators == 0 || (!m_PeerRoster && !available)) message = "No active Operator signals.";
         else message = "Click a pulse to track it";
         if (m_HuntError != "") message = "Recovery required. " + m_HuntError;
@@ -315,6 +321,7 @@ class PredateSession
         rpc.Write(signature);
         rpc.Write(available);
         rpc.Write(locked);
+        rpc.Write(player.m_PredateTrackingChoice);
         rpc.Write(hasPulse);
         rpc.Write(closeApproach);
         rpc.Write(bearing);
@@ -551,17 +558,27 @@ class PredateSession
             {
                 string selection;
                 if (request == 1) selection = requestedOperator;
-                if (m_PeerRoster.SelectPlayerTarget(this, selection)) PredateRequestCheckpoint();
+                string previousSelection;
+                PredatePeerBinding previousPeer = m_PeerRoster.PlayerLock();
+                if (previousPeer) previousSelection = previousPeer.State.Operator.Id;
+                else if (m_WorldState.PlayerSignal.Selected) previousSelection = "raven-01";
+                if (selection != previousSelection && m_PeerRoster.SelectPlayerTarget(this, selection))
+                {
+                    player.m_PredateTrackingChoice++;
+                    PredateRequestCheckpoint();
+                }
             }
-            else if (request == 1 && requestedOperator == "raven-01" && m_WorldState.PlayerSignal.Reception != PredatePulseReception.UNAVAILABLE)
+            else if (request == 1 && requestedOperator == "raven-01" && !m_WorldState.PlayerSignal.Selected && m_WorldState.PlayerSignal.Reception != PredatePulseReception.UNAVAILABLE)
             {
                 PredateSignalService.Select(this, true);
+                player.m_PredateTrackingChoice++;
                 Print("[Predate] Player selected " + PredateProtocol.SignatureFor(requestedOperator) + ".");
                 PredateSave();
             }
-            else if (request == 2 && requestedOperator == "raven-01")
+            else if (request == 2 && requestedOperator == "raven-01" && m_WorldState.PlayerSignal.Selected)
             {
                 PredateSignalService.Select(this, false);
+                player.m_PredateTrackingChoice++;
                 PredateSave();
             }
             else if (request == 3 && m_Development)

@@ -16,6 +16,7 @@ class PredateHuntFeed
     PlayerBase m_Player;
     bool m_WasHunted;
     string m_Target;
+    int m_TrackingChoice;
     bool m_HadBearing;
     bool m_Visible = true;
 
@@ -44,7 +45,10 @@ class PredateHuntFeed
 
     void PostLostSignal(string target)
     {
-        Post("Lost " + PredateProtocol.DisplayName(target) + "'s signal.");
+        string text = "Lost " + PredateProtocol.DisplayName(target) + "'s signal.";
+        foreach (PredateHuntNotice notice : m_Notices)
+            if (notice.Text == text) return;
+        Post(text);
     }
 
     void Observe(PlayerBase player, PredateState state)
@@ -57,10 +61,15 @@ class PredateHuntFeed
             m_WasHunted = false;
             m_Target = "";
         }
+        int priorSlot = PredateProtocol.OperatorSlot(m_Target);
+        bool killedTarget = priorSlot >= 0 && player.m_PredateKillNotices.Find(priorSlot) >= 0;
         if (player.m_PredateKillNotices.Count() > 0)
         {
             foreach (int slot : player.m_PredateKillNotices)
+            {
+                player.m_PredateLostSignalNotices.RemoveItem(slot);
                 Post(PredateProtocol.DisplayName(PredateProtocol.OperatorAt(slot)) + " is KIA.");
+            }
             player.m_PredateKillNotices.Clear();
         }
         if (player.m_PredateSupplyNotice)
@@ -83,13 +92,16 @@ class PredateHuntFeed
         }
         string target;
         if (state.Locked && state.Available) target = state.OperatorId;
+        if (m_Target != "" && target != m_Target && !killedTarget && state.TrackingChoice == m_TrackingChoice)
+            PostLostSignal(m_Target);
         if (target != "")
         {
             string name = PredateProtocol.DisplayName(target);
             if (target != m_Target) Post("Tracking " + name + ".");
-            else if (!state.CloseApproach && !state.HasPulse && m_HadBearing) PostLostSignal(target);
+            else if (!state.CloseApproach && !state.HasPulse && m_HadBearing && !killedTarget) PostLostSignal(target);
         }
         m_Target = target;
+        m_TrackingChoice = state.TrackingChoice;
         m_HadBearing = state.HasPulse;
         if (state.Intercepted && !m_WasHunted) Post("You are being hunted.", HUNTED);
         m_WasHunted = state.Intercepted;

@@ -1,6 +1,6 @@
 class PredateProtocol
 {
-    static const int VERSION = 20;
+    static const int VERSION = 21;
     static const int MAX_OPERATORS = 100;
     static const int MAX_BEARING_HISTORY = 4;
     static const int REQUEST = 918601;
@@ -103,6 +103,7 @@ class PredateState
     string Signature;
     bool Available;
     bool Locked;
+    int TrackingChoice;
     bool HasPulse;
     bool CloseApproach;
     int Bearing;

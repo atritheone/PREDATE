@@ -48,17 +48,19 @@ modded class MissionServer
         PredateDeployment.ObserveDeath(m_PredateSession, player);
     }
 
-    void PredateRecordOperatorDeath(int slot)
+    void PredateRecordOperatorDeath(int slot, PlayerBase credited)
     {
-        if (!m_PredateSession || !m_PredateSession.m_HuntReady || !m_PredateSession.m_WorldState || m_PredateSession.m_WorldState.PlayerAwaitingRedeploy) return;
+        if (!m_PredateSession || !m_PredateSession.m_HuntReady || !m_PredateSession.m_WorldState) return;
         if (!PredateSignalService.RetireDefeatedSignal(m_PredateSession, slot, true)) return;
+        m_PredateSession.PredateRequestCheckpoint();
+        if (m_PredateSession.m_WorldState.PlayerAwaitingRedeploy) return;
 
         array<Man> players = {};
         GetGame().GetPlayers(players);
         foreach (Man man : players)
         {
             PlayerBase player = PlayerBase.Cast(man);
-            if (!player || !player.GetIdentity() || !player.IsAlive()) continue;
+            if (!player || player == credited || !player.GetIdentity() || !player.IsAlive()) continue;
             ScriptRPC rpc = new ScriptRPC;
             rpc.Write(slot);
             rpc.Send(player, PredateProtocol.SIGNAL_LOST, true, player.GetIdentity());

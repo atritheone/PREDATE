@@ -12,4 +12,8 @@ make the ai better at self-preservation.
 
 server optimisation.
 
-remove multiplayer mechanics.
+add scoring.
+
+make death screen faster to appear.
+
+add being hunted indicator to compass.

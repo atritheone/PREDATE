@@ -100,6 +100,7 @@ class PredateWorldState
     float PlayerLastDeathAt = -1;
     bool HasPlayerDeathPosition;
     vector PlayerDeathPosition;
+    ref array<vector> RecentPlayerInsertions = {};
     int InformationSchema;
     int SignalSchema;
     int HunterSchema;
