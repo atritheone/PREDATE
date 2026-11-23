@@ -69,6 +69,21 @@ def stable_fallback():
     return selection.exists() and json.loads(selection.read_text()).get("main") == "baseline"
 
 
+def launch_mods():
+    mods = list(MODS)
+    buca_addons = {
+        "buca_essentials.pbo", "buca_weapons.pbo", "buca_weapons2.pbo",
+        "buca_weapons3.pbo", "buca_weapons_arma.pbo",
+    }
+    if any(buca_addons <= {file.name.casefold() for file in root.glob("[Aa]ddons/*.pbo")} for root in mods):
+        for root in MODS:
+            companion = root / "buca-precision"
+            if (companion / "addons/PredateBucaPrecision.pbo").is_file():
+                mods.append(companion)
+                break
+    return mods
+
+
 def existing_profiles():
     return ["main"] + sorted(p.name for p in (ROOT / "worlds").glob("*")
                              if p.is_dir() and (p / "settings.local.json").exists())
@@ -339,7 +354,8 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
     import release
     import workshop_lasers
     release.verify()
-    workshop_lasers.verify_launch(MODS)
+    mods = launch_mods()
+    workshop_lasers.verify_launch(mods)
     setup()
     settings()
     if running():
@@ -365,7 +381,7 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
             "-freezeCheck", "-limitFPS=60"]
     if diagnostics:
         args += ["-doLogs", "-adminLog", "-predateServerDiagnostics"]
-    args.append("-mod=" + ";".join(str(p) for p in MODS))
+    args.append("-mod=" + ";".join(str(p) for p in mods))
     if session_id: args.append("-predateSessionId=" + session_id)
     if PROFILE_NAME == "development":
         args.append("-predateDevelopment")
@@ -484,7 +500,8 @@ def stop(make_backup=True):
 def launch_client(session_id=None, offline=False, extra_args=None, wait_for_server=False):
     import platform_win
     import workshop_lasers
-    workshop_lasers.verify_launch(MODS)
+    mods = launch_mods()
+    workshop_lasers.verify_launch(mods)
     # Avoid launching another client over an existing DayZ session.
     if platform_win.find_processes("DayZ_x64.exe"):
         raise RuntimeError("DayZ is already open. Close it before using scripts/Play PREDATE.cmd.")
@@ -504,7 +521,7 @@ def launch_client(session_id=None, offline=False, extra_args=None, wait_for_serv
         if wait_for_server: args.append("-predateWaitForServer")
     if PROFILE_NAME == "development": args.append("-predateDevelopment")
     if TEST_CLIENT: args.extend(["-predateUITest", "-noPause"])
-    args.append("-mod=" + ";".join(str(p) for p in MODS))
+    args.append("-mod=" + ";".join(str(p) for p in mods))
     if extra_args: args += extra_args
     client_logs = WORLD / "client" if session_id else Path(os.environ["LOCALAPPDATA"]) / "DayZ"
     for argument in args:

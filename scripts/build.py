@@ -320,9 +320,29 @@ def pack(candidate=False):
         inputs[path] = release.digest(ROOT / path)
     pbo = dest / "Predate.pbo"
     signature = dest / "Predate.pbo.PredateLocal.bisign"
+    precision_sources = {
+        "PredateStockPrecision": dest,
+        "PredateBucaPrecision": mod_root / "buca-precision" / "addons",
+    }
+    precision_files = [
+        folder / (name + suffix)
+        for name, folder in precision_sources.items()
+        for suffix in (".pbo", ".pbo.PredateLocal.bisign")
+    ]
+
+    def precision_digests():
+        return {
+            path.relative_to(mod_root).as_posix(): release.digest(path)
+            for path in precision_files if path.is_file()
+        }
+
     if manifest.exists() and pbo.exists() and signature.exists():
         previous = json.loads(manifest.read_text())
-        if previous.get("inputs") == inputs and previous.get("pbo_sha256") == release.digest(pbo) and previous.get("signature_sha256") == release.digest(signature):
+        if (previous.get("inputs") == inputs
+                and previous.get("pbo_sha256") == release.digest(pbo)
+                and previous.get("signature_sha256") == release.digest(signature)
+                and all(path.is_file() for path in precision_files)
+                and previous.get("precision_sha256") == precision_digests()):
             print("PREDATE package already matches these release inputs.", flush=True)
             return
     private=ROOT/"private-signing"
@@ -341,25 +361,38 @@ def pack(candidate=False):
         if release.digest(bundled_loadouts) != inputs[modern_loadouts]:
             raise RuntimeError("Modern loadouts changed during packaging. Retry the build.")
         staged_pbo, staged_signature = stage_signed_addon(source, staging, authority)
+        packages = [(staged_signature, signature), (staged_pbo, pbo)]
+        for name, folder in precision_sources.items():
+            addon = ROOT / "source" / "compat" / name
+            addon_pbo, addon_signature = stage_signed_addon(addon, staging, authority)
+            packages.extend((path, folder / path.name) for path in (addon_signature, addon_pbo))
         require_closed_runtime()
-        previous_signature = staging / "previous.bisign"
-        if signature.is_file():
-            shutil.copy2(signature, previous_signature)
-        os.replace(staged_signature, signature)
+        previous_files = {}
+        for index, (_, target) in enumerate(packages):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.is_file():
+                previous_file = staging / f"previous-{index}"
+                shutil.copy2(target, previous_file)
+                previous_files[target] = previous_file
+        published = []
         try:
-            os.replace(staged_pbo, pbo)
+            for staged, target in packages:
+                os.replace(staged, target)
+                published.append(target)
         except OSError:
-            if previous_signature.is_file():
-                os.replace(previous_signature, signature)
-            else:
-                signature.unlink()
+            for target in reversed(published):
+                if target in previous_files:
+                    os.replace(previous_files[target], target)
+                else:
+                    target.unlink()
             raise
     for folder in [ROOT/"runtime/keys", mod_root/"keys"]:
         folder.mkdir(exist_ok=True)
         shutil.copy2(private/(authority+".bikey"),folder/(authority+".bikey"))
     print("Built and signed the PREDATE client/server mod.",flush=True)
     release.write_changed(manifest, json.dumps({"schema": 1, "inputs": inputs,
-        "pbo_sha256": release.digest(pbo), "signature_sha256": release.digest(signature)}, indent=2, sort_keys=True) + "\n")
+        "pbo_sha256": release.digest(pbo), "signature_sha256": release.digest(signature),
+        "precision_sha256": precision_digests()}, indent=2, sort_keys=True) + "\n")
 
 
 if __name__=='__main__':

@@ -437,6 +437,13 @@ modded class Weapon_Base
 
     override float eAI_CalculateProjectileDrop(float travelTime)
     {
+        float condition;
+        string ammo;
+        if (GetCartridgeInfo(GetCurrentMuzzle(), condition, ammo))
+        {
+            string gravity = "CfgAmmo " + ammo + " coefGravity";
+            if (GetGame().ConfigIsExisting(gravity) && GetGame().ConfigGetFloat(gravity) == 0) return 0;
+        }
         if (m_PredateDropScope && m_PredateIntendedDistance > 1)
         {
             // Native fire constructs its aim angle at the ray's hit distance.
