@@ -52,6 +52,7 @@ modded class MissionServer
     {
         if (!m_PredateSession || !m_PredateSession.m_HuntReady || !m_PredateSession.m_WorldState) return;
         if (!PredateSignalService.RetireDefeatedSignal(m_PredateSession, slot, true)) return;
+        m_PredateSession.m_HuntStateTimer = 1;
         m_PredateSession.PredateRequestCheckpoint();
         if (m_PredateSession.m_WorldState.PlayerAwaitingRedeploy) return;
 

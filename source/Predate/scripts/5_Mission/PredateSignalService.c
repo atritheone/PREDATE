@@ -108,6 +108,14 @@ class PredateSignalService
         track.Reception = PredatePulseReception.UNAVAILABLE;
     }
 
+    static bool DropOutOfRangeTrack(PredateSignalTrack track)
+    {
+        if (!track || !track.Selected || track.Reception != PredatePulseReception.OUT_OF_RANGE) return false;
+        track.SetPlayerTracking(false);
+        track.LastSample = null;
+        return true;
+    }
+
     static bool RetireDefeatedSignal(PredateSession session, int slot, bool trackedOnly)
     {
         PredateSignalTrack track = session.m_WorldState.PlayerSignal;

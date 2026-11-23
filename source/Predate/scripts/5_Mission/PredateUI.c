@@ -637,6 +637,7 @@ modded class MissionGameplay
 
     override void OnMissionFinish()
     {
+        GetDayZGame().PredateSuppressRedeployCursor(false);
         PredatePlayerLifeEvents.LocalDeath.Remove(PredateBeginDeathCard);
         if (m_PredateDeathCard) m_PredateDeathCard.Unlink();
         if (m_PredateHuntFeed) m_PredateHuntFeed.Close();

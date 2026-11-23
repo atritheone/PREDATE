@@ -17,7 +17,6 @@ class PredateHuntFeed
     bool m_WasHunted;
     string m_Target;
     int m_TrackingChoice;
-    bool m_HadBearing;
     bool m_Visible = true;
 
     void PredateHuntFeed()
@@ -81,7 +80,6 @@ class PredateHuntFeed
         {
             string lostTarget = PredateProtocol.OperatorAt(lostSlot);
             PostLostSignal(lostTarget);
-            if (lostTarget == m_Target) m_HadBearing = false;
         }
         player.m_PredateLostSignalNotices.Clear();
         if (!player.IsAlive() || !state || state.NeedsRedeploy) return;
@@ -94,15 +92,9 @@ class PredateHuntFeed
         if (state.Locked && state.Available) target = state.OperatorId;
         if (m_Target != "" && target != m_Target && !killedTarget && state.TrackingChoice == m_TrackingChoice)
             PostLostSignal(m_Target);
-        if (target != "")
-        {
-            string name = PredateProtocol.DisplayName(target);
-            if (target != m_Target) Post("Tracking " + name + ".");
-            else if (!state.CloseApproach && !state.HasPulse && m_HadBearing && !killedTarget) PostLostSignal(target);
-        }
+        if (target != "" && target != m_Target) Post("Tracking " + PredateProtocol.DisplayName(target) + ".");
         m_Target = target;
         m_TrackingChoice = state.TrackingChoice;
-        m_HadBearing = state.HasPulse;
         if (state.Intercepted && !m_WasHunted) Post("You are being hunted.", HUNTED);
         m_WasHunted = state.Intercepted;
     }

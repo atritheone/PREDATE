@@ -28,6 +28,17 @@ class PredateSignalTests
         sliding.NextPulseAt = 91;
         sliding.UseBearingSectors(2);
         Check(sliding.PlayerPulseFormat == 2 && !sliding.LastSample && sliding.NextPulseAt == 91 && sliding.History.Count() == 1, "legacy range migration preserves cooldown and history");
+        sliding.SetPlayerTracking(true);
+        sliding.Reception = PredatePulseReception.CLOSE;
+        Check(!PredateSignalService.DropOutOfRangeTrack(sliding) && sliding.Selected, "a blank close-range pulse keeps the player lock");
+        sliding.Reception = PredatePulseReception.OUT_OF_RANGE;
+        Check(PredateSignalService.DropOutOfRangeTrack(sliding) && !sliding.Selected && !sliding.PlayerDisplaySample() && sliding.NextPulseAt == 91 && sliding.History.Count() == 1, "a lost range pulse drops the lock and map arc while preserving the schedule and history");
+        sliding.Reception = PredatePulseReception.BEARING;
+        sliding.RecordSample(nextPulse);
+        Check(!sliding.Selected && sliding.PlayerDisplaySample() && sliding.PlayerDisplaySample().ObservedAt == 91, "returning in range brings back the map arc without reselecting it");
+        sliding.SetPlayerTracking(true);
+        PredateSignalService.ClearDefeatedSignal(sliding);
+        Check(!sliding.Selected && sliding.Reception == PredatePulseReception.UNAVAILABLE && !sliding.PlayerDisplaySample() && sliding.History.Count() == 0, "defeat retires the selection and its history");
         Check(!human.Due(0), "an unselected signature provides no pulse");
         human.SetSelected(true, 10, 60);
         ai.SetSelected(true, 10, 60);

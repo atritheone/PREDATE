@@ -99,6 +99,11 @@ class PredateSignalTrack
         if (selected) EverLocked = true;
     }
 
+    bool HasLostPlayerReception()
+    {
+        return Reception == PredatePulseReception.OUT_OF_RANGE || Reception == PredatePulseReception.UNAVAILABLE;
+    }
+
     void UseBearingSectors(float now)
     {
         if (PlayerPulseFormat == 2) return;
@@ -129,7 +134,7 @@ class PredateSignalTrack
 
     PredateObservation PlayerDisplaySample()
     {
-        if (PlayerPulseFormat != 2) return null;
+        if (PlayerPulseFormat != 2 || HasLostPlayerReception()) return null;
         if (LastSample) return LastSample;
         // A skipped close-range pulse leaves earlier readings in the receiver history.
         if (!Selected || Reception != PredatePulseReception.CLOSE || History.Count() == 0) return null;

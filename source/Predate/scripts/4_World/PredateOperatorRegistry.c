@@ -115,10 +115,36 @@ class PredateOperatorDeaths
     static ref array<string> Keys = new array<string>;
     static ref ScriptInvoker Defeated = new ScriptInvoker;
     static bool Contains(string key) { return Keys.Find(key) >= 0; }
+
+    static PlayerBase Attacker(Object cause)
+    {
+        PlayerBase attacker = PlayerBase.Cast(cause);
+        EntityAI source = EntityAI.Cast(cause);
+        if (!attacker && source) attacker = PlayerBase.Cast(source.GetHierarchyRootPlayer());
+        Grenade_Base grenade = Grenade_Base.Cast(cause);
+        if (!attacker && grenade) attacker = grenade.m_PredateExplosionOwner;
+        return attacker;
+    }
+
+    static PlayerBase HuntPlayer()
+    {
+        array<Man> players = {};
+        GetGame().GetPlayers(players);
+        foreach (Man man : players)
+        {
+            PlayerBase player = PlayerBase.Cast(man);
+            if (player && player.GetIdentity()) return player;
+        }
+        return null;
+    }
 }
 
 modded class eAIBase
 {
+    PredateOperatorRecord m_PredateOperatorRecord;
+    bool m_PredateBleedingDeath;
+    bool m_PredatePlayerBleedout;
+
     override void EEKilled(Object killer)
     {
         eAIGroup group = GetGroup();
@@ -130,11 +156,10 @@ modded class eAIBase
                 int slot = PredateProtocol.OperatorSlot(m_PredateOperatorId);
                 if (GetGame().IsServer() && slot >= 0)
                 {
-                    PlayerBase credited = PlayerBase.Cast(killer);
-                    EntityAI source = EntityAI.Cast(killer);
-                    if (!credited && source) credited = PlayerBase.Cast(source.GetHierarchyRootPlayer());
-                    Grenade_Base grenade = Grenade_Base.Cast(killer);
-                    if (!credited && grenade) credited = grenade.m_PredateExplosionOwner;
+                    PlayerBase credited = PredateOperatorDeaths.Attacker(killer);
+                    bool playerInjury = m_PredateOperatorRecord && m_PredateOperatorRecord.PlayerHealthBeforeInjury > 0;
+                    if ((!credited || credited == this) && (m_PredatePlayerBleedout || (!m_PredateBleedingDeath && playerInjury)))
+                        credited = PredateOperatorDeaths.HuntPlayer();
                     if (credited && credited.GetIdentity() && credited.m_PredateKillNotices.Find(slot) < 0)
                         credited.m_PredateKillNotices.Insert(slot);
                     PredateOperatorDeaths.Defeated.Invoke(slot, credited);

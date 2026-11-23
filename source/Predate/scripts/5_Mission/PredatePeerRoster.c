@@ -211,6 +211,7 @@ class PredatePeerRoster
     void ConfigureNative(PredateSession session, PredatePeerBinding binding, eAIBase actor, eAIGroup group)
     {
         PredatePeerState peer = binding.State;
+        actor.m_PredateOperatorRecord = peer.Operator;
         PredateOperatorService.UpgradeRivalEquipment(session, actor, peer.Operator);
         actor.PredateBindInformation(true, peer.Operator.Id, peer.Memory, peer.PendingSounds, session.m_WorldState.SimulationSeconds);
         actor.m_PredateCombatEnabled = true;
@@ -274,7 +275,7 @@ class PredatePeerRoster
                 PredatePeerBinding selected = Find(id);
                 if (selected) receiver = selected.State.PlayerReceiver;
             }
-            if (!receiver || receiver.Reception == PredatePulseReception.UNAVAILABLE) return false;
+            if (!receiver || receiver.HasLostPlayerReception()) return false;
         }
         foreach (PredatePeerBinding peer : m_Bindings)
             peer.State.PlayerReceiver.SetPlayerTracking(peer.State.Operator.Id == id);
@@ -341,6 +342,7 @@ class PredatePeerRoster
             record.Deployment++;
             record.StorageKey = StorageKey(index + 1, record.Deployment);
             record.LifeState = "unspawned";
+            record.ClearPlayerWoundCredit();
             record.RespawnAt = 0;
             record.EquipmentRevision = 0;
             record.RifleKit = "";

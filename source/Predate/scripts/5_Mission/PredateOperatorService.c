@@ -413,6 +413,7 @@ class PredateOperatorService
     static void PredateConfigureBot(PredateSession s)
     {
         if (!s.m_HuntBot) return;
+        s.m_HuntBot.m_PredateOperatorRecord = s.m_HuntProgress.Operator;
         UpgradeRivalEquipment(s, s.m_HuntBot, s.m_HuntProgress.Operator);
         s.m_HuntBot.m_PredateCombatEnabled = true;
         s.m_HuntBot.Expansion_SetCanBeLooted(false);
@@ -599,6 +600,7 @@ class PredateOperatorService
         record.Deployment++;
         record.StorageKey = "PredateRaven01_d" + record.Deployment.ToString();
         record.LifeState = "unspawned";
+        record.ClearPlayerWoundCredit();
         record.RespawnAt = 0;
         record.EquipmentRevision = 0;
         record.RifleKit = "";

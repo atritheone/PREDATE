@@ -242,7 +242,7 @@ class PredateSession
             track = chosen.State.PlayerReceiver;
             target = chosen.Actor;
         }
-        return track && track.Selected && track.Reception != PredatePulseReception.UNAVAILABLE && target && target.IsAlive() && PredateSignalRules.FinalApproach(player.GetPosition(), target.GetPosition());
+        return track && track.Selected && !track.HasLostPlayerReception() && target && target.IsAlive() && PredateSignalRules.FinalApproach(player.GetPosition(), target.GetPosition());
     }
 
     void PredateSend(PlayerBase player)
@@ -272,10 +272,18 @@ class PredateSession
         }
         string signature = PredateProtocol.SignatureFor(operatorId);
         bool development = m_Development && !m_PeerRoster;
-        if (receiverReady && receiverTrack && receiverTrack.Selected && (defeated || receiverTrack.Reception == PredatePulseReception.UNAVAILABLE))
+        if (receiverReady && receiverTrack && receiverTrack.Selected)
         {
-            PredateSignalService.RetireDefeatedSignal(this, PredateProtocol.OperatorSlot(operatorId), true);
-            PredateRequestCheckpoint();
+            if (defeated || receiverTrack.Reception == PredatePulseReception.UNAVAILABLE)
+            {
+                if (PredateSignalService.RetireDefeatedSignal(this, PredateProtocol.OperatorSlot(operatorId), true))
+                    PredateRequestCheckpoint();
+            }
+            else if (PredateSignalService.DropOutOfRangeTrack(receiverTrack))
+            {
+                if (!chosen) PredateSignalService.SyncReceiverProgress(this);
+                PredateRequestCheckpoint();
+            }
         }
         if (m_PeerRoster && receiverReady && m_WorldState.PlayerSignal) availableOperators = m_PeerRoster.AvailableCount(this);
         bool available = receiverReady && receiverTrack && receiverTrack.Reception != PredatePulseReception.UNAVAILABLE;
@@ -568,7 +576,7 @@ class PredateSession
                     PredateRequestCheckpoint();
                 }
             }
-            else if (request == 1 && requestedOperator == "raven-01" && !m_WorldState.PlayerSignal.Selected && m_WorldState.PlayerSignal.Reception != PredatePulseReception.UNAVAILABLE)
+            else if (request == 1 && requestedOperator == "raven-01" && !m_WorldState.PlayerSignal.Selected && !m_WorldState.PlayerSignal.HasLostPlayerReception())
             {
                 PredateSignalService.Select(this, true);
                 player.m_PredateTrackingChoice++;
@@ -593,8 +601,11 @@ class PredateSession
             if (m_PeerRoster) m_PeerRoster.SampleForPlayer(this, player);
             PredatePeerBinding chosen;
             if (m_PeerRoster) chosen = m_PeerRoster.PlayerLock();
+            PredateSignalTrack selectedTrack = m_WorldState.PlayerSignal;
+            if (chosen) selectedTrack = chosen.State.PlayerReceiver;
+            bool lostReception = selectedTrack.Selected && selectedTrack.HasLostPlayerReception();
             bool closeApproach = PredatePlayerCloseApproach(player, chosen);
-            if (closeApproach != m_HuntSentCloseApproach || player.m_PredateKillNotices.Count() > 0 || player.m_PredateFootprintNotice != "" || m_HuntStateTimer >= 1)
+            if (lostReception || closeApproach != m_HuntSentCloseApproach || player.m_PredateKillNotices.Count() > 0 || player.m_PredateFootprintNotice != "" || m_HuntStateTimer >= 1)
             {
                 bool confirmedKill = player.m_PredateKillNotices.Count() > 0;
                 PredateSend(player);

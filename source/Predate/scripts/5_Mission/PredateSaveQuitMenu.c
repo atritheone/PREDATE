@@ -278,6 +278,7 @@ modded class MissionGameplay
     bool m_PredateDeathValidation;
     bool m_PredateRedeployCovered;
     PlayerBase m_PredateRedeployCorpse;
+    bool m_PredateRedeployCursorLeak;
 
     override void OnEvent(EventType eventTypeId, Param params)
     {
@@ -310,10 +311,12 @@ modded class MissionGameplay
     void PredateBeginRedeployCover(PlayerBase player)
     {
         m_PredateRedeployCovered = true;
+        GetDayZGame().PredateSuppressRedeployCursor(true);
         if (!player.IsAlive()) m_PredateRedeployCorpse = player;
         if (m_PredateDeathCard) m_PredateDeathCard.Show(true);
         if (m_PredateDeathValidation)
         {
+            m_PredateRedeployCursorLeak = GetGame().IsAppActive() && GetGame().GetUIManager().IsCursorVisible();
             bool visible = m_PredateDeathCard && m_PredateDeathCard.IsVisible();
             Print("[PredateDeploymentTest] Redeploy cover shown; visible=" + visible);
         }
@@ -322,6 +325,8 @@ modded class MissionGameplay
     bool PredateHoldRedeploy(PlayerBase player, PredateState state)
     {
         if (!m_PredateRedeployCovered) return false;
+        if (m_PredateDeathValidation && GetGame().IsAppActive() && GetGame().GetUIManager().IsCursorVisible())
+            m_PredateRedeployCursorLeak = true;
         if (IsPlayerRespawning() || GetDayZGame().IsLoading() || !player) return true;
         if (!player.IsAlive())
         {
@@ -332,6 +337,7 @@ modded class MissionGameplay
             PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
             if (agent) agent.m_DeployAfterRespawn = false;
             PredateBeginDeathCard(player);
+            GetDayZGame().PredateSuppressRedeployCursor(false);
             return true;
         }
         if (!state || !player.IsPlayerLoaded()) return true;
@@ -339,6 +345,7 @@ modded class MissionGameplay
         {
             m_PredateRedeployCovered = false;
             m_PredateRedeployCorpse = null;
+            GetDayZGame().PredateSuppressRedeployCursor(false);
             return false;
         }
         if (state.NeedsRedeploy || !state.HasDeploymentPosition || !player.GetCurrentPlayerCamera()) return true;
@@ -348,11 +355,14 @@ modded class MissionGameplay
         m_PredateRedeployCovered = false;
         m_PredateRedeployCorpse = null;
         Continue();
+        GetGame().GetUIManager().ShowUICursor(false);
+        GetDayZGame().PredateSuppressRedeployCursor(false);
         PredateHideDeathCard();
         if (m_PredateDeathValidation)
         {
             bool visible = m_PredateDeathCard && m_PredateDeathCard.IsVisible();
             Print("[PredateDeploymentTest] Redeploy cover released; visible=" + visible);
+            Print("[PredateDeploymentTest] Cursor hidden through redeploy=" + !m_PredateRedeployCursorLeak + "; gameplay owns cursor=" + GetDayZGame().CanDisplayMouseCursor());
         }
         return false;
     }

@@ -206,7 +206,15 @@ class PredateOperatorRecord
     float RespawnAt;
     int EquipmentRevision;
     string RifleKit;
+    int PlayerWoundBits;
+    float PlayerHealthBeforeInjury;
     ref PredateSupplyPlan Supplies = new PredateSupplyPlan;
+
+    void ClearPlayerWoundCredit()
+    {
+        PlayerWoundBits = 0;
+        PlayerHealthBeforeInjury = 0;
+    }
 
     bool RespawnDue(float now, float delay)
     {
