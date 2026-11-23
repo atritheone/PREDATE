@@ -248,6 +248,7 @@ async function createWindow(): Promise<void> {
       classicSpawnGroup?: string
       customSpawnFields?: boolean
       startTime?: boolean
+      dayNightCycle?: boolean
       spawnMap?: boolean
       equipmentSlots?: number
       attachments?: number
@@ -276,6 +277,10 @@ async function createWindow(): Promise<void> {
           const startTime = !!document.getElementById('start-time');
           const features = {};
           if (page === 'New Hunt') {
+            const startTimeInput = document.getElementById('start-time');
+            const cycle = document.getElementById('day-night-cycle');
+            features.dayNightCycle = cycle?.type === 'checkbox' && cycle.checked &&
+              cycle.getBoundingClientRect().left >= startTimeInput?.getBoundingClientRect().right;
             const paint = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
             const sections = Array.from(document.querySelectorAll('.setup-sections > section[aria-labelledby]'))
               .map(section => document.getElementById(section.getAttribute('aria-labelledby')));
@@ -403,6 +408,7 @@ async function createWindow(): Promise<void> {
           (check.page !== 'New Hunt' ||
             (check.createVisible === true &&
               check.startTime === true &&
+              check.dayNightCycle === true &&
               (check.kitOptions?.includes('hk417')
                 ? check.defaultKit === 'hk417'
                 : check.kitOptions?.includes('m4a1') && check.kitOptions.includes('ak74')) &&

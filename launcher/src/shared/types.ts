@@ -109,6 +109,7 @@ export interface InventoryEntry {
 export interface NewOperationSettings {
   startHour: number
   startMinute: number
+  dayNightCycle: boolean
   enemyRespawns: boolean
   respawnDelay: number
   playerOutfit?: string

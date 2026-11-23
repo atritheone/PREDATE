@@ -202,6 +202,7 @@ class PredateClientAgent
         }
         m_StagingInitialJoin = false;
         Print("[Predate] Local mission ready; joining from the loading screen.");
+        if (game.m_loading) game.m_loading.PredateBeginWorldLoading();
         game.ConnectFromServerBrowserEx("127.0.0.1", m_InitialJoin.Port, m_InitialJoin.QueryPort, m_InitialJoin.Password);
         m_InitialJoin = null;
     }

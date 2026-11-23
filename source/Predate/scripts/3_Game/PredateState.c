@@ -152,6 +152,7 @@ class PredateConfig
     int SchemaVersion;
     int StartHour = -1;
     int StartMinute;
+    bool FreezeTimeOfDay;
     float PulseInterval = 60;
     float BearingErrorDegrees = 3;
     float FinalApproachRadius = 200;

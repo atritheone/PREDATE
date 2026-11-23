@@ -481,7 +481,33 @@ export function changeOutfit(
   return updated
 }
 
-export function starterInventory(id: string, outfitId: string): Inventory {
+function mountedOptic(rifle: InventoryItem): [string, InventoryItem] | undefined {
+  return Object.entries(rifle.attachments).find(([slot]) =>
+    ['weaponoptics', 'weaponopticsak', 'weaponopticshunting'].includes(slot.toLowerCase()),
+  )
+}
+
+export function switchPresetOptic(
+  inventory: Inventory,
+  before: Inventory,
+  after: Inventory,
+): Inventory {
+  const rifle = inventory.Hands
+  if (!rifle || rifle.id !== before.Hands?.id || rifle.id !== after.Hands?.id) return inventory
+  const previous = mountedOptic(before.Hands)
+  const next = mountedOptic(after.Hands)
+  if (!previous || !next || previous[1].id === next[1].id) return inventory
+  const [oldSlot, oldOptic] = previous
+  const [newSlot, newOptic] = next
+  if (JSON.stringify(rifle.attachments[oldSlot]) !== JSON.stringify(oldOptic)) return inventory
+  if (newSlot !== oldSlot && rifle.attachments[newSlot]) return inventory
+  return {
+    ...inventory,
+    Hands: updateAttachment(updateAttachment(rifle, oldSlot), newSlot, newOptic),
+  }
+}
+
+export function starterInventory(id: string, outfitId: string, night = false): Inventory {
   const modern = modernLoadouts.Kits.find((kit) => kit.Id === id)
   const preset = modern ?? [...presets.Kits, ...presets.OperatorKits].find((kit) => kit.Id === id)
   if (!preset) return {}
@@ -510,6 +536,18 @@ export function starterInventory(id: string, outfitId: string): Inventory {
       compatibleGear(option, weapon).some((item) => item.id === part),
     )
     if (slot) root.Hands.attachments[slot] = newItem(part)
+  }
+  if (night && weapon) {
+    for (const optic of ['KazuarOptic', 'StarlightOptic']) {
+      const slot = weapon.accepts.find((key) =>
+        compatibleGear(key, weapon).some((part) => part.id === optic),
+      )
+      if (!slot) continue
+      const previous = mountedOptic(root.Hands)
+      if (previous) delete root.Hands.attachments[previous[0]]
+      root.Hands.attachments[slot] = newItem(optic)
+      break
+    }
   }
   const pouches = root.Vest.attachments.VestPouch
   root.Hands.attachments['@magazine'] = newItem(preset.MagazineClass)

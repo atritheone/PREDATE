@@ -94,11 +94,14 @@ def inventory(entries):
 
 
 def config(selection):
-    if not isinstance(selection, dict) or not RULE_KEYS <= selection.keys() <= RULE_KEYS | {"inventory", "playerOutfit", "operatorOutfit", "eliteAI"}:
+    if not isinstance(selection, dict) or not RULE_KEYS <= selection.keys() <= RULE_KEYS | {"inventory", "playerOutfit", "operatorOutfit", "eliteAI", "dayNightCycle"}:
         raise ValueError("Invalid new operation settings")
     hour, minute = selection["startHour"], selection["startMinute"]
     if type(hour) is not int or type(minute) is not int or not (0 <= hour <= 23 and 0 <= minute <= 59):
         raise ValueError("Set a valid 24-hour start time")
+    day_night_cycle = selection.get("dayNightCycle", True)
+    if type(day_night_cycle) is not bool:
+        raise ValueError("Set whether the day night cycle should run")
     respawns, delay = selection["enemyRespawns"], selection["respawnDelay"]
     if type(respawns) is not bool:
         raise ValueError("Set whether defeated enemies should respawn")
@@ -107,6 +110,7 @@ def config(selection):
     rules = {
         "StartHour": hour,
         "StartMinute": minute,
+        "FreezeTimeOfDay": not day_night_cycle,
         "EnableOperatorRespawns": respawns,
         "OperatorRespawnDelay": delay,
     }

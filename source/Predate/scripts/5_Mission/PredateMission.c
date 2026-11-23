@@ -169,6 +169,14 @@ class PredateSession
         actor.DisableSimulation(true);
     }
 
+    void PredateApplyWorldClock()
+    {
+        if (m_Paused || (m_HuntConfig && m_HuntConfig.FreezeTimeOfDay))
+            GetGame().GetWorld().SetTimeMultiplier(0);
+        else
+            GetGame().GetWorld().SetTimeMultiplier(-1);
+    }
+
     void SetPaused(bool paused)
     {
         if (paused == m_Paused || m_Suspending) return;
@@ -208,8 +216,7 @@ class PredateSession
         }
         m_Paused = paused;
         if (GetGame().IsDedicatedServer()) PredateServerPauseDriver.Held = paused;
-        if (paused) GetGame().GetWorld().SetTimeMultiplier(0);
-        else GetGame().GetWorld().SetTimeMultiplier(-1);
+        PredateApplyWorldClock();
     }
 
     void BeginSuspend()

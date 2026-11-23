@@ -108,13 +108,67 @@ class PredateLoadingStyle
     }
 }
 
+class PredateLoadingProgress
+{
+    float Value;
+    bool WorldPhase;
+    bool PlayerReady;
+    protected float m_NativeProgress;
+    protected float m_PhaseElapsed;
+    protected float m_FinishElapsed;
+    protected float m_FinishFrom;
+
+    void BeginWorld()
+    {
+        WorldPhase = true;
+        m_PhaseElapsed = 0;
+        m_NativeProgress = 0;
+    }
+
+    void BeginFinish()
+    {
+        PlayerReady = true;
+        m_FinishFrom = Value;
+    }
+
+    void Advance(float timeslice, float nativeFraction)
+    {
+        float seconds = Math.Clamp(timeslice, 0, 0.1);
+        if (PlayerReady)
+        {
+            m_FinishElapsed += seconds;
+            float t = Math.Min(m_FinishElapsed / 0.45, 1);
+            Value = Math.Lerp(m_FinishFrom, 100, t * t * (3 - 2 * t));
+            return;
+        }
+
+        m_PhaseElapsed += seconds;
+        m_NativeProgress = Math.Max(m_NativeProgress, Math.Clamp(nativeFraction, 0, 1));
+        float phaseStart = 0;
+        float phaseWidth = 46;
+        if (WorldPhase)
+        {
+            phaseStart = 46;
+            phaseWidth = 51;
+        }
+        // Time keeps the estimate moving even when native progress is idle.
+        float elapsedFraction = m_PhaseElapsed / (m_PhaseElapsed + 6);
+        float fraction = Math.Lerp(elapsedFraction, 1, m_NativeProgress * 0.8);
+        float target = phaseStart + phaseWidth * fraction;
+        float advance = Math.Min((target - Value) * seconds / (0.55 + seconds), 32 * seconds);
+        Value += Math.Max(0, advance);
+    }
+}
+
 modded class LoadingScreen
 {
     bool m_PredateJoining;
     bool m_PredateNativeLoading;
-    bool m_PredateWorldPhase;
     bool m_PredatePreloading;
     Widget m_PredatePreloadCover;
+    protected ProgressBarWidget m_PredateVisibleProgress;
+    protected ProgressBarWidget m_PredateCoverProgress;
+    protected ref PredateLoadingProgress m_PredateProgress;
 
     void LoadingScreen(DayZGame game)
     {
@@ -127,10 +181,16 @@ modded class LoadingScreen
         PredateLoadingStyle.Clean(m_WidgetRoot);
         PredateLoadingStyle.Artwork(m_WidgetRoot, game.GetLoadingWorkspace());
         ProgressBarWidget blue = PredateLoadingStyle.BlueBar(m_WidgetRoot, game.GetLoadingWorkspace());
-        if (blue)
+        if (managedJoin)
+        {
+            // Keep the native widget as the asynchronous progress source. DayZ
+            // can reset it between passes without resetting the displayed fill.
+            m_PredateProgress = new PredateLoadingProgress;
+            m_PredateVisibleProgress = blue;
+        }
+        else if (blue)
         {
             m_ProgressLoading = blue;
-            if (m_PredateJoining) blue.SetSize(0.5, 1);
             ProgressAsync.SetProgressData(m_ProgressLoading);
         }
     }
@@ -167,21 +227,18 @@ modded class LoadingScreen
     {
         if (!m_PredateJoining) return;
         PredateCoverPreload();
-        if (!m_PredateWorldPhase)
-        {
-            // Both native stages share one bar; world loading owns its latter half.
-            m_PredateWorldPhase = true;
-            Widget completed = m_WidgetRoot.FindAnyWidget("PredateLoadedPhase");
-            if (completed) completed.Show(true);
-            m_ProgressLoading.SetPos(0.5, 0);
-            m_ProgressLoading.SetSize(0.5, 1);
-            m_ProgressLoading.SetCurrent(0);
-            Print("[Predate] Continuous loading: world phase; artwork retained.");
-        }
+        if (!m_PredatePreloading) PredateBeginWorldLoading();
         m_WidgetRoot.Show(true);
         m_TextWidgetTitle.Show(false);
         m_TextWidgetStatus.Show(false);
         m_ProgressText.Show(false);
+    }
+
+    void PredateBeginWorldLoading()
+    {
+        if (!m_PredateJoining || m_PredateProgress.WorldPhase) return;
+        m_PredateProgress.BeginWorld();
+        Print("[Predate] Continuous loading: world phase; artwork retained.");
     }
 
     bool PredateMasksFrontend()
@@ -191,7 +248,7 @@ modded class LoadingScreen
 
     void PredateCoverPreload()
     {
-        if (!PredateMasksFrontend() || m_PredatePreloadCover) return;
+        if (!m_PredateJoining || m_PredatePreloadCover || (!m_PredatePreloading && !m_PredateProgress.PlayerReady)) return;
         // The ordinary workspace can render between native loading passes.
         // Use a PREDATE-only cover there, without the stock notification layer.
         WorkspaceWidget workspace = m_DayZGame.GetWorkspace();
@@ -200,10 +257,10 @@ modded class LoadingScreen
         m_PredatePreloadCover.SetSort(10000);
         PredateLoadingStyle.FitArtwork(m_PredatePreloadCover);
         Widget progress = PredateLoadingStyle.CreateBlueFrame(workspace, m_PredatePreloadCover);
-        if (progress && m_ProgressLoading)
+        if (progress && m_PredateVisibleProgress)
         {
             float x, y, width, height;
-            Widget nativeProgress = m_ProgressLoading.GetParent();
+            Widget nativeProgress = m_PredateVisibleProgress.GetParent();
             nativeProgress.GetScreenPos(x, y);
             nativeProgress.GetScreenSize(width, height);
             if (width > 0 && height > 0)
@@ -212,12 +269,41 @@ modded class LoadingScreen
                 progress.SetScreenPos(x, y);
             }
         }
-        Widget blue = m_PredatePreloadCover.FindAnyWidget("PredateLoadingBar");
-        if (blue) blue.Show(false);
-        Widget completed = m_PredatePreloadCover.FindAnyWidget("PredateLoadedPhase");
-        if (completed) completed.Show(true);
+        m_PredateCoverProgress = ProgressBarWidget.Cast(m_PredatePreloadCover.FindAnyWidget("PredateLoadingBar"));
+        if (m_PredateCoverProgress) m_PredateCoverProgress.SetCurrent(m_PredateProgress.Value);
         m_PredatePreloadCover.Show(true);
         Print("[Predate] Continuous loading: PREDATE-only frontend cover visible.");
+    }
+
+    void PredateUpdateLoading(float timeslice)
+    {
+        if (!m_PredateJoining) return;
+        PredateCoverPreload();
+        // Keep the completed fill visible for a frame before handing over.
+        if (m_PredateProgress.PlayerReady && m_PredateProgress.Value >= 100)
+        {
+            PredateFinishJoin();
+            return;
+        }
+
+        float nativeFraction;
+        if (m_PredateNativeLoading && m_ProgressLoading)
+        {
+            float range = m_ProgressLoading.GetMax() - m_ProgressLoading.GetMin();
+            if (range > 0)
+                nativeFraction = (m_ProgressLoading.GetCurrent() - m_ProgressLoading.GetMin()) / range;
+        }
+        m_PredateProgress.Advance(timeslice, nativeFraction);
+        if (m_PredateVisibleProgress) m_PredateVisibleProgress.SetCurrent(m_PredateProgress.Value);
+        if (m_PredateCoverProgress) m_PredateCoverProgress.SetCurrent(m_PredateProgress.Value);
+    }
+
+    void PredatePlayerLoaded()
+    {
+        if (!m_PredateJoining || m_PredateProgress.PlayerReady) return;
+        m_PredateProgress.BeginFinish();
+        PredateCoverPreload();
+        if (!m_PredateVisibleProgress && !m_PredateCoverProgress) PredateFinishJoin();
     }
 
     void PredateFinishJoin()
@@ -226,6 +312,7 @@ modded class LoadingScreen
         m_PredateJoining = false;
         if (m_PredatePreloadCover) m_PredatePreloadCover.Unlink();
         m_PredatePreloadCover = null;
+        m_PredateCoverProgress = null;
         m_WidgetRoot.Show(false);
         Print("[Predate] Continuous loading: released.");
     }
@@ -252,7 +339,7 @@ modded class DayZGame
     override void OnUpdate(bool doSim, float timeslice)
     {
         super.OnUpdate(doSim, timeslice);
-        if (m_loading) m_loading.PredateCoverPreload();
+        if (m_loading) m_loading.PredateUpdateLoading(timeslice);
         if (m_PredateRestoreJoinInput) PredateRestoreJoinInput();
     }
 
@@ -270,7 +357,7 @@ modded class DayZGame
             m_PredateRestoreJoinInput = m_PredateClientAgent || (m_loading && m_loading.m_PredateJoining);
             // DayZ schedules its device check 100 ms after player-ready.
             if (m_PredateRestoreJoinInput) m_PredateJoinInputAfter = GetTickTime() + 0.2;
-            if (m_loading) m_loading.PredateFinishJoin();
+            if (m_loading) m_loading.PredatePlayerLoaded();
         }
         else if (eventTypeId == MPSessionFailEventTypeID || eventTypeId == MPSessionEndEventTypeID)
         {
@@ -281,6 +368,7 @@ modded class DayZGame
 
     void PredateRestoreJoinInput()
     {
+        if (m_loading && m_loading.m_PredateJoining) return;
         if (GetTickTime() < m_PredateJoinInputAfter || GetGameState() != DayZGameState.IN_GAME || !GetPlayer() || IsLoading() || !IsAppActive()) return;
         UIManager ui = GetUIManager();
         if (!ui || ui.GetMenu() || ui.IsDialogVisible()) return;

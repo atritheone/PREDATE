@@ -23,6 +23,7 @@ import {
   removeEpinephrine,
   starterInventory,
   stowSidearm,
+  switchPresetOptic,
   upgradeDraftOutfitMount,
   type Inventory,
 } from './operationInventory'
@@ -36,6 +37,16 @@ const timePresets = [
   ['Night', '00:00'],
 ] as const
 const defaultTime = '12:00'
+
+function isNightStart(time: string): boolean {
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) return false
+  const [hour, minute] = time.split(':').map(Number)
+  const start = hour * 60 + minute
+  // Fresh Chernarus hunts start in September. These are the first whole
+  // minutes after the map's approximate sunrise and sunset thresholds.
+  return start < 4 * 60 + 19 || start >= 19 * 60 + 42
+}
+
 const presetSaveTitles = {
   weapon: 'Save Weapon Preset',
   equipment: 'Save Equipment Preset',
@@ -49,6 +60,7 @@ const rifleGroups = [
 export interface OperationDraft {
   name: string
   time: string
+  dayNightCycle: boolean
   opponents: OpponentCount
   enemyRespawns: boolean
   respawnDelay: string
@@ -66,6 +78,7 @@ export interface OperationDraft {
 const defaults: OperationDraft = {
   name: '',
   time: defaultTime,
+  dayNightCycle: true,
   opponents: DEFAULT_OPPONENT_COUNT,
   enemyRespawns: true,
   respawnDelay: '120',
@@ -87,6 +100,7 @@ export function readOperationDraft(): OperationDraft {
       footprints?: boolean
     }
     delete draft.footprints
+    if (typeof draft.dayNightCycle !== 'boolean') delete draft.dayNightCycle
     if (!isOpponentCount(draft.opponents)) delete draft.opponents
     if (draft.inventory) {
       draft.inventory = removeEpinephrine(draft.inventory)
@@ -105,6 +119,21 @@ export function readOperationDraft(): OperationDraft {
     }
     if (draft.inventory && draft.playerOutfit && !draft.equipmentPresetId)
       draft.inventory = upgradeDraftOutfitMount(draft.inventory, draft.playerOutfit)
+    if (
+      draft.inventory &&
+      draft.time &&
+      isNightStart(draft.time) &&
+      !draft.weaponPresetId &&
+      draft.dayNightCycle === undefined
+    ) {
+      const kit = draft.kit ?? defaults.kit
+      const outfit = draft.playerOutfit ?? defaults.playerOutfit
+      draft.inventory = switchPresetOptic(
+        draft.inventory,
+        starterInventory(kit, outfit),
+        starterInventory(kit, outfit, true),
+      )
+    }
     return { ...defaults, ...draft }
   } catch {
     return { ...defaults }
@@ -181,8 +210,18 @@ export function OperationSetup({
   const operatorOutfit = clothingPresets.some(({ Id }) => Id === draft.operatorOutfit)
     ? draft.operatorOutfit
     : defaults.operatorOutfit
-  const standardLoadout = starterInventory(kit?.id ?? '', playerOutfit)
+  const night = isNightStart(draft.time)
+  const standardLoadout = starterInventory(kit?.id ?? '', playerOutfit, night)
   const loadout = draft.inventory ?? standardLoadout
+  const changeTime = (time: string): void => {
+    const nextNight = isNightStart(time)
+    if (draft.inventory && !draft.weaponPresetId && nextNight !== night) {
+      const nextLoadout = starterInventory(kit?.id ?? '', playerOutfit, nextNight)
+      change({ time, inventory: switchPresetOptic(draft.inventory, standardLoadout, nextLoadout) })
+    } else {
+      change({ time })
+    }
+  }
   const weaponPresets = presets?.filter(({ kind }) => kind === 'weapon') ?? []
   const equipmentPresets = presets?.filter(({ kind }) => kind === 'equipment') ?? []
   const savedWeapon = weaponPresets.find(({ id }) => id === draft.weaponPresetId)
@@ -221,7 +260,7 @@ export function OperationSetup({
         savedEquipment || equipmentEdit
           ? {
               ...inventoryPart(loadout, 'equipment'),
-              ...inventoryPart(starterInventory(value, playerOutfit), 'weapon'),
+              ...inventoryPart(starterInventory(value, playerOutfit, night), 'weapon'),
             }
           : null
       change({ kit: value, inventory, weaponPresetId: undefined })
@@ -295,6 +334,7 @@ export function OperationSetup({
       setup: {
         startHour,
         startMinute,
+        dayNightCycle: draft.dayNightCycle,
         enemyRespawns: draft.enemyRespawns,
         respawnDelay: draft.enemyRespawns ? delay : 120,
         playerOutfit,
@@ -328,16 +368,39 @@ export function OperationSetup({
                   onChange={(event) => change({ name: event.target.value })}
                 />
               </label>
-              <div className="game-fields">
-                <label className="field start-time-field">
+              <div className="time-controls">
+                <label className="field">
                   Start Time
                   <input
                     type="time"
                     id="start-time"
                     value={draft.time}
-                    onChange={(event) => change({ time: event.target.value })}
+                    onChange={(event) => changeTime(event.target.value)}
                   />
                 </label>
+                <label className="day-night-cycle">
+                  <input
+                    type="checkbox"
+                    id="day-night-cycle"
+                    checked={draft.dayNightCycle}
+                    onChange={(event) => change({ dayNightCycle: event.target.checked })}
+                  />
+                  <span>Day Night Cycle</span>
+                </label>
+                <div className="time-presets" aria-label="Time Presets">
+                  {timePresets.map(([label, value]) => (
+                    <button
+                      type="button"
+                      key={value}
+                      aria-pressed={draft.time === value}
+                      onClick={() => changeTime(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="game-fields">
                 <label className="field">
                   Enemy Count
                   <select
@@ -394,18 +457,6 @@ export function OperationSetup({
                     />
                   </label>
                 )}
-              </div>
-              <div className="time-presets" aria-label="Time Presets">
-                {timePresets.map(([label, value]) => (
-                  <button
-                    type="button"
-                    key={value}
-                    aria-pressed={draft.time === value}
-                    onClick={() => change({ time: value })}
-                  >
-                    {label}
-                  </button>
-                ))}
               </div>
               <label className="game-toggle split">
                 <span>

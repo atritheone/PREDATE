@@ -463,6 +463,7 @@ class PredateOperatorService
     {
         if (!s.m_HuntSchemaValid || s.m_HuntError != "") return;
         s.PredateClearWeather();
+        s.PredateApplyWorldClock();
         if (s.m_WorldState.Year == 0 && s.m_HuntConfig.StartHour >= 0)
         {
             int year, month, day, hour, minute;

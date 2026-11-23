@@ -85,13 +85,38 @@
   gap: 12px;
 }
 
-.time-presets {
+.time-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px 8px;
+}
+
+.day-night-cycle {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 39px;
+  max-inline-size: clamp(84px, 10vw, 140px);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.day-night-cycle input {
+  flex-shrink: 0;
+}
+
+.time-presets {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
 .time-presets button {
+  padding-inline: 2px;
   font-size: 12px;
 }
 
@@ -286,10 +311,6 @@
   grid-column: 1 / -1;
   width: 100%;
   min-width: 0;
-}
-
-.start-time-field {
-  grid-column: 1 / -1;
 }
 
 .inventory-workspace {
@@ -661,15 +682,16 @@
     padding-inline: 6px;
   }
 
+  .day-night-cycle {
+    min-height: 33px;
+  }
+
   .time-presets {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 3px;
   }
 
   .time-presets button {
     min-height: 30px;
-    padding-inline: 2px;
     font-size: 11px;
   }
 
