@@ -349,6 +349,7 @@ modded class MissionGameplay
     {
         super.OnInit();
         m_PredateDeathCard = GetGame().GetWorkspace().CreateWidgets("Predate/gui/death.layout");
+        if (m_PredateDeathCard) PredateDeathPresentation.FitTitle(m_PredateDeathCard);
         PredatePlayerLifeEvents.LocalDeath.Insert(PredateBeginDeathCard);
         m_PredateHud = GetGame().GetWorkspace().CreateWidgets("Predate/gui/hud.layout");
         if (m_PredateHud) m_PredateHudText = TextWidget.Cast(m_PredateHud.FindAnyWidget("Receiver"));

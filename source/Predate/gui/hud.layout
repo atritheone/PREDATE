@@ -4218,6 +4218,42 @@ style rover_sim_colorable
 }
  }
 }
+FrameWidgetClass HuntedIndicator {
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+visible 0
+priority 11
+ { PanelWidgetClass HuntedLeft {
+ position 0.16 0
+ size 0.24 0.02
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 1 0.698039 0.325490 1
+style rover_sim_colorable
+ {  }
+}
+PanelWidgetClass HuntedRight {
+ position 0.6 0
+ size 0.24 0.02
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+color 1 0.698039 0.325490 1
+style rover_sim_colorable
+ {  }
+}
+ }
+}
  }
 }
 TextWidgetClass FootprintClue {

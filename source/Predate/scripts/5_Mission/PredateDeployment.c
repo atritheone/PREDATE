@@ -21,6 +21,8 @@ class PredateInsertionScore
 // Player life changes are independent of the operation and its Raven record.
 class PredateDeployment
 {
+    static const int DEATH_SAVE_DELAY_MS = 350;
+
     static void RememberCharacter(PredateWorldState state, PlayerBase player)
     {
         if (state && player && state.PlayerCharacterModel == "")
@@ -40,7 +42,8 @@ class PredateDeployment
         state.PlayerLastDeathAt = state.SimulationSeconds;
         state.PlayerDeathPosition = player.GetPosition();
         state.HasPlayerDeathPosition = PredateInformationMath.FiniteVector(state.PlayerDeathPosition);
-        GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).Call(session.PredateSave);
+        // Give the native death notification time to reach the client before saving the roster.
+        GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(session.PredateSave, DEATH_SAVE_DELAY_MS, false);
         Print("[Predate] Player life " + state.PlayerLife + " ended. Waiting for redeployment.");
     }
 

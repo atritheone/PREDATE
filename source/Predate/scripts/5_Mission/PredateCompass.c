@@ -7,6 +7,7 @@ class PredateCompass
     TextWidget m_Marker;
     Widget m_Sector;
     Widget m_FinalApproachOutline;
+    Widget m_HuntedIndicator;
     ref array<Widget> m_Ticks = new array<Widget>;
     ref array<int> m_LabelColors = new array<int>;
     ref array<int> m_MarkColors = new array<int>;
@@ -29,6 +30,9 @@ class PredateCompass
         m_Marker = TextWidget.Cast(hud.FindAnyWidget("PulseMarker"));
         m_Sector = hud.FindAnyWidget("PulseSector");
         m_FinalApproachOutline = hud.FindAnyWidget("FinalApproachOutline");
+        m_HuntedIndicator = hud.FindAnyWidget("HuntedIndicator");
+        Widget huntedLeft = hud.FindAnyWidget("HuntedLeft");
+        Widget huntedRight = hud.FindAnyWidget("HuntedRight");
         m_Scroll = hud.FindAnyWidget("CompassScroll");
         for (int i = 0; i < 144; i++) m_Ticks.Insert(hud.FindAnyWidget("Tick" + i));
         m_Ready = true;
@@ -37,12 +41,15 @@ class PredateCompass
         if (!m_Marker) m_Ready = false;
         if (!m_Sector) m_Ready = false;
         if (!m_FinalApproachOutline) m_Ready = false;
+        if (!m_HuntedIndicator || !huntedLeft || !huntedRight) m_Ready = false;
         if (!m_Scroll) m_Ready = false;
         foreach (Widget tick : m_Ticks) { if (!tick) m_Ready = false; }
         if (m_Ready)
         {
             m_Sector.SetColor(PULSE_COLOR);
             m_Marker.SetColor(PULSE_COLOR);
+            huntedLeft.SetColor(PredateHuntFeed.HUNTED);
+            huntedRight.SetColor(PredateHuntFeed.HUNTED);
             float baseWidth, baseHeight, baseLeft, baseTop;
             m_Root.GetSize(baseWidth, baseHeight);
             m_Root.GetPos(baseLeft, baseTop);
@@ -144,6 +151,7 @@ class PredateCompass
     void Update(PlayerBase player, PredateState state, float timeslice)
     {
         if (!m_Ready) return;
+        m_HuntedIndicator.Show(state && state.Intercepted);
         vector direction = GetGame().GetCurrentCameraDirection();
         if (Math.AbsFloat(direction[0]) + Math.AbsFloat(direction[2]) < 0.001)
             direction = player.GetDirection();

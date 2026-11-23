@@ -148,7 +148,12 @@ def layouts():
         border += widget("PanelWidgetClass", f"Outline{name}", x,y,width,height, border_style)
     outline = widget("FrameWidgetClass", "FinalApproachOutline", 0,0,1,1,
                      'ignorepointer 1\nvisible 0\npriority 10', border)
-    compass_parts=backdrop+heading+tape+notch+receiver+outline
+    hunted_style = 'ignorepointer 1\ncolor 1 0.698039 0.325490 1\nstyle rover_sim_colorable'
+    hunted_lines = widget("PanelWidgetClass", "HuntedLeft", .16,0,.24,.02,hunted_style)
+    hunted_lines += widget("PanelWidgetClass", "HuntedRight", .60,0,.24,.02,hunted_style)
+    hunted = widget("FrameWidgetClass", "HuntedIndicator", 0,0,1,1,
+                    'ignorepointer 1\nvisible 0\npriority 11', hunted_lines)
+    compass_parts=backdrop+heading+tape+notch+receiver+outline+hunted
     compass_parts=compass_parts.replace('font "gui/fonts/etelkatextpro22"', 'font "gui/fonts/etelkatextpro22"\n"exact text" 1\n"exact text size" 11')
     compass_parts=compass_parts.replace('font "gui/fonts/etelkatextpro22"', 'scaled 0\nfont "gui/fonts/sdf_MetronBook24"')
     compass=widget("FrameWidgetClass","Compass",.36,.018,.28,.06,"ignorepointer 1",compass_parts)

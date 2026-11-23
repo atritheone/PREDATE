@@ -279,19 +279,25 @@ modded class MissionGameplay
     bool m_PredateRedeployCovered;
     PlayerBase m_PredateRedeployCorpse;
 
+    override void OnEvent(EventType eventTypeId, Param params)
+    {
+        super.OnEvent(eventTypeId, params);
+        if (eventTypeId == WindowsResizeEventTypeID && m_PredateDeathCard)
+            PredateDeathPresentation.FitTitle(m_PredateDeathCard);
+    }
+
     void PredateBeginDeathCard(DayZPlayerImplement player)
     {
         if (!m_PredateDeathCard || m_PredateRedeployCovered || m_PredateDeathMenuAt > 0 || player != GetGame().GetPlayer() || IsPlayerRespawning() || GetDayZGame().IsLoading()) return;
         m_PredateDeathMenuAt = GetGame().GetTime() + PREDATE_DEATH_CARD_MS;
+        m_PredateDeathCard.Show(true);
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
         if (agent && agent.m_UserPaused) agent.RequestResume();
         CloseAllMenus();
-        PredateDeathPresentation.FitTitle(m_PredateDeathCard);
+        if (!m_PredateDeathValidation) return;
         Widget title = m_PredateDeathCard.FindAnyWidget("DeathTitle");
         float width, height;
         m_PredateDeathCard.GetScreenSize(width, height);
-        m_PredateDeathCard.Show(true);
-        if (!m_PredateDeathValidation) return;
         int screenWidth, screenHeight;
         GetScreenSize(screenWidth, screenHeight);
         float x, y;
@@ -305,11 +311,7 @@ modded class MissionGameplay
     {
         m_PredateRedeployCovered = true;
         if (!player.IsAlive()) m_PredateRedeployCorpse = player;
-        if (m_PredateDeathCard)
-        {
-            PredateDeathPresentation.FitTitle(m_PredateDeathCard);
-            m_PredateDeathCard.Show(true);
-        }
+        if (m_PredateDeathCard) m_PredateDeathCard.Show(true);
         if (m_PredateDeathValidation)
         {
             bool visible = m_PredateDeathCard && m_PredateDeathCard.IsVisible();

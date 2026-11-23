@@ -58,6 +58,7 @@ class PredateReceiverValidation
         mission.m_PredateHudText.SetText(readout);
         PredateHuntFeed feed = mission.m_PredateHuntFeed;
         result.Check(HuntWarningVisible(feed));
+        CheckHuntedIndicator(result, mission.m_PredateCompass, player, state);
         player.m_PredateKillNotices.Insert(0);
         feed.Update(player, state, 0);
         result.Check(feed.m_Notices[0].Text == "Deadbolt is KIA." && Fits(feed.m_Rows[0]) && feed.m_Rows[0].GetColor() == PredateHuntFeed.NORMAL && HuntWarningVisible(feed));
@@ -365,6 +366,36 @@ class PredateReceiverValidation
         string error;
         JsonFileLoader<PredateReceiverValidationResult>.SaveFile("$profile:ReceiverValidation.json", result, error);
         Print("[PredateReceiverTest] COMPLETE: checks=" + result.Checks + "; failures=" + result.Failures);
+    }
+
+    static void CheckHuntedIndicator(PredateReceiverValidationResult result, PredateCompass compass, PlayerBase player, PredateState liveState)
+    {
+        Widget indicator = compass.m_HuntedIndicator;
+        result.Check(indicator && indicator.IsVisible(), "the compass shows the hunted indicator alongside the live alert");
+        if (!indicator) return;
+        Widget left = indicator.FindAnyWidget("HuntedLeft");
+        Widget right = indicator.FindAnyWidget("HuntedRight");
+        result.Check(left && left.GetColor() == PredateHuntFeed.HUNTED, "the left line matches the combat log");
+        result.Check(right && right.GetColor() == PredateHuntFeed.HUNTED, "the right line matches the combat log");
+        if (left && right)
+        {
+            float leftX, leftY, leftWidth, leftHeight, rightX, rightY, rightWidth, rightHeight;
+            left.GetPos(leftX, leftY);
+            left.GetSize(leftWidth, leftHeight);
+            right.GetPos(rightX, rightY);
+            right.GetSize(rightWidth, rightHeight);
+            result.Check(leftY == 0 && rightY == 0 && leftHeight == rightHeight, "both lines sit along the top edge");
+            result.Check(leftX > 0 && leftX + leftWidth < 0.5 && rightX > 0.5 && rightX + rightWidth < 1, "the lines leave space for the heading and corners");
+        }
+
+        PredateState untracked = new PredateState;
+        untracked.Intercepted = true;
+        compass.Update(player, untracked, 0);
+        result.Check(indicator.IsVisible(), "the indicator shows without a selected target");
+        untracked.Intercepted = false;
+        compass.Update(player, untracked, 0);
+        result.Check(!indicator.IsVisible(), "the indicator clears when the hunted state ends");
+        compass.Update(player, liveState, 0);
     }
 
     static bool HuntWarningVisible(PredateHuntFeed feed)

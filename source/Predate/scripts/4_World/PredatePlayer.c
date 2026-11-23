@@ -25,6 +25,14 @@ modded class DayZPlayerImplement
         return GetDayZGame().m_PredateClientAgent || (player && player.m_PredateReceivedState);
     }
 
+    override void OnSyncJuncture(int pJunctureID, ParamsReadContext pCtx)
+    {
+        bool waitingForDeath = pJunctureID == DayZPlayerSyncJunctures.SJ_DEATH && m_DeathAnimType == -2;
+        super.OnSyncJuncture(pJunctureID, pCtx);
+        if (waitingForDeath && m_DeathAnimType != -2 && PredateOwnDeath())
+            PredatePlayerLifeEvents.LocalDeath.Invoke(this);
+    }
+
     override bool HandleDeath(int pCurrentCommandID)
     {
         if (!PredateOwnDeath() || (IsAlive() && m_DeathAnimType == -2)) return super.HandleDeath(pCurrentCommandID);
