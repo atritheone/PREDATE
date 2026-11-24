@@ -214,7 +214,7 @@ modded class eAIBase
         m_PredateWatchPoint = state.WatchPoint;
         m_PredateWatchUntil = state.WatchUntil;
         // Observation stops need the same active perception as travel.
-        if (GetIsSimulationDisabled()) DisableSimulation(false);
+        if (GetIsSimulationDisabled()) PredateActorSimulation.SetHeld(this, false);
         if (m_PredateAppliedGoal == state.GoalRevision) return;
         int previousRevision = m_PredateAppliedGoal;
         m_PredateLookStep = 0;

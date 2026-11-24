@@ -427,7 +427,7 @@ class PredateOperatorService
         s.m_HuntBot.eAI_SetUnlimitedReload(0);
         s.m_HuntBot.SetMovementSpeedLimits(2, 3);
         if (!s.m_ActorsActive) s.m_HuntBot.SetMovementSpeedLimits(0, 0);
-        s.m_HuntBot.DisableSimulation(s.m_Paused || !s.m_ActorsActive);
+        PredateActorSimulation.SetHeld(s.m_HuntBot, s.m_Paused || !s.m_ActorsActive);
         s.m_HuntBot.m_eAI_EnableFlankingOutsideCombat = false;
         s.m_HuntBot.m_eAI_MaxFlankingDistance = 200;
         s.m_HuntGroup.SetName(PredateProtocol.SignatureFor(s.m_HuntProgress.Operator.Id));

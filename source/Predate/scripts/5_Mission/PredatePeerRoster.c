@@ -223,7 +223,7 @@ class PredatePeerRoster
         actor.eAI_SetUnlimitedReload(0);
         session.SoloApplyCombatRules(actor);
         actor.SetMovementSpeedLimits(0, 0);
-        actor.DisableSimulation(true);
+        PredateActorSimulation.SetHeld(actor, true);
         binding.Group = group;
         binding.Actor = actor;
         binding.Active = false;
@@ -373,7 +373,7 @@ class PredatePeerRoster
         {
             if (!binding.Actor) continue;
             binding.Actor.SetMovementSpeedLimits(0, 0);
-            binding.Actor.DisableSimulation(true);
+            PredateActorSimulation.SetHeld(binding.Actor, true);
             binding.Active = false;
         }
     }
@@ -393,7 +393,7 @@ class PredatePeerRoster
             if (binding.Actor != actor) ConfigureNative(session, binding, actor, group);
             if (binding.Active == active) continue;
             binding.Active = active;
-            actor.DisableSimulation(!active);
+            PredateActorSimulation.SetHeld(actor, !active);
             if (active) actor.SetMovementSpeedLimits(2, 3);
             else actor.SetMovementSpeedLimits(0, 0);
         }

@@ -321,7 +321,7 @@ class PredateDeployment
                 Print("[Predate] Redeploy delayed: no safe insertion in receiver range.");
                 return;
             }
-            player.DisableSimulation(false);
+            PredateActorSimulation.SetHeld(player, false);
             player.SetPosition(insertion);
         }
         player.RemoveAllItems();
@@ -341,7 +341,7 @@ class PredateDeployment
         if (session.m_PeerRoster) session.m_PeerRoster.RetirePlayerContact(playerId, state.SimulationSeconds);
 
         player.m_PredateStagedForDeployment = false;
-        player.DisableSimulation(false);
+        PredateActorSimulation.SetHeld(player, false);
         player.SetAllowDamage(true);
         state.PlayerLife++;
         state.PlayerLifeStartedAt = state.SimulationSeconds;

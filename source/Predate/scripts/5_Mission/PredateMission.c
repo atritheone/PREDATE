@@ -166,7 +166,7 @@ class PredateSession
         }
         if (actor.GetIsSimulationDisabled()) return;
         if (m_PauseActors.Find(actor) == -1) m_PauseActors.Insert(actor);
-        actor.DisableSimulation(true);
+        PredateActorSimulation.SetHeld(actor, true);
     }
 
     void PredateApplyWorldClock()
@@ -206,7 +206,7 @@ class PredateSession
             }
             m_PauseClockActors.Clear();
             foreach (Man held : m_PauseActors)
-                if (held) held.DisableSimulation(false);
+                if (held) PredateActorSimulation.SetHeld(held, false);
             foreach (Man damageHeld : m_PauseDamageActors)
                 if (damageHeld) damageHeld.SetAllowDamage(true);
             m_PauseActors.Clear();
@@ -228,14 +228,14 @@ class PredateSession
         PredateMemoryPersistence.Capture(this);
         m_Suspending = true;
         m_ActorsActive = false;
-        if (m_HuntBot) m_HuntBot.DisableSimulation(true);
+        if (m_HuntBot) PredateActorSimulation.SetHeld(m_HuntBot, true);
         if (m_PeerRoster) m_PeerRoster.StopActors();
         array<Man> players = new array<Man>;
         GetGame().GetPlayers(players);
         foreach (Man man : players)
         {
             PlayerBase player = PlayerBase.Cast(man);
-            if (player && player.GetIdentity()) player.DisableSimulation(true);
+            if (player && player.GetIdentity()) PredateActorSimulation.SetHeld(player, true);
         }
     }
 
@@ -611,7 +611,7 @@ class PredateSession
             m_ActorsActive = activePlayer;
             if (m_HuntBot)
             {
-                m_HuntBot.DisableSimulation(!activePlayer);
+                PredateActorSimulation.SetHeld(m_HuntBot, !activePlayer);
                 if (activePlayer) m_HuntBot.SetMovementSpeedLimits(2, 3);
                 else m_HuntBot.SetMovementSpeedLimits(0, 0);
             }
