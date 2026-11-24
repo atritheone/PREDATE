@@ -41,6 +41,7 @@ class CfgPatches
             "BC_BarrettM95",
             "BC_BFG",
             "BC_Bipod_AtlasBipod",
+            "BC_Calibre_Sons",
             "BC_C14",
             "BC_CDX50",
             "BC_CheytacPaladin",
@@ -144,6 +145,15 @@ class CfgPatches
 class Mode_FullAuto;
 class Mode_SemiAuto;
 class Mode_Single;
+
+#include "distant_audio.hpp"
+
+#define PREDATE_BUCA_308_SUPPRESSED(Report) \
+    {Report, "BC_Cal_308_SilencerTail_SoundSet", "BC_Cal_308_SilencerInteriorTail_SoundSet"}
+#define PREDATE_BUCA_556_SUPPRESSED(Report) \
+    {Report, "BC_Cal_556x45_SilencerTail_SoundSet", "BC_Cal_556x45_SilencerInteriorTail_SoundSet"}
+#define PREDATE_BUCA_762X54_SUPPRESSED(Report) \
+    {Report, "BC_Cal_762x54_SilencerTail_SoundSet", "BC_Cal_762x54_SilencerInteriorTail_SoundSet"}
 
 class CfgWeapons
 {
@@ -329,7 +339,11 @@ class CfgWeapons
     };
     class BC_G36_Admin: BC_G36_Base
     {
-        class FullAuto: Mode_FullAuto { dispersion = 0; };
+        class FullAuto: Mode_FullAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_308_SUPPRESSED("PredateBucaFALSuppressed")};
+        };
     };
     class BC_GEVAR_Base: Rifle_Base
     {
@@ -365,7 +379,12 @@ class CfgWeapons
     };
     class BC_HKPSG1_Base: Rifle_Base
     {
-        class SemiAuto: Mode_SemiAuto { dispersion = 0; };
+        class SemiAuto: Mode_SemiAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_308_SUPPRESSED("PredateBucaPSG1Suppressed"),
+                PREDATE_BUCA_308_SUPPRESSED("PredateBucaPSG1Improvised")};
+        };
     };
     class BC_HoneyBadger_Base: Rifle_Base
     {
@@ -408,7 +427,11 @@ class CfgWeapons
     };
     class BC_M1A_Base: Rifle_Base
     {
-        class SemiAuto: Mode_SemiAuto { dispersion = 0; };
+        class SemiAuto: Mode_SemiAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_308_SUPPRESSED("PredateBucaFALSuppressed")};
+        };
     };
     class BC_M200_Base: BoltActionRifle_ExternalMagazine_Base
     {
@@ -420,13 +443,33 @@ class CfgWeapons
     };
     class BC_M240_Base: Rifle_Base
     {
-        class FullAuto: Mode_FullAuto { dispersion = 0; };
-        class SemiAuto: Mode_SemiAuto { dispersion = 0; };
+        class FullAuto: Mode_FullAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_762X54_SUPPRESSED("PKP_sup_SoundSet"),
+                PREDATE_BUCA_762X54_SUPPRESSED("PKP_sup_SoundSet")};
+        };
+        class SemiAuto: Mode_SemiAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_762X54_SUPPRESSED("PKP_sup_SoundSet"),
+                PREDATE_BUCA_762X54_SUPPRESSED("PKP_sup_SoundSet")};
+        };
     };
     class BC_M249_Base: Rifle_Base
     {
-        class FullAuto: Mode_FullAuto { dispersion = 0; };
-        class SemiAuto: Mode_SemiAuto { dispersion = 0; };
+        class FullAuto: Mode_FullAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_556_SUPPRESSED("BC_M4A1_sup_SoundSet"),
+                PREDATE_BUCA_556_SUPPRESSED("BC_M4A1_sup_SoundSet")};
+        };
+        class SemiAuto: Mode_SemiAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_556_SUPPRESSED("BC_M4A1_sup_SoundSet"),
+                PREDATE_BUCA_556_SUPPRESSED("BC_M4A1_sup_SoundSet")};
+        };
     };
     class BC_M300_Base: BoltActionRifle_ExternalMagazine_Base
     {
@@ -514,8 +557,18 @@ class CfgWeapons
     };
     class BC_PKM_Base: Rifle_Base
     {
-        class FullAuto: Mode_FullAuto { dispersion = 0; };
-        class SemiAuto: Mode_SemiAuto { dispersion = 0; };
+        class FullAuto: Mode_FullAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_762X54_SUPPRESSED("PredateBucaPKMSuppressed"),
+                PREDATE_BUCA_762X54_SUPPRESSED("PredateBucaPKMImprovised")};
+        };
+        class SemiAuto: Mode_SemiAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_762X54_SUPPRESSED("PredateBucaPKMSuppressed"),
+                PREDATE_BUCA_762X54_SUPPRESSED("PredateBucaPKMImprovised")};
+        };
     };
     class BC_PKP_Base: Rifle_Base
     {
@@ -614,8 +667,16 @@ class CfgWeapons
     };
     class BC_T95_Base: Rifle_Base
     {
-        class FullAuto: Mode_FullAuto { dispersion = 0; };
-        class SemiAuto: Mode_SemiAuto { dispersion = 0; };
+        class FullAuto: Mode_FullAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_308_SUPPRESSED("PredateBucaFALSuppressed")};
+        };
+        class SemiAuto: Mode_SemiAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_308_SUPPRESSED("PredateBucaFALSuppressed")};
+        };
     };
     class BC_TAC21_Base: BoltActionRifle_ExternalMagazine_Base
     {
@@ -640,10 +701,22 @@ class CfgWeapons
     };
     class BC_Zafir_Base: Rifle_Base
     {
-        class FullAuto: Mode_FullAuto { dispersion = 0; };
-        class SemiAuto: Mode_SemiAuto { dispersion = 0; };
+        class FullAuto: Mode_FullAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_762X54_SUPPRESSED("PKP_sup_SoundSet")};
+        };
+        class SemiAuto: Mode_SemiAuto
+        {
+            dispersion = 0;
+            soundSetShotExt[] = {PREDATE_BUCA_762X54_SUPPRESSED("PKP_sup_SoundSet")};
+        };
     };
 };
+
+#undef PREDATE_BUCA_308_SUPPRESSED
+#undef PREDATE_BUCA_556_SUPPRESSED
+#undef PREDATE_BUCA_762X54_SUPPRESSED
 
 class CfgVehicles
 {
