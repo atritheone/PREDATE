@@ -1,0 +1,30 @@
+<WidgetStyles>
+ <Widget Name="PanelWidget">
+  <Style Name="PredateCompassBackdrop" Font="" ImageSet="PredateCompass" Color="4294967295">
+   <State Name="Normal">
+    <Item Name="LeftTop" Image="BackdropLeftTop"/>
+    <Item Name="Top" Image="BackdropTop"/>
+    <Item Name="RightTop" Image="BackdropRightTop"/>
+    <Item Name="Left" Image="BackdropLeft"/>
+    <Item Name="Center" Image="BackdropCenter"/>
+    <Item Name="Right" Image="BackdropRight"/>
+    <Item Name="LeftBottom" Image="BackdropLeftBottom"/>
+    <Item Name="Bottom" Image="BackdropBottom"/>
+    <Item Name="RightBottom" Image="BackdropRightBottom"/>
+   </State>
+  </Style>
+  <Style Name="PredateCompassOutline" Font="" ImageSet="PredateCompass" Color="4294967295">
+   <State Name="Normal">
+    <Item Name="LeftTop" Image="OutlineLeftTop"/>
+    <Item Name="Top" Image="OutlineTop"/>
+    <Item Name="RightTop" Image="OutlineRightTop"/>
+    <Item Name="Left" Image="OutlineLeft"/>
+    <Item Name="Center" Image="OutlineCenter"/>
+    <Item Name="Right" Image="OutlineRight"/>
+    <Item Name="LeftBottom" Image="OutlineLeftBottom"/>
+    <Item Name="Bottom" Image="OutlineBottom"/>
+    <Item Name="RightBottom" Image="OutlineRightBottom"/>
+   </State>
+  </Style>
+ </Widget>
+</WidgetStyles>

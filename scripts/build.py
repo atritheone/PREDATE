@@ -138,20 +138,12 @@ def layouts():
     receiver=label("Receiver","Map  M",0,.77,1,.23,"0.77 0.83 0.85 1")
     receiver=receiver.replace('"text valign" center','"text valign" center\n"text halign" center')
     backdrop=widget("PanelWidgetClass","CompassBackdrop",0,0,1,.77,
-                    'ignorepointer 1\ncolor 0.02 0.03 0.04 0.40\nstyle UIDefaultPanel')
-    border_style = 'ignorepointer 1\ncolor 0.95 0.16 0.20 1\nstyle rover_sim_colorable'
-    top_border_height = .023
-    border = ""
-    for name, x, y, width, height in (
-        ("Top", 0, 0, 1, top_border_height), ("Bottom", 0, .747, 1, .023),
-        ("Left", 0, .023, .0028, .724), ("Right", .9972, .023, .0028, .724),
-    ):
-        border += widget("PanelWidgetClass", f"Outline{name}", x,y,width,height, border_style)
-    outline = widget("FrameWidgetClass", "FinalApproachOutline", 0,0,1,1,
-                     'ignorepointer 1\nvisible 0\npriority 10', border)
+                     'ignorepointer 1\nscaled 0\ncolor 0.02 0.03 0.04 0.40\nstyle PredateCompassBackdrop')
+    outline = widget("PanelWidgetClass", "FinalApproachOutline",0,0,1,.77,
+                     'ignorepointer 1\nscaled 0\nvisible 0\npriority 10\ncolor 0.95 0.16 0.20 1\nstyle PredateCompassOutline')
     hunted_style = 'ignorepointer 1\ncolor 1 0.698039 0.325490 1\nstyle rover_sim_colorable'
-    hunted_lines = widget("PanelWidgetClass", "HuntedLeft", .16,top_border_height,.24,.02,hunted_style)
-    hunted_lines += widget("PanelWidgetClass", "HuntedRight", .60,top_border_height,.24,.02,hunted_style)
+    hunted_lines = widget("PanelWidgetClass", "HuntedLeft", .16,0,.24,.02,hunted_style)
+    hunted_lines += widget("PanelWidgetClass", "HuntedRight", .60,0,.24,.02,hunted_style)
     hunted = widget("FrameWidgetClass", "HuntedIndicator", 0,0,1,1,
                     'ignorepointer 1\nvisible 0\npriority 11', hunted_lines)
     compass_parts=backdrop+heading+tape+notch+receiver+outline+hunted

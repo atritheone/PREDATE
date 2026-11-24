@@ -351,6 +351,7 @@ modded class MissionGameplay
         m_PredateDeathCard = GetGame().GetWorkspace().CreateWidgets("Predate/gui/death.layout");
         if (m_PredateDeathCard) PredateDeathPresentation.FitTitle(m_PredateDeathCard);
         PredatePlayerLifeEvents.LocalDeath.Insert(PredateBeginDeathCard);
+        PredateCompass.LoadStyles();
         m_PredateHud = GetGame().GetWorkspace().CreateWidgets("Predate/gui/hud.layout");
         if (m_PredateHud) m_PredateHudText = TextWidget.Cast(m_PredateHud.FindAnyWidget("Receiver"));
         if (m_PredateHud) m_PredateFootprintClue = TextWidget.Cast(m_PredateHud.FindAnyWidget("FootprintClue"));

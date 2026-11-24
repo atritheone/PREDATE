@@ -1,13 +1,18 @@
 class PredateCompass
 {
     static const int PULSE_COLOR = 0xFFFFB253;
+    static const float OUTLINE_PIXELS = 2;
+    static bool s_StylesLoaded;
     Widget m_Root;
+    Widget m_Tape;
     Widget m_Scroll;
     TextWidget m_Heading;
     TextWidget m_Marker;
     Widget m_Sector;
     Widget m_FinalApproachOutline;
     Widget m_HuntedIndicator;
+    Widget m_HuntedLeft;
+    Widget m_HuntedRight;
     ref array<Widget> m_Ticks = new array<Widget>;
     ref array<int> m_LabelColors = new array<int>;
     ref array<int> m_MarkColors = new array<int>;
@@ -22,6 +27,18 @@ class PredateCompass
     bool m_TextFitDone;
     bool m_Ready;
 
+    static void LoadStyles()
+    {
+        if (s_StylesLoaded) return;
+        if (!LoadWidgetImageSet("Predate/gui/compass.imageset"))
+        {
+            Print("[Predate] COMPASS ERROR: rounded panel image set failed to load.");
+            return;
+        }
+        LoadWidgetStyles("Predate/gui/compass.styles");
+        s_StylesLoaded = true;
+    }
+
     void PredateCompass(Widget hud)
     {
         if (!hud) return;
@@ -31,8 +48,9 @@ class PredateCompass
         m_Sector = hud.FindAnyWidget("PulseSector");
         m_FinalApproachOutline = hud.FindAnyWidget("FinalApproachOutline");
         m_HuntedIndicator = hud.FindAnyWidget("HuntedIndicator");
-        Widget huntedLeft = hud.FindAnyWidget("HuntedLeft");
-        Widget huntedRight = hud.FindAnyWidget("HuntedRight");
+        m_HuntedLeft = hud.FindAnyWidget("HuntedLeft");
+        m_HuntedRight = hud.FindAnyWidget("HuntedRight");
+        m_Tape = hud.FindAnyWidget("CompassTape");
         m_Scroll = hud.FindAnyWidget("CompassScroll");
         for (int i = 0; i < 144; i++) m_Ticks.Insert(hud.FindAnyWidget("Tick" + i));
         m_Ready = true;
@@ -41,15 +59,15 @@ class PredateCompass
         if (!m_Marker) m_Ready = false;
         if (!m_Sector) m_Ready = false;
         if (!m_FinalApproachOutline) m_Ready = false;
-        if (!m_HuntedIndicator || !huntedLeft || !huntedRight) m_Ready = false;
-        if (!m_Scroll) m_Ready = false;
+        if (!m_HuntedIndicator || !m_HuntedLeft || !m_HuntedRight) m_Ready = false;
+        if (!m_Tape || !m_Scroll) m_Ready = false;
         foreach (Widget tick : m_Ticks) { if (!tick) m_Ready = false; }
         if (m_Ready)
         {
             m_Sector.SetColor(PULSE_COLOR);
             m_Marker.SetColor(PULSE_COLOR);
-            huntedLeft.SetColor(PredateHuntFeed.HUNTED);
-            huntedRight.SetColor(PredateHuntFeed.HUNTED);
+            m_HuntedLeft.SetColor(PredateHuntFeed.HUNTED);
+            m_HuntedRight.SetColor(PredateHuntFeed.HUNTED);
             float baseWidth, baseHeight, baseLeft, baseTop;
             m_Root.GetSize(baseWidth, baseHeight);
             m_Root.GetPos(baseLeft, baseTop);
@@ -100,6 +118,14 @@ class PredateCompass
         int textSize = Math.Max(10, Math.Round(18 * designScale * scale));
         float height = 86.4 * designScale * scale / viewportHeight;
         m_Root.SetSize(width, height);
+        // Align each edge of the tape's clip rectangle with the inside edge of the outline.
+        float inset = OUTLINE_PIXELS / (width * viewportWidth);
+        float tapeX, tapeY, tapeWidth, tapeHeight;
+        m_Tape.GetPos(tapeX, tapeY);
+        m_Tape.GetSize(tapeWidth, tapeHeight);
+        m_Tape.SetPos(inset, tapeY);
+        m_Tape.SetSize(1 - 2 * inset, tapeHeight);
+        AlignHuntedLines(height);
         m_Root.SetPos(0.5 - width * 0.5, m_BaseTop);
         m_Heading.SetTextExactSize(textSize);
         if (options.HighContrast) m_Heading.SetColor(0xFFFFFFFF);
@@ -144,8 +170,23 @@ class PredateCompass
         float required = (Math.Max(receiverHeight, headingHeight) + 0.5) / (m_ViewportHeight * 0.23);
         float width, height;
         m_Root.GetSize(width, height);
-        if (required > height) m_Root.SetSize(width, required);
+        if (required > height)
+        {
+            m_Root.SetSize(width, required);
+            AlignHuntedLines(required);
+        }
         m_TextFitDone = true;
+    }
+
+    protected void AlignHuntedLines(float height)
+    {
+        float pixels = height * m_ViewportHeight;
+        if (pixels <= 0) return;
+        float left, right, unused;
+        m_HuntedLeft.GetPos(left, unused);
+        m_HuntedRight.GetPos(right, unused);
+        m_HuntedLeft.SetPos(left, OUTLINE_PIXELS / pixels);
+        m_HuntedRight.SetPos(right, OUTLINE_PIXELS / pixels);
     }
 
     void Update(PlayerBase player, PredateState state, float timeslice)
@@ -174,7 +215,7 @@ class PredateCompass
         // Keep glyphs and ticks fixed in their own layout. Move one continuous
         // tape with immediate invalidation instead of moving/hiding each label.
         float tapeWidth, tapeHeight;
-        m_Scroll.GetParent().GetScreenSize(tapeWidth, tapeHeight);
+        m_Tape.GetScreenSize(tapeWidth, tapeHeight);
         float scrollX = -0.5 - heading / 180.0;
         if (tapeWidth > 0) scrollX = Math.Round(scrollX * tapeWidth) / tapeWidth;
         m_Scroll.SetPos(scrollX, 0, true);

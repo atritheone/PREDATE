@@ -383,21 +383,21 @@ class PredateReceiverValidation
         if (!indicator) return;
         Widget left = indicator.FindAnyWidget("HuntedLeft");
         Widget right = indicator.FindAnyWidget("HuntedRight");
-        Widget border = compass.m_FinalApproachOutline.FindAnyWidget("OutlineTop");
+        Widget border = compass.m_FinalApproachOutline;
         result.Check(left && left.GetColor() == PredateHuntFeed.HUNTED, "the left line matches the combat log");
         result.Check(right && right.GetColor() == PredateHuntFeed.HUNTED, "the right line matches the combat log");
         result.Check(border != null, "the Final Approach border is available");
         if (left && right && border)
         {
             float leftX, leftY, leftWidth, leftHeight, rightX, rightY, rightWidth, rightHeight;
-            float unused, borderY, borderHeight;
+            float unused, borderY, rootHeight;
             left.GetPos(leftX, leftY);
             left.GetSize(leftWidth, leftHeight);
             right.GetPos(rightX, rightY);
             right.GetSize(rightWidth, rightHeight);
             border.GetPos(unused, borderY);
-            border.GetSize(unused, borderHeight);
-            result.Check(Math.AbsFloat(leftY - borderY - borderHeight) < 0.001 && leftY == rightY && leftHeight == rightHeight, "both orange lines touch the bottom of the top border");
+            compass.m_Root.GetScreenSize(unused, rootHeight);
+            result.Check(Math.AbsFloat((leftY - borderY) * rootHeight - PredateCompass.OUTLINE_PIXELS) < 0.5 && leftY == rightY && leftHeight == rightHeight, "both orange lines touch the bottom of the top border");
             result.Check(leftX > 0 && leftX + leftWidth < 0.5 && rightX > 0.5 && rightX + rightWidth < 1, "the lines leave space for the heading and corners");
         }
 

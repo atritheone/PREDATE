@@ -1,0 +1,120 @@
+ImageSetClass {
+ Name "PredateCompass"
+ RefSize 64 32
+ Textures {
+  ImageSetTextureClass {
+   mpix 0
+   path "Predate/gui/compass_ca.paa"
+  }
+ }
+ Images {
+  ImageSetDefClass BackdropLeftTop {
+   Name "BackdropLeftTop"
+   Pos 4 4
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass BackdropTop {
+   Name "BackdropTop"
+   Pos 12 4
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass BackdropRightTop {
+   Name "BackdropRightTop"
+   Pos 20 4
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass BackdropLeft {
+   Name "BackdropLeft"
+   Pos 4 12
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass BackdropCenter {
+   Name "BackdropCenter"
+   Pos 12 12
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass BackdropRight {
+   Name "BackdropRight"
+   Pos 20 12
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass BackdropLeftBottom {
+   Name "BackdropLeftBottom"
+   Pos 4 20
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass BackdropBottom {
+   Name "BackdropBottom"
+   Pos 12 20
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass BackdropRightBottom {
+   Name "BackdropRightBottom"
+   Pos 20 20
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass OutlineLeftTop {
+   Name "OutlineLeftTop"
+   Pos 36 4
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass OutlineTop {
+   Name "OutlineTop"
+   Pos 44 4
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass OutlineRightTop {
+   Name "OutlineRightTop"
+   Pos 52 4
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass OutlineLeft {
+   Name "OutlineLeft"
+   Pos 36 12
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass OutlineCenter {
+   Name "OutlineCenter"
+   Pos 44 12
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass OutlineRight {
+   Name "OutlineRight"
+   Pos 52 12
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass OutlineLeftBottom {
+   Name "OutlineLeftBottom"
+   Pos 36 20
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass OutlineBottom {
+   Name "OutlineBottom"
+   Pos 44 20
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass OutlineRightBottom {
+   Name "OutlineRightBottom"
+   Pos 52 20
+   Size 8 8
+   Flags 0
+  }
+ }
+}
