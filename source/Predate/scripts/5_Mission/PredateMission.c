@@ -443,6 +443,8 @@ class PredateSession
         // bias. Height density 0 retains a fog layer near low coastal terrain.
         weather.SetDynVolFogHeightDensity(1);
         weather.SetStorm(0, 1, 86400);
+        Sandstorm dust = weather.GetSandstorm();
+        if (dust && dust.IsActive()) dust.Stop(0, true);
         weather.GetWindMagnitude().SetLimits(2, 2);
         weather.GetWindMagnitude().Set(2, 0, 86400);
         GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(PredateCheckClearWeather, 2000, false);

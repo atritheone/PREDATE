@@ -62,6 +62,7 @@ class PredateClientCommand
     string SessionId;
     int Sequence;
     string Action;
+    string MapId;
     int Port;
     int QueryPort;
     string Password;

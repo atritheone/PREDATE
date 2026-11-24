@@ -1,0 +1,157 @@
+{
+  "size": 15360,
+  "places": [
+    {
+      "name": "Petropavlovsk-Sakhalskiy",
+      "x": 4749,
+      "z": 10695,
+      "major": true
+    },
+    {
+      "name": "Severomorsk",
+      "x": 9544,
+      "z": 13656,
+      "major": true
+    },
+    {
+      "name": "Aniva",
+      "x": 12895,
+      "z": 7273,
+      "major": true
+    },
+    {
+      "name": "Nogovo",
+      "x": 7814,
+      "z": 7949,
+      "major": true
+    },
+    {
+      "name": "Bolotnoe",
+      "x": 5040,
+      "z": 8667,
+      "major": false
+    },
+    {
+      "name": "Dudino",
+      "x": 6233,
+      "z": 7245,
+      "major": false
+    },
+    {
+      "name": "Yuzhnoe",
+      "x": 10972,
+      "z": 6323,
+      "major": false
+    },
+    {
+      "name": "Lesogorovka",
+      "x": 10969,
+      "z": 9695,
+      "major": false
+    },
+    {
+      "name": "Sakhalag",
+      "x": 12163,
+      "z": 9698,
+      "major": false
+    },
+    {
+      "name": "Vostok",
+      "x": 13910,
+      "z": 8337,
+      "major": false
+    },
+    {
+      "name": "Shumnoe",
+      "x": 14383,
+      "z": 8842,
+      "major": false
+    },
+    {
+      "name": "Baykovo",
+      "x": 14571,
+      "z": 9794,
+      "major": false
+    },
+    {
+      "name": "Matrosovo",
+      "x": 14233,
+      "z": 11586,
+      "major": false
+    },
+    {
+      "name": "Rudnogorsk",
+      "x": 13587,
+      "z": 12152,
+      "major": true
+    },
+    {
+      "name": "Rybnoe",
+      "x": 12471,
+      "z": 12667,
+      "major": false
+    },
+    {
+      "name": "Podgornoe",
+      "x": 10985,
+      "z": 13209,
+      "major": false
+    },
+    {
+      "name": "Orlovo",
+      "x": 10373,
+      "z": 13348,
+      "major": false
+    },
+    {
+      "name": "Tumanovo",
+      "x": 8417,
+      "z": 13646,
+      "major": false
+    },
+    {
+      "name": "Evay",
+      "x": 7954,
+      "z": 13512,
+      "major": false
+    },
+    {
+      "name": "Yasnomorsk",
+      "x": 6951,
+      "z": 13331,
+      "major": false
+    },
+    {
+      "name": "Sovetskoe",
+      "x": 6413,
+      "z": 12783,
+      "major": false
+    },
+    {
+      "name": "Zhupanovo",
+      "x": 5741,
+      "z": 12516,
+      "major": false
+    },
+    {
+      "name": "Vysokoe",
+      "x": 11186,
+      "z": 7966,
+      "major": false
+    },
+    {
+      "name": "Burukan",
+      "x": 2706,
+      "z": 6540,
+      "major": true
+    },
+    {
+      "name": "Shantar",
+      "x": 2278,
+      "z": 3413,
+      "major": false
+    }
+  ],
+  "sunrise": 465,
+  "sunset": 975
+}

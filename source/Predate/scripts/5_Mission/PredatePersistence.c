@@ -97,16 +97,21 @@ class PredatePersistence
         string terrainName = GetGame().GetWorldName();
         terrainName.ToLower();
         bool livonia = terrainName == "enoch";
-        if (livonia && !s.m_HuntConfig.ExplicitPlayerStart && !s.m_HuntProgress.BotCreated)
+        bool sakhal = terrainName == "sakhal";
+        bool nasdara = terrainName == "nasdara";
+        bool checkSurfaceInsertion = livonia || sakhal || nasdara;
+        if (checkSurfaceInsertion && !s.m_HuntConfig.ExplicitPlayerStart && !s.m_HuntProgress.BotCreated)
         {
-            s.m_HuntConfig.PlayerStart = "5400 0 6350";
+            if (livonia) s.m_HuntConfig.PlayerStart = "5400 0 6350";
+            else if (sakhal) s.m_HuntConfig.PlayerStart = "9105 0 9735";
+            else s.m_HuntConfig.PlayerStart = "7536 0 9008";
             s.m_HuntConfig.ExplicitPlayerStart = true;
             s.m_HuntConfig.RandomInitialSpawns = true;
         }
         if (s.m_HuntConfig.ExplicitPlayerStart && s.m_HuntProgress.PlayerPlacementRevision == 0)
         {
             bool usable;
-            if (livonia) usable = PredateSpawnPlanner.ExactPlayerSite(s.m_HuntConfig.PlayerStart);
+            if (checkSurfaceInsertion) usable = PredateSpawnPlanner.ExactPlayerSite(s.m_HuntConfig.PlayerStart);
             else usable = PredateSpawnPlanner.PlayerTerrain(s.m_HuntConfig.PlayerStart);
             if (!usable) return Fail(s, "The selected spawn is outside usable ground on this map. Choose a dry, level point with room to stand.");
         }

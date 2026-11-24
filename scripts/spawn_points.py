@@ -46,11 +46,43 @@ LIVONIA_REGIONS = (
     ("southwest",), ("south",), ("southeast",),
 )
 
+SAKHAL_PRESETS = {
+    "original": ("PREDATE Starting Area", 9105, 9735),
+    "petropavlovsk": ("Petropavlovsk-Sakhalskiy Outskirts", 5055, 10215),
+    "bolotnoe": ("Bolotnoe Ridge", 5625, 8955),
+    "dudino": ("Dudino Outskirts", 6495, 7500),
+    "yuzhnoe": ("Yuzhnoe Outskirts", 10875, 6465),
+    "sakhalag": ("Sakhalag Hills", 11721, 9869),
+    "rudnogorsk": ("Rudnogorsk Outskirts", 13995, 12120),
+    "tumanovo": ("Tumanovo Foothills", 8805, 13005),
+    "aniva": ("Aniva Outskirts", 12705, 7410),
+}
+
+NASDARA_PRESETS = {
+    "original": ("PREDATE Starting Area", 7536, 9008),
+    "dashtabad": ("Dashtabad Outskirts", 10395, 10747),
+    "pesh-kuh": ("Pesh Kuh Foothills", 3632, 11056),
+    "bagh-e-mir": ("Bagh-e Mir Outskirts", 4816, 5744),
+    "no-abad": ("No Abad Fields", 6992, 5392),
+    "gard-abad": ("Gard Abad Hills", 10576, 7440),
+    "dara-e-nur": ("Dara-e Nur Foothills", 10800, 13776),
+    "marz-e-lut": ("Marz-e Lut Outskirts", 13744, 12703),
+    "dahaneh-e-kavir": ("Dahaneh-e Kavir Outskirts", 11376, 2992),
+    "chashme-sabz": ("Chashme Sabz Outskirts", 6960, 12592),
+}
+
 
 def presets_for(map_id):
     selected = maps.terrain(map_id)
     if selected.id == "enoch":
         return LIVONIA_PRESETS, LIVONIA_REGIONS
+    if selected.id == "sakhal":
+        return SAKHAL_PRESETS, (("petropavlovsk", "bolotnoe"), ("original", "tumanovo"),
+                               ("yuzhnoe", "dudino"), ("aniva", "sakhalag"), ("rudnogorsk",))
+    if selected.id == "nasdara":
+        return NASDARA_PRESETS, (("original", "gard-abad"), ("pesh-kuh", "chashme-sabz"),
+                                ("bagh-e-mir", "no-abad"), ("dashtabad", "marz-e-lut"),
+                                ("dara-e-nur",), ("dahaneh-e-kavir",))
     return PRESETS, REGIONS
 
 

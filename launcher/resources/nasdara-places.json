@@ -1,0 +1,403 @@
+{
+  "size": 16384,
+  "places": [
+    {
+      "name": "Dashtabad",
+      "x": 10655,
+      "z": 10792,
+      "major": true
+    },
+    {
+      "name": "Kamar Zir",
+      "x": 9432,
+      "z": 11924,
+      "major": true
+    },
+    {
+      "name": "Shah Yailaq",
+      "x": 10334,
+      "z": 8226,
+      "major": true
+    },
+    {
+      "name": "Bam-e Sabz",
+      "x": 8740,
+      "z": 8572,
+      "major": true
+    },
+    {
+      "name": "Pesh Kuh",
+      "x": 3714,
+      "z": 10925,
+      "major": true
+    },
+    {
+      "name": "Gandomabad",
+      "x": 7871,
+      "z": 12477,
+      "major": true
+    },
+    {
+      "name": "Khorramabad",
+      "x": 4634,
+      "z": 10833,
+      "major": true
+    },
+    {
+      "name": "Sabzabad",
+      "x": 6854,
+      "z": 7404,
+      "major": true
+    },
+    {
+      "name": "No Abad",
+      "x": 7021,
+      "z": 5019,
+      "major": true
+    },
+    {
+      "name": "Gard Abad",
+      "x": 11084,
+      "z": 7628,
+      "major": true
+    },
+    {
+      "name": "Kucha Dar",
+      "x": 4512,
+      "z": 10149,
+      "major": true
+    },
+    {
+      "name": "Bustanshahr",
+      "x": 7361,
+      "z": 5642,
+      "major": true
+    },
+    {
+      "name": "Dar-e Ardis",
+      "x": 3436,
+      "z": 4933,
+      "major": true
+    },
+    {
+      "name": "OKB-754",
+      "x": 6908,
+      "z": 10058,
+      "major": true
+    },
+    {
+      "name": "Shinkalay",
+      "x": 8386,
+      "z": 10159,
+      "major": false
+    },
+    {
+      "name": "Dehqankalay",
+      "x": 9969,
+      "z": 10525,
+      "major": false
+    },
+    {
+      "name": "Mal Kalay",
+      "x": 9596,
+      "z": 8867,
+      "major": false
+    },
+    {
+      "name": "Bagh-e Mir",
+      "x": 4730,
+      "z": 5598,
+      "major": false
+    },
+    {
+      "name": "Tut Dara",
+      "x": 5484,
+      "z": 8066,
+      "major": false
+    },
+    {
+      "name": "Anar Juy",
+      "x": 5540,
+      "z": 9079,
+      "major": false
+    },
+    {
+      "name": "Karizak",
+      "x": 3531,
+      "z": 12815,
+      "major": false
+    },
+    {
+      "name": "Chashme Sabz",
+      "x": 6649,
+      "z": 12779,
+      "major": false
+    },
+    {
+      "name": "Gul Zar",
+      "x": 5061,
+      "z": 6495,
+      "major": false
+    },
+    {
+      "name": "Sabz Pashan",
+      "x": 4571,
+      "z": 11724,
+      "major": false
+    },
+    {
+      "name": "Kati Golzar",
+      "x": 6212,
+      "z": 11817,
+      "major": false
+    },
+    {
+      "name": "Tor Dara",
+      "x": 4165,
+      "z": 9324,
+      "major": false
+    },
+    {
+      "name": "Mian Deh",
+      "x": 7326,
+      "z": 4161,
+      "major": false
+    },
+    {
+      "name": "Sar-e Deh",
+      "x": 3005,
+      "z": 6277,
+      "major": false
+    },
+    {
+      "name": "Pay-e Kuh",
+      "x": 6312,
+      "z": 5732,
+      "major": false
+    },
+    {
+      "name": "Bala Kalay",
+      "x": 4476,
+      "z": 7607,
+      "major": false
+    },
+    {
+      "name": "Payan Kalay",
+      "x": 9328,
+      "z": 7527,
+      "major": false
+    },
+    {
+      "name": "Qala-e Kuhna",
+      "x": 4491,
+      "z": 12228,
+      "major": false
+    },
+    {
+      "name": "Pir Kalay",
+      "x": 7669,
+      "z": 8669,
+      "major": false
+    },
+    {
+      "name": "Bazar-e Kohna",
+      "x": 7972,
+      "z": 8008,
+      "major": false
+    },
+    {
+      "name": "Darvazeh-e Gharb",
+      "x": 4914,
+      "z": 13586,
+      "major": false
+    },
+    {
+      "name": "Yak Chinar",
+      "x": 5825,
+      "z": 9690,
+      "major": false
+    },
+    {
+      "name": "Panj Asyab",
+      "x": 5829,
+      "z": 13559,
+      "major": false
+    },
+    {
+      "name": "Chahar Tut",
+      "x": 8078,
+      "z": 8770,
+      "major": false
+    },
+    {
+      "name": "Marz-e Lut",
+      "x": 13780,
+      "z": 12761,
+      "major": false
+    },
+    {
+      "name": "Pesh Dasht",
+      "x": 11351,
+      "z": 9476,
+      "major": false
+    },
+    {
+      "name": "Dahaneh-e Kavir",
+      "x": 11250,
+      "z": 2513,
+      "major": false
+    },
+    {
+      "name": "Kariz-e Marz",
+      "x": 10795,
+      "z": 8576,
+      "major": false
+    },
+    {
+      "name": "Manda Marz",
+      "x": 5368,
+      "z": 10615,
+      "major": false
+    },
+    {
+      "name": "Bad Asyab",
+      "x": 8575,
+      "z": 11397,
+      "major": false
+    },
+    {
+      "name": "Suvin Shahr",
+      "x": 5759,
+      "z": 12586,
+      "major": false
+    },
+    {
+      "name": "Mian Dara",
+      "x": 8870,
+      "z": 12493,
+      "major": false
+    },
+    {
+      "name": "Dara-e Nur",
+      "x": 10917,
+      "z": 13916,
+      "major": false
+    },
+    {
+      "name": "Gul Dara",
+      "x": 7030,
+      "z": 4404,
+      "major": false
+    },
+    {
+      "name": "Bagh-e Dara",
+      "x": 9450,
+      "z": 3243,
+      "major": false
+    },
+    {
+      "name": "Salar Abad",
+      "x": 7923,
+      "z": 9611,
+      "major": false
+    },
+    {
+      "name": "Tut Mian",
+      "x": 7915,
+      "z": 6771,
+      "major": false
+    },
+    {
+      "name": "Bar Kalay",
+      "x": 7331,
+      "z": 13118,
+      "major": false
+    },
+    {
+      "name": "Dost Kalay",
+      "x": 6698,
+      "z": 11375,
+      "major": false
+    },
+    {
+      "name": "Shinkay Wadi",
+      "x": 7040,
+      "z": 12021,
+      "major": false
+    },
+    {
+      "name": "Dashtabad Airbase",
+      "x": 11974,
+      "z": 10681,
+      "major": false
+    },
+    {
+      "name": "Dahana",
+      "x": 10214,
+      "z": 11802,
+      "major": false
+    },
+    {
+      "name": "Nasdara",
+      "x": 9632,
+      "z": 4075,
+      "major": true
+    },
+    {
+      "name": "Karkhana District",
+      "x": 9150,
+      "z": 4219,
+      "major": true
+    },
+    {
+      "name": "Terminal Nas",
+      "x": 10921,
+      "z": 3810,
+      "major": true
+    },
+    {
+      "name": "Ziarat District",
+      "x": 10133,
+      "z": 4163,
+      "major": true
+    },
+    {
+      "name": "Jui Bar District",
+      "x": 9190,
+      "z": 4712,
+      "major": true
+    },
+    {
+      "name": "Registan District",
+      "x": 10683,
+      "z": 4679,
+      "major": true
+    },
+    {
+      "name": "Sarman-Naft refinery",
+      "x": 10767,
+      "z": 5927,
+      "major": false
+    },
+    {
+      "name": "Nasdar-Beton factory",
+      "x": 9706,
+      "z": 6563,
+      "major": false
+    },
+    {
+      "name": "Zulfiqar missile base",
+      "x": 2696,
+      "z": 9693,
+      "major": false
+    },
+    {
+      "name": "Varzaneh",
+      "x": 13397,
+      "z": 12116,
+      "major": false
+    }
+  ],
+  "sunrise": 370,
+  "sunset": 1071
+}

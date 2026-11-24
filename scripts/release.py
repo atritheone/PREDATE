@@ -6,6 +6,7 @@ import re
 import subprocess
 
 from app_runtime import ROOT
+import maps
 STEAM = Path(r"C:\Program Files (x86)\Steam\steamapps")
 WORKSHOP = STEAM / "workshop/content/221100"
 LOCK = ROOT / "config/release-lock.json"
@@ -39,9 +40,12 @@ def snapshot_matches(saved, current, map_id="chernarusplus"):
     added = {name: current["dependencies"][name] for name in REALISM_MODS
              if name in current["dependencies"] and name not in dependencies}
     saved, current = dict(saved), dict(current)
-    other_mission = "mission_base" if map_id == "enoch" else "livonia_mission_base"
-    saved.pop(other_mission, None)
-    current.pop(other_mission, None)
+    for entry in (saved, current):
+        for item in maps.TERRAINS.values():
+            if item.id != map_id: entry.pop(item.mission_lock, None)
+        packages = entry.pop("terrain_packages", {})
+        if map_id in packages:
+            entry["terrain_packages"] = {map_id: packages[map_id]}
     return {**saved, "dependencies": dependencies | added} == current
 
 
@@ -61,6 +65,33 @@ def write_changed(path, data):
 def fingerprints(folder, suffixes=None):
     return {p.relative_to(folder).as_posix(): digest(p) for p in sorted(folder.rglob("*"))
             if p.is_file() and (suffixes is None or p.suffix.lower() in suffixes)}
+
+
+def terrain_fingerprints(folder):
+    return fingerprints(folder, {".pbo", ".ebo", ".bisign"})
+
+
+def verify_terrain(terrain, client, server):
+    from session_store import atomic_json, read_json
+
+    expected = json.loads(LOCK.read_text()).get("terrain_packages", {}).get(terrain.id, {})
+    cache_path = ROOT / "session-runtime" / f"verified-{terrain.id}.json"
+    cached = read_json(cache_path, {})
+    checked = {}
+    for side, base in (("client", client), ("server", server)):
+        if not expected.get(side):
+            raise RuntimeError(f"{terrain.name} map verification data is missing.")
+        for name, wanted in expected[side].items():
+            path = base / terrain.id / name
+            if not path.is_file():
+                raise RuntimeError(f"{terrain.name} needs its {terrain.dlc} map files. Verify the DayZ installation in Steam.")
+            stat = path.stat()
+            key = f"{side}/{name}"
+            stamp = [str(path.resolve()), stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, wanted]
+            if cached.get(key) != stamp and digest(path) != wanted:
+                raise RuntimeError(f"{terrain.name} map files differ from this PREDATE build. Verify the DayZ installation in Steam.")
+            checked[key] = stamp
+    if checked != cached: atomic_json(cache_path, checked)
 
 
 def mod_version(folder):
@@ -95,8 +126,8 @@ def collect():
                       ("PboUtils/FileBank.exe", "DsUtils/DSSignFile.exe", "DsUtils/DSCreateKey.exe")},
             "dependencies": {name: {"workshop_id": item, "version": mod_version(ROOT / "mods" / name),
                 "files": fingerprints(ROOT / "mods" / name)} for name, item in DEPENDENCIES.items()},
-            "mission_base": json.loads((ROOT / "source/mission/base-files.json").read_text()),
-            "livonia_mission_base": json.loads((ROOT / "source/mission/base-files.enoch.json").read_text())}
+            **{item.mission_lock: json.loads((ROOT / "source/mission" / item.base_manifest).read_text())
+               for item in maps.TERRAINS.values()}}
 
 
 def verify():
@@ -117,6 +148,10 @@ def verify():
 
 def accept():
     data = collect()
+    data["terrain_packages"] = {
+        item.id: {"client": terrain_fingerprints(STEAM / "common/DayZ" / item.id),
+                  "server": terrain_fingerprints(STEAM / "common/DayZServer" / item.id)}
+        for item in maps.TERRAINS.values() if item.dlc}
     write_changed(LOCK, json.dumps(data, indent=2, sort_keys=True) + "\n")
     return data
 

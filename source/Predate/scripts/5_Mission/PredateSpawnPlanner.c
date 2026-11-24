@@ -5,9 +5,48 @@ class PredateSpawnRegion
 
 class PredateSpawnPlanner
 {
+    static ref array<string> s_SakhalLand;
+    static ref array<vector> s_SakhalReserveSites = {"5055 0 10215", "13995 0 12120", "10875 0 6465"};
+
+    static bool IsSakhal()
+    {
+        string terrain = GetGame().GetWorldName();
+        terrain.ToLower();
+        return terrain == "sakhal";
+    }
+
+    static bool LeavesSakhalReserve(vector point)
+    {
+        foreach (vector site : s_SakhalReserveSites)
+            if (PredateHunterBrain.Distance(point, site) < 1850) return false;
+        return true;
+    }
+
+    static bool OnSakhalMainland(vector point)
+    {
+        if (!s_SakhalLand)
+        {
+            s_SakhalLand = {};
+            FileHandle mask = OpenFile("Predate/data/sakhal-mainland.txt", FileMode.READ);
+            if (mask)
+            {
+                string row;
+                while (FGets(mask, row) > 0) s_SakhalLand.Insert(row);
+                CloseFile(mask);
+            }
+        }
+        const int grid = 256;
+        float cell = GetGame().GetWorld().GetWorldSize() / (grid * 1.0);
+        int east = Math.Floor(point[0] / cell);
+        int north = grid - 1 - Math.Floor(point[2] / cell);
+        if (s_SakhalLand.Count() != grid || east < 0 || east >= grid || north < 0 || north >= grid) return false;
+        return s_SakhalLand[north].Length() >= grid && s_SakhalLand[north].Substring(east, 1) == "1";
+    }
+
     static bool PlayerTerrain(vector point)
     {
         if (!PredateInformationMath.FiniteVector(point) || !PredateRoutePlanner.Land(point)) return false;
+        if (IsSakhal() && !OnSakhalMainland(point)) return false;
         return GetGame().SurfaceGetNormal(point[0], point[2])[1] >= 0.75;
     }
 
@@ -50,18 +89,19 @@ class PredateSpawnPlanner
     static bool InitialNearPlayer(PredateSession session, vector player, array<vector> occupied, float maximum, out vector site)
     {
         float minimum = PredateDeployment.MINIMUM_DISTANCE;
+        bool reserve = IsSakhal() && session.m_HuntConfig.OpponentCount > 65;
         for (int attempt = 0; attempt < 90; attempt++)
         {
             float distance = Math.Sqrt(Math.RandomFloat(minimum * minimum, maximum * maximum));
             vector point = player + PredateInformationMath.BearingDirection(Math.RandomFloat(0, 360)) * distance;
-            if (SafeOperatorSite(session, point, occupied, minimum, site) && PredateHunterBrain.Distance(site, player) <= maximum)
+            if (SafeOperatorSite(session, point, occupied, minimum, site) && PredateHunterBrain.Distance(site, player) <= maximum && (!reserve || LeavesSakhalReserve(site)))
                 return true;
         }
         // Sample a denser ring where the available land is narrow, such as the coast.
         float offset = Math.RandomFloat(0, 360);
         for (float radius = minimum + 100; radius <= maximum; radius += 330)
             for (int bearing = 0; bearing < 360; bearing += 10)
-                if (SafeOperatorSite(session, player + PredateInformationMath.BearingDirection(offset + bearing) * radius, occupied, minimum, site))
+                if (SafeOperatorSite(session, player + PredateInformationMath.BearingDirection(offset + bearing) * radius, occupied, minimum, site) && (!reserve || LeavesSakhalReserve(site)))
                     return true;
         return false;
     }
@@ -95,8 +135,11 @@ class PredateSpawnPlanner
         // separation. A dense initial roster needs more room for local variation.
         if (session.m_HuntConfig.OpponentCount > 30) spacing = 1250;
         if (session.m_HuntConfig.OpponentCount > 65) spacing = 1000;
+        bool sakhal = IsSakhal();
         bool compactRoster = GetGame().GetWorld().GetWorldSize() < 14000 && session.m_HuntConfig.OpponentCount > 30;
+        if (sakhal && session.m_HuntConfig.OpponentCount > 12) compactRoster = true;
         if (compactRoster) spacing *= 0.84;
+        if (sakhal && session.m_HuntConfig.OpponentCount > 65) spacing = 570;
         for (int attempt = 0; attempt < 3; attempt++)
         {
             array<vector> reserved = {};
@@ -147,17 +190,20 @@ class PredateSpawnPlanner
         array<vector> playerOnly = {player};
         float worldSize = GetGame().GetWorld().GetWorldSize() - 60;
         float width = 2600;
+        int samples = 26;
+        if (IsSakhal()) samples = 60;
+        bool reserve = IsSakhal() && session.m_HuntConfig.OpponentCount > 65;
         for (float east = 60; east < worldSize; east += width)
         {
             for (float north = 60; north < worldSize; north += width)
             {
                 PredateSpawnRegion region = new PredateSpawnRegion;
-                for (int sample = 0; sample < 26; sample++)
+                for (int sample = 0; sample < samples; sample++)
                 {
                     float x = Math.RandomFloat(east, Math.Min(east + width, worldSize));
                     float z = Math.RandomFloat(north, Math.Min(north + width, worldSize));
                     vector site;
-                    if (SafeOperatorSite(session, Vector(x, 0, z), playerOnly, PredateDeployment.MINIMUM_DISTANCE, site))
+                    if (SafeOperatorSite(session, Vector(x, 0, z), playerOnly, PredateDeployment.MINIMUM_DISTANCE, site) && (!reserve || LeavesSakhalReserve(site)))
                         region.Sites.Insert(site);
                 }
                 if (region.Sites.Count() > 0) regions.Insert(region);

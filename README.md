@@ -18,13 +18,13 @@
 
 ## About the game
 
-Choose Chernarus or Livonia, pick an insertion point, and enter the map alongside a roster of AI Operators. Move between pulses to narrow the search, then rely on sight and sound as you close in. Every Operator has a private receiver with the same pulse rules. AI Operators pursue the closest contact they can infer from their own readings and observations, and move on when a hunt stalls.
+Choose a terrain and insertion point, then enter the map alongside a roster of AI Operators. Move between pulses to narrow the search, then rely on sight and sound as you close in. Every Operator has a private receiver with the same pulse rules. AI Operators pursue the closest contact they can infer from their own readings and observations, and move on when a hunt stalls.
 
 The hunt persists between sessions. Surviving Operators carry their injuries and remaining ammunition into the next encounter, and you can redeploy into the same world after death.
 
 ## Highlights
 
-- First-person hunts on Chernarus or Livonia with 1–100 AI Operators. New hunts default to 100.
+- First-person hunts on Chernarus, Livonia, Sakhal, or Nasdara with 1–100 AI Operators. New hunts default to 100.
 - Wildlife and infected spawns are disabled. Animals cannot damage the player or Operators.
 - Operators carry rifles ready on patrol. Stamina never drains for the player or Operators, and bullet damage between them is doubled.
 - Weapons, suppressors, and wearable gear keep their condition for the player and Operators. Ammunition and single-use items are still consumed.
@@ -43,7 +43,9 @@ Nearby footprints can be read with a brief look. The combat log reports a foreig
 AI Operators get the same Final Approach cue for their own tracked contact. They pause to look and listen, then walk a short search guided by remembered bearings and anything they see or hear. They keep their normal combat and recovery priorities.
 4. Use **Save and Quit** to save the hunt and stop the local server. Select **Continue** in the launcher to resume it.
 
-Choose Chernarus or Livonia under **Map** in **New Hunt**, then select a named insertion, let PREDATE pick a random region, or choose exact coordinates on the map. The map is recorded with the hunt, and Continue and Restore Copy use that terrain. Earlier hunts and backups belong to Chernarus. Livonia uses surface insertions and DayZ's native bunker doors and lighting.
+Choose Chernarus, Livonia, Sakhal, or Nasdara under **Map** in **New Hunt**, then select a named insertion, let PREDATE pick a random region, or choose exact coordinates on the map. Sakhal requires Frostline and Nasdara requires Badlands on the current Steam account. The launcher greys out each map until DayZ confirms its DLC is available. The map is recorded with the hunt, and Continue and Restore Copy use that terrain. Earlier hunts and backups without a map field belong to Chernarus.
+
+Sakhal hunts start on the main island, with surface insertions for players and Operators. Nasdara spreads surface insertions across the desert, foothills, and settlement outskirts. Both maps use PREDATE's clear weather and disabled survival, wildlife, infected, vehicles, and ambient loot rules.
 
 Each new hunt shuffles its Operator starting positions. At least one Operator starts 1.5–3.2 km from your insertion, while larger rosters fill regions across the selected map. Dense starting rosters allow Operators to start closer to each other. The 1.5 km separation for redeployment and Operator respawns still applies.
 

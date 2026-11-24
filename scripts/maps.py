@@ -11,6 +11,16 @@ class Terrain:
     name: str
     size: int
     base_manifest: str
+    start_date: str = "09/20"
+    dlc: str | None = None
+
+    @property
+    def mission_lock(self):
+        if self.id == DEFAULT_MAP:
+            return "mission_base"
+        if self.id == "enoch":
+            return "livonia_mission_base"
+        return self.id + "_mission_base"
 
     @property
     def mission(self):
@@ -24,6 +34,8 @@ class Terrain:
 TERRAINS = {
     DEFAULT_MAP: Terrain(DEFAULT_MAP, "Chernarus", 15360, "base-files.json"),
     "enoch": Terrain("enoch", "Livonia", 12800, "base-files.enoch.json"),
+    "sakhal": Terrain("sakhal", "Sakhal", 15360, "base-files.sakhal.json", "02/01", "Frostline"),
+    "nasdara": Terrain("nasdara", "Nasdara", 16384, "base-files.nasdara.json", "04/30", "Badlands"),
 }
 
 

@@ -225,6 +225,11 @@ class PredateDeployment
         PredateInsertionScore best = new PredateInsertionScore;
         ConsiderSite(origin, origin, previous, occupied, exclusions, best);
         ConsiderSite(initial, origin, previous, occupied, exclusions, best);
+        if (PredateSpawnPlanner.IsSakhal())
+        {
+            foreach (vector reserveSite : PredateSpawnPlanner.s_SakhalReserveSites)
+                ConsiderSite(reserveSite, origin, previous, occupied, exclusions, best);
+        }
 
         // Search around every Operator, including areas far from the death.
         array<float> radii = {MINIMUM_DISTANCE + 2, 1550, 1750, 2250, 3000, 4000, PredateBearingPulse.REACH - 2};

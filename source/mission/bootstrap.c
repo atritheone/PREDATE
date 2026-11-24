@@ -8,6 +8,10 @@ void main()
 	//DATE RESET AFTER ECONOMY INIT-------------------------
 	int year, month, day, hour, minute;
 	int reset_month = 9, reset_day = 20;
+	string terrain = GetGame().GetWorldName();
+	terrain.ToLower();
+	// The generated DLC server configuration selects its native season.
+	if (terrain == "sakhal" || terrain == "nasdara") return;
 	GetGame().GetWorld().GetDate(year, month, day, hour, minute);
 
 	if ((month == reset_month) && (day < reset_day))

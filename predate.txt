@@ -2,8 +2,6 @@
 
 ## todo
 
-add other maps.
-
 server optimisation.
 
 add scoring.

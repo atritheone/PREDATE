@@ -88,8 +88,10 @@ class PredateExportMission : MissionServer
         WorldData lighting = GetWorldData();
         if (lighting)
         {
-            data.sunrise = Math.Ceil(lighting.GetApproxSunriseTime(9) * 60);
-            data.sunset = Math.Ceil(lighting.GetApproxSunsetTime(9) * 60);
+            int year, month, day, hour, minute;
+            GetGame().GetWorld().GetDate(year, month, day, hour, minute);
+            data.sunrise = Math.Ceil(lighting.GetApproxSunriseTime(month) * 60);
+            data.sunset = Math.Ceil(lighting.GetApproxSunsetTime(month) * 60);
         }
         AddCatalog(data, "CfgWeapons", "weapon");
         AddCatalog(data, "CfgMagazines", "magazine");

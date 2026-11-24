@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import chernarusImage from './assets/chernarus.png'
-import livoniaImage from './assets/livonia.png'
-import chernarus from '../../../resources/chernarus-places.json'
-import livonia from '../../../resources/livonia-places.json'
 import type { HuntTerrain } from '../../shared/types'
+import { terrainAssets } from './terrainAssets'
 
 type Point = { x: number; z: number }
 
@@ -26,8 +23,7 @@ function MapView({
   point: Point | undefined
   select: (point: Point) => void
 }): ReactNode {
-  const places = terrain.id === 'enoch' ? livonia.places : chernarus.places
-  const image = terrain.id === 'enoch' ? livoniaImage : chernarusImage
+  const { places, image } = terrainAssets[terrain.id]
   const frame = useRef<HTMLDivElement>(null)
   const layer = useRef<HTMLDivElement>(null)
   const [view, setView] = useState({ zoom: 1, left: 0, top: 0 })

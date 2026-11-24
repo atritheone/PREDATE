@@ -8,6 +8,8 @@ import zlib
 APP = Path(__file__).resolve().parents[1]
 RESOURCES = APP / "resources"
 ASSETS = APP / "src/renderer/src/assets"
+NATIVE_DATA = APP.parent / "source/Predate/data"
+MAP_ASSETS = {"chernarusplus": "chernarus", "enoch": "livonia", "sakhal": "sakhal", "nasdara": "nasdara"}
 CYRILLIC = dict(zip(
     "абвгдежзийклмнопрстуфхцчшщъыьэюя",
     "a b v g d e zh z i y k l m n o p r s t u f kh ts ch sh shch _ y _ e yu ya".split(),
@@ -51,10 +53,29 @@ def terrain_image(raster):
     )
 
 
+def mainland_mask(raster):
+    size = len(raster)
+    remaining = {(row, col) for row in range(size) for col in range(size)
+                 if raster[row][col] != -9999}
+    mainland = set()
+    while remaining:
+        first = remaining.pop()
+        frontier = [first]
+        for row, col in frontier:
+            for neighbour in ((row - 1, col), (row + 1, col), (row, col - 1), (row, col + 1)):
+                if neighbour in remaining:
+                    remaining.remove(neighbour)
+                    frontier.append(neighbour)
+        if len(frontier) > len(mainland):
+            mainland = set(frontier)
+    return "\n".join("".join("1" if (row, col) in mainland else "0"
+                              for col in range(1, size, 2)) for row in range(1, size, 2)) + "\n"
+
+
 def main():
     parser = argparse.ArgumentParser(description="Build launcher assets from the native operation setup export")
     parser.add_argument("profile", type=Path)
-    parser.add_argument("--map", choices=("chernarusplus", "enoch"), default="chernarusplus")
+    parser.add_argument("--map", choices=MAP_ASSETS, default="chernarusplus")
     args = parser.parse_args()
     source = json.loads((args.profile / "SetupExport.json").read_text(encoding="utf-8-sig"))
     rows = (args.profile / "TerrainExport.csv").read_text(encoding="ascii").splitlines()
@@ -75,7 +96,7 @@ def main():
             item[key] = list(dict.fromkeys(value for value in item[key] if value))
         catalog[identifier] = item
     places = [{
-        "name": latin(place["name"]) if args.map == "chernarusplus" else place["name"],
+        "name": latin(place["name"]) if args.map in {"chernarusplus", "sakhal"} else place["name"],
         "x": round(place["x"]), "z": round(place["z"]),
         "major": place["kind"] in {"Capital", "City"}
     } for place in source["places"] if place["kind"] in {"Capital", "City", "Village"}]
@@ -85,9 +106,9 @@ def main():
             '[\n' + ',\n'.join(json.dumps(item, ensure_ascii=False, separators=(',', ':')) for item in items) + '\n]\n',
             encoding="utf-8",
         )
-    name = "livonia" if args.map == "enoch" else "chernarus"
+    name = MAP_ASSETS[args.map]
     data = {"size": source["size"], "places": places}
-    if args.map == "enoch":
+    if args.map != "chernarusplus":
         data.update(sunrise=source["sunrise"], sunset=source["sunset"])
     (RESOURCES / f"{name}-places.json").write_text(
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
@@ -95,6 +116,8 @@ def main():
     )
     ASSETS.mkdir(parents=True, exist_ok=True)
     (ASSETS / f"{name}.png").write_bytes(terrain_image(raster))
+    if args.map == "sakhal":
+        (NATIVE_DATA / "sakhal-mainland.txt").write_text(mainland_mask(raster), encoding="ascii")
 
 
 if __name__ == "__main__":

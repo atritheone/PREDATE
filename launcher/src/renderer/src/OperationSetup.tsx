@@ -4,6 +4,7 @@ import {
   MAX_OPPONENT_COUNT,
   OPPONENT_COUNTS,
   isOpponentCount,
+  isHuntMap,
   weaponSlots,
   type HuntMap,
   type LoadoutPreset,
@@ -15,7 +16,7 @@ import {
 import { InventoryEditor } from './InventoryEditor'
 import { SavePresetDialog } from './SavePresetDialog'
 import { SpawnEditor, validSpawn } from './SpawnEditor'
-import livonia from '../../../resources/livonia-places.json'
+import { terrainAssets } from './terrainAssets'
 import {
   changeOutfit,
   clothingPresets,
@@ -44,10 +45,12 @@ function isNightStart(time: string, map: HuntMap = 'chernarusplus'): boolean {
   if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) return false
   const [hour, minute] = time.split(':').map(Number)
   const start = hour * 60 + minute
-  // Fresh Chernarus hunts start in September. These are the first whole
-  // minutes after the map's approximate sunrise and sunset thresholds.
-  if (map === 'enoch') return start < livonia.sunrise || start >= livonia.sunset
-  return start < 4 * 60 + 19 || start >= 19 * 60 + 42
+  const { sunrise, sunset } = terrainAssets[map]
+  return start < sunrise || start >= sunset
+}
+
+function clockLabel(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 }
 
 const presetSaveTitles = {
@@ -105,7 +108,7 @@ export function readOperationDraft(): OperationDraft {
       footprints?: boolean
     }
     delete draft.footprints
-    if (draft.map !== 'enoch' && draft.map !== 'chernarusplus') delete draft.map
+    if (!isHuntMap(draft.map)) delete draft.map
     if (typeof draft.dayNightCycle !== 'boolean') delete draft.dayNightCycle
     if (!isOpponentCount(draft.opponents)) delete draft.opponents
     if (draft.inventory) {
@@ -217,6 +220,10 @@ export function OperationSetup({
     ? draft.operatorOutfit
     : defaults.operatorOutfit
   const terrain = overview.maps.find((item) => item.id === draft.map) ?? overview.maps[0]
+  const lighting = terrainAssets[terrain.id]
+  const times = terrain.id === 'sakhal' || terrain.id === 'nasdara'
+    ? [['Dawn', clockLabel(lighting.sunrise)], ['Day', '12:00'], ['Dusk', clockLabel(lighting.sunset)], ['Night', '00:00']]
+    : timePresets
   const night = isNightStart(draft.time, draft.map)
   const standardLoadout = starterInventory(kit?.id ?? '', playerOutfit, night)
   const loadout = draft.inventory ?? standardLoadout
@@ -309,6 +316,7 @@ export function OperationSetup({
   const delay = Number(draft.respawnDelay)
   const valid =
     !!draft.name.trim() &&
+    terrain.available &&
     !!kit &&
     spawnValid &&
     isOpponentCount(opponents) &&
@@ -394,12 +402,12 @@ export function OperationSetup({
                   id="hunt-map"
                   value={terrain.id}
                   onChange={(event) => {
-                    const selected = overview.maps.find((item) => item.id === event.target.value)
+                    const selected = overview.maps.find((item) => item.id === event.target.value && item.available)
                     if (selected) changeMap(selected.id)
                   }}
                 >
                   {overview.maps.map((item) => (
-                    <option key={item.id} value={item.id}>
+                    <option key={item.id} value={item.id} disabled={!item.available}>
                       {item.name}
                     </option>
                   ))}
@@ -425,7 +433,7 @@ export function OperationSetup({
                   <span>Day Night Cycle</span>
                 </label>
                 <div className="time-presets" aria-label="Time Presets">
-                  {timePresets.map(([label, value]) => (
+                  {times.map(([label, value]) => (
                     <button
                       type="button"
                       key={value}

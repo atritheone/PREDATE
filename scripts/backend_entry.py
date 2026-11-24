@@ -12,6 +12,7 @@ import session_store as store
 import world
 import loadouts
 import maps
+import dlc_access
 import operation_setup
 import spawn_points
 import workshop_lasers
@@ -34,6 +35,12 @@ def initialize():
     store.save_preferences({"selected_world": operation["id"]})
 
 
+def map_options():
+    available = dlc_access.availability()
+    return [{"id": item.id, "name": item.name, "size": item.size, "available": available[item.id],
+             "spawnPoints": spawn_points.options(item.id)} for item in maps.TERRAINS.values()]
+
+
 def overview():
     operations = store.worlds()
     preferences = store.preferences()
@@ -48,8 +55,7 @@ def overview():
         operation_options["weaponModule"] = {"className": "MM_ANPEQ15", "name": "AN/PEQ-15 Laser / Light Module"}
     return {"operations": operations, "preferences": preferences, "loadouts": loadouts.options(preferences["extra_mods"]),
             "spawnPoints": spawn_points.options(),
-            "maps": [{"id": item.id, "name": item.name, "size": item.size,
-                      "spawnPoints": spawn_points.options(item.id)} for item in maps.TERRAINS.values()],
+            "maps": map_options(),
             "operationOptions": operation_options,
             "backups": [item for item in store.backups() if item.get("kind", "operation") == "operation" and not item["file"].startswith("crashlab-")],
             "status": session.state()}
@@ -60,6 +66,9 @@ def dispatch(method, params):
         initialize()
         return overview()
     if method == "overview": return overview()
+    if method == "maps":
+        if params.get("refresh") is True: dlc_access.start_probe()
+        return map_options()
     if method == "status": return session.state()
     if method == "preferences":
         allowed = {"reconnect_grace", "backup_limit", "offline", "extra_mods", "receiver_scale", "receiver_high_contrast"}
@@ -78,6 +87,7 @@ def dispatch(method, params):
         if "map" in values:
             if action != "new": raise ValueError("Choose a map when creating a new hunt.")
             selected_map = maps.terrain(values["map"]).id
+        if action == "new": dlc_access.require(selected_map)
         if action == "delete" and (set(values) != {"profile"} or not isinstance(values["profile"], str)):
             raise ValueError("Select a save to delete.")
         if 'loadout' in values:
@@ -132,6 +142,7 @@ def main():
     elif mode == "process_guard":
         import process_guard
         process_guard.main()
+    elif mode == "dlc_access": dlc_access.main()
     else: raise ValueError("Unknown backend mode")
 
 

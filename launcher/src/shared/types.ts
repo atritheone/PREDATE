@@ -9,12 +9,16 @@ export interface Preferences {
   receiver_high_contrast: boolean
 }
 
-export type HuntMap = 'chernarusplus' | 'enoch'
+const huntMaps = { chernarusplus: 'Chernarus', enoch: 'Livonia', sakhal: 'Sakhal', nasdara: 'Nasdara' } as const
+export type HuntMap = keyof typeof huntMaps
+export function isHuntMap(map: unknown): map is HuntMap {
+  return typeof map === 'string' && Object.hasOwn(huntMaps, map)
+}
 export type SpawnPoint = { id: string; name: string; x: number; z: number }
-export type HuntTerrain = { id: HuntMap; name: string; size: number; spawnPoints: SpawnPoint[] }
+export type HuntTerrain = { id: HuntMap; name: string; size: number; available: boolean; spawnPoints: SpawnPoint[] }
 
 export function huntMapName(map?: HuntMap): string {
-  return map === 'enoch' ? 'Livonia' : 'Chernarus'
+  return huntMaps[map ?? 'chernarusplus']
 }
 
 export interface Operation {
@@ -160,6 +164,7 @@ export type SessionAction =
 
 export interface PredateAPI {
   overview(): Promise<Overview>
+  maps(refresh?: boolean): Promise<HuntTerrain[]>
   perform(action: SessionAction): Promise<void>
   savePreferences(values: Omit<Preferences, 'schema' | 'selected_world'>): Promise<Preferences>
   chooseMod(): Promise<string | null>

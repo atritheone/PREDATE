@@ -124,7 +124,7 @@ def install_mission():
     for rel, expected in base.items():
         original = native / rel
         target = MISSION / rel
-        if TERRAIN.id == "enoch" and rel == "db/events.xml":
+        if TERRAIN.id != maps.DEFAULT_MAP and rel == "db/events.xml":
             events = ElementTree.parse(original)
             for event in events.getroot().findall("event"):
                 if event.attrib.get("name") == "Player":
@@ -142,7 +142,7 @@ def install_mission():
         if not path.is_file():
             continue
         rel = path.relative_to(source)
-        if TERRAIN.id == "enoch" and rel.as_posix() in ("db/events.xml", "expansion/settings/AILocationSettings.json"):
+        if TERRAIN.id != maps.DEFAULT_MAP and rel.as_posix() in ("db/events.xml", "expansion/settings/AILocationSettings.json"):
             continue
         if rel.as_posix() == "init.c":
             raise RuntimeError("Author mission startup in bootstrap.c, server/ and factory.c; template/init.c is ambiguous.")
@@ -264,7 +264,7 @@ thirdPersonView = 0;
 disableCrosshair = 1;
 disablePersonalLight = 1;
 lightingConfig = 0;
-serverTime = "2026/9/20/12/00";
+serverTime = "2026/MISSION_DATE/12/00";
 serverTimeAcceleration = 1;
 serverNightTimeAcceleration = 1;
 serverTimePersistent = 1;
@@ -284,7 +284,8 @@ class Missions
         template = "MISSION_TEMPLATE";
     };
 };
-'''.replace("JOIN_PASSWORD", private["join_password"]).replace("QUERY_PORT", str(QUERY_PORT)).replace("MISSION_TEMPLATE", TERRAIN.mission)
+'''.replace("JOIN_PASSWORD", private["join_password"]).replace("QUERY_PORT", str(QUERY_PORT)).replace(
+        "MISSION_TEMPLATE", TERRAIN.mission).replace("MISSION_DATE", TERRAIN.start_date)
     CONFIG.write_text(config, encoding="ascii")
     if PROFILE_NAME == "development":
         (PROFILE / "PredateDevelopment.txt").write_text("Isolated development world; tests may change actors.\n")
@@ -388,6 +389,8 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
     import release
     import workshop_lasers
     release.verify()
+    if TERRAIN.dlc:
+        release.verify_terrain(TERRAIN, CLIENT, SERVER)
     native_mission_inputs()
     mods = launch_mods()
     workshop_lasers.verify_launch(mods)
@@ -478,7 +481,7 @@ def backup():
         raise RuntimeError("Backup refused while the server is running.")
     folder = ROOT / "backups"
     folder.mkdir(exist_ok=True)
-    map_label = "chernarus" if TERRAIN.id == maps.DEFAULT_MAP else "livonia"
+    map_label = TERRAIN.name.lower()
     destination = folder / (PROFILE_NAME + "-" + map_label + "-" + timestamp() + ".zip")
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
         archive.write(CONFIG, "serverDZ.cfg")

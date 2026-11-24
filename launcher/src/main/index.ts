@@ -8,6 +8,7 @@ import {
   DEFAULT_OPPONENT_COUNT,
   OPPONENT_COUNTS,
   isOpponentCount,
+  isHuntMap,
   type SessionAction,
 } from '../shared/types'
 
@@ -57,7 +58,7 @@ function validateAction(value: unknown): SessionAction {
     throw new Error('Enter a whole number from 1 to 100 opponents for a new hunt')
   if (
     action.map !== undefined &&
-    (action.action !== 'new' || (action.map !== 'chernarusplus' && action.map !== 'enoch'))
+    (action.action !== 'new' || !isHuntMap(action.map))
   )
     throw new Error('Choose a supported hunt map.')
   if (action.spawn !== undefined) {
@@ -141,6 +142,10 @@ async function createWindow(): Promise<void> {
   ipcMain.handle('predate:overview', (event) => {
     trusted(event)
     return backend.overview()
+  })
+  ipcMain.handle('predate:maps', (event, refresh: unknown) => {
+    trusted(event)
+    return backend.request('maps', { refresh: !diagnose && refresh === true })
   })
   ipcMain.handle('predate:perform', (event, value: unknown) => {
     trusted(event)
@@ -256,6 +261,7 @@ async function createWindow(): Promise<void> {
       customSpawnFields?: boolean
       mapSelectorVisible?: boolean
       livoniaSpawnMap?: boolean
+      dlcOptions?: Array<{ id: string; disabled: boolean }>
       startTime?: boolean
       dayNightCycle?: boolean
       spawnMap?: boolean
@@ -267,6 +273,9 @@ async function createWindow(): Promise<void> {
       displayControls?: boolean
     }> = []
     const launcherPages = ['Continue', 'Settings', 'Backups']
+    const mapAccess = (await backend.overview()).maps
+      .filter(({ id }) => id === 'sakhal' || id === 'nasdara')
+      .map(({ id, available }) => ({ id, disabled: !available }))
     for (const [width, height, pages] of [
       [windowSize.width, windowSize.height, launcherPages],
       [windowSize.minWidth, windowSize.minHeight, launcherPages],
@@ -311,11 +320,14 @@ async function createWindow(): Promise<void> {
             features.spawnMap = !!document.querySelector('.map-viewport img');
             features.customSpawnFields = !!document.getElementById('spawn-x') && !!document.getElementById('spawn-z');
             const terrainSelect = document.getElementById('hunt-map');
+            features.dlcOptions = Array.from(terrainSelect?.options ?? [])
+              .filter(({ value }) => value === 'sakhal' || value === 'nasdara')
+              .map(({ value, disabled }) => ({ id: value, disabled }));
             const mapBounds = terrainSelect?.getBoundingClientRect();
             const huntNameBounds = document.getElementById('operation-name')?.getBoundingClientRect();
             features.mapSelectorVisible = !!mapBounds &&
               document.elementFromPoint(mapBounds.x + mapBounds.width / 2, mapBounds.y + mapBounds.height / 2) === terrainSelect &&
-              Array.from(terrainSelect.options).map(option => option.textContent.trim()).join(',') === 'Chernarus,Livonia' &&
+              Array.from(terrainSelect.options).map(option => option.textContent.trim()).join(',') === 'Chernarus,Livonia,Sakhal,Nasdara' &&
               !!huntNameBounds && huntNameBounds.bottom < mapBounds.top;
             const chernarusImage = document.querySelector('.map-viewport img')?.src;
             if (terrainSelect?.value === 'chernarusplus') {
@@ -429,7 +441,7 @@ async function createWindow(): Promise<void> {
       result.navigation.join(',') === 'New Hunt,Settings,Backups' &&
       result.operationCount > 0 &&
       result.huntLabel === 'Hunt' &&
-      / - (Chernarus|Livonia)$/.test(result.huntValue ?? '') &&
+      / - (Chernarus|Livonia|Sakhal|Nasdara)$/.test(result.huntValue ?? '') &&
       result.continueVisible &&
       result.imageCount === 1 &&
       result.wordmarkLoaded &&
@@ -465,6 +477,7 @@ async function createWindow(): Promise<void> {
               check.spawnMap === true &&
               check.mapSelectorVisible === true &&
               check.livoniaSpawnMap === true &&
+              JSON.stringify(check.dlcOptions) === JSON.stringify(mapAccess) &&
               check.defaultSpawn === 'original' &&
               check.defaultSpawnLabel === 'PREDATE Starting Area' &&
               check.classicSpawnGroup === 'Classic Spawns' &&

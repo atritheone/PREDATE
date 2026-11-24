@@ -13,6 +13,7 @@ import uuid
 import platform_win
 import mod_presets
 import maps
+import dlc_access
 import session_store as store
 import world
 import world_pause
@@ -22,7 +23,7 @@ from app_runtime import ROOT, command as helper_command, saves_directory
 RUNTIME = ROOT / "session-runtime"
 STATUS = RUNTIME / "status.json"
 MANAGER = RUNTIME / "manager.json"
-OPERATION_SETUP_VERSION = 9
+OPERATION_SETUP_VERSION = 10
 _status_cache = None
 
 
@@ -162,11 +163,13 @@ class Supervisor:
         self.command_sequence = max(self.command_sequence, acknowledged) + 1
         store.atomic_json(store.world_path(self.profile) / "client/PredateClientCommand.json", {
             "Schema": 1, "SessionId": self.session_id, "Sequence": self.command_sequence,
-            "Action": action, "Port": world.PORT, "QueryPort": world.QUERY_PORT,
+            "Action": action, "MapId": world.TERRAIN.id, "Port": world.PORT, "QueryPort": world.QUERY_PORT,
             "Password": world.settings()["join_password"] if action in ("connect", "server-ready") else ""})
 
     def start_operation(self, profile, launcher_pid=None, diagnostics=None):
         store.existing_world_path(profile)
+        dlc_access.wait_for_probe()
+        dlc_access.require(maps.operation_terrain(store.metadata(profile)).id)
         if self.profile and self.profile != profile:
             self.save_quit()
         if self.profile == profile and world.running() and self.client_alive():
@@ -380,6 +383,7 @@ class Supervisor:
                                      command.get("launcher_pid"), command.get("diagnostics"))
             elif action == "quit": self.save_quit()
             elif action == "new":
+                dlc_access.require(command.get('map', maps.DEFAULT_MAP))
                 info = store.create_operation(command.get("name", ""), player_loadout=command.get('loadout', 'm4a1'),
                                               opponent_count=command.get('opponents', store.DEFAULT_OPPONENT_COUNT),
                                               footprints=command.get('footprints', True), spawn=command.get('spawn'),
@@ -387,7 +391,8 @@ class Supervisor:
                                               map_id=command.get('map', maps.DEFAULT_MAP))
                 self.start_operation(info["id"], command.get("launcher_pid"), command.get("diagnostics"))
             elif action == "restore":
-                store.validate_snapshot(ROOT / "backups" / command["backup"])
+                manifest = store.validate_snapshot(ROOT / "backups" / command["backup"])
+                dlc_access.require(maps.operation_terrain(manifest["operation"]).id)
                 if self.profile and (self.client_alive() or world.running()): self.save_quit()
                 info = store.restore_snapshot(command["backup"], command["name"])
                 store.save_preferences({"selected_world": info["id"]})

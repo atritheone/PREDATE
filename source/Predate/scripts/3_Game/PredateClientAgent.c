@@ -201,6 +201,20 @@ class PredateClientAgent
             if (game.GetTickTime() < m_StartupFocusDeadline) return;
         }
         m_StagingInitialJoin = false;
+        string mapId = m_InitialJoin.MapId;
+        if (mapId == "sakhal" || mapId == "nasdara")
+        {
+            ContentDLC content = game.GetContentDLCService();
+            EDLCId license = EDLCId.FROSTLINE;
+            if (mapId == "nasdara") license = EDLCId.BADLANDS;
+            if (!content || !content.IsDLCInstalled(license))
+            {
+                if (mapId == "sakhal") m_Status.Error = "Sakhal requires Frostline on the current Steam account.";
+                else m_Status.Error = "Nasdara requires Badlands on the current Steam account.";
+                m_InitialJoin = null;
+                return;
+            }
+        }
         Print("[Predate] Local mission ready; joining from the loading screen.");
         if (game.m_loading) game.m_loading.PredateBeginWorldLoading();
         game.ConnectFromServerBrowserEx("127.0.0.1", m_InitialJoin.Port, m_InitialJoin.QueryPort, m_InitialJoin.Password);
