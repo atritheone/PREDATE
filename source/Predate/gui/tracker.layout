@@ -6,18 +6,17 @@ FrameWidgetClass PredateTracker {
  hexactsize 0
  vexactsize 0
 
- { PanelWidgetClass Panel {
- position 0.025 0.035
- size 0.95 0.93
+ { FrameWidgetClass Panel {
+ position 0.035 0.035
+ size 0.93 0.93
  hexactpos 0
  vexactpos 0
  hexactsize 0
  vexactsize 0
- color 0.025 0.045 0.06 1
-style UIDefaultPanel
+ ignorepointer 1
  { MapWidgetClass Terrain {
- position 0.016 0.04
- size 0.644 0.92
+ position 0.04485645933014354 0.07332624867162593
+ size 0.6148325358851675 0.8554729011689692
  hexactpos 0
  vexactpos 0
  hexactsize 0
@@ -2565,6 +2564,23 @@ priority 130
 }
  }
 }
+ImageWidgetClass TabletArtwork {
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+scaled 0
+mode blend
+"src alpha" 1
+"stretch mode" stretch_w_h
+filter 1
+image0 "set:PredateMapTablet image:Tablet"
+priority 150
+ {  }
+}
 ButtonWidgetClass Overview {
  position 0 0
  size 0.035 0.055
@@ -2621,17 +2637,16 @@ image0 "set:PredateMapIcons image:Center"
 }
  }
 }
-PanelWidgetClass Readout {
- position 0.676 0.04
- size 0.308 0.92
+FrameWidgetClass Readout {
+ position 0.6692583732057417 0.07332624867162593
+ size 0.28648325358851673 0.8554729011689692
  hexactpos 0
  vexactpos 0
  hexactsize 0
  vexactsize 0
- color 0.05 0.085 0.11 1
-style UIDefaultPanel
+ priority 200
  { TextWidgetClass TrackingTitle {
- position 0.06 0
+ position 0.06 0.0037267080745341614
  size 0.5 0.053
  hexactpos 0
  vexactpos 0
@@ -2735,7 +2750,7 @@ font "gui/fonts/sdf_MetronBook24"
  {  }
 }
 TextWidgetClass InterceptionStatus {
- position 0.62 0
+ position 0.62 0.0037267080745341614
  size 0.32 0.053
  hexactpos 0
  vexactpos 0
@@ -2774,7 +2789,7 @@ font "gui/fonts/sdf_MetronBook24"
 }
 TextWidgetClass History0 {
  position 0.06 0.548
- size 0.88 0.043
+ size 0.92 0.043
  hexactpos 0
  vexactpos 0
  hexactsize 0
@@ -2792,7 +2807,7 @@ font "gui/fonts/sdf_MetronBook24"
 }
 TextWidgetClass History1 {
  position 0.06 0.5920000000000001
- size 0.88 0.043
+ size 0.92 0.043
  hexactpos 0
  vexactpos 0
  hexactsize 0
@@ -2810,7 +2825,7 @@ font "gui/fonts/sdf_MetronBook24"
 }
 TextWidgetClass History2 {
  position 0.06 0.636
- size 0.88 0.043
+ size 0.92 0.043
  hexactpos 0
  vexactpos 0
  hexactsize 0
@@ -2828,7 +2843,7 @@ font "gui/fonts/sdf_MetronBook24"
 }
 TextWidgetClass History3 {
  position 0.06 0.68
- size 0.88 0.043
+ size 0.92 0.043
  hexactpos 0
  vexactpos 0
  hexactsize 0

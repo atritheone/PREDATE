@@ -92,6 +92,29 @@ def make_controls():
     write_imageset("PredateMapIcons", "map_icons.imageset", atlas, entries)
 
 
+def make_tablet():
+    art = Image.open(ICONS / "tablet.png").convert("RGBA")
+    width, height = art.size
+    if (width, height) != (3344, 1882):
+        raise ValueError("Tablet artwork dimensions changed. Measure both openings again.")
+
+    # Keep the supplied RGB pixels and antialias only the alpha mask.
+    # The original translucent shadow is outside the opaque tablet.
+    samples = 2
+    mask = Image.new("L", (width * samples, height * samples))
+    pen = ImageDraw.Draw(mask)
+    pen.rounded_rectangle((16*samples, 12*samples, 3328*samples-1, 1866*samples-1),
+                          radius=112*samples, fill=255)
+    pen.rounded_rectangle((150*samples, 138*samples, 2206*samples-1, 1748*samples-1),
+                          radius=22*samples, fill=0)
+    art.putalpha(mask.resize(art.size, Image.Resampling.BOX))
+
+    atlas = Image.new("RGBA", (4096, 2048))
+    atlas.paste(art, (4, 4))
+    to_paa(atlas, "map_tablet")
+    write_imageset("PredateMapTablet", "map_tablet.imageset", atlas, [("Tablet", 4, 4, *art.size)])
+
+
 def make_arcs():
     # The dimensions and radius steps match PredateMapStrokes.DrawArc.
     atlas = Image.new("RGBA", (2048, 2048), (255, 255, 255, 0))
@@ -139,4 +162,5 @@ def make_arcs():
 if __name__ == "__main__":
     WORK.mkdir(parents=True, exist_ok=True)
     make_controls()
+    make_tablet()
     make_arcs()

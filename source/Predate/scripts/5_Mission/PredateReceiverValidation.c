@@ -301,13 +301,41 @@ class PredateReceiverValidation
         bool compactHeight = Math.AbsFloat(clearHeight - Math.Round(26 * menu.m_MapScale)) < 1;
         bool fittedCaption = Math.AbsFloat(menu.m_Select.GetTextProportion() - 0.55) < 0.01;
         result.Check(compactWidth && compactHeight && fittedCaption, "the compact clear button fits its label");
-        float mapX, mapY, mapWidth, mapHeight, titleX, titleY, controlX, controlY;
+        float mapX, mapY, mapWidth, mapHeight, titleX, titleY, huntedX, huntedY, controlX, controlY;
         menu.m_Map.GetScreenPos(mapX, mapY);
         menu.m_Map.GetScreenSize(mapWidth, mapHeight);
+        CheckTabletFit(result, menu);
         menu.m_TrackingTitle.GetScreenPos(titleX, titleY);
-        result.Check(Math.AbsFloat(titleY - mapY) < 1, "the tracking header aligns with the map top");
+        menu.m_InterceptionStatus.GetScreenPos(huntedX, huntedY);
+        float headerY = mapY + 3 * mapHeight / 805;
+        result.Check(Math.AbsFloat(titleY - headerY) < 1 && Math.AbsFloat(titleY - huntedY) < 1, "the two headers share the same inset below the map top");
         menu.m_CenterPlayer.GetScreenPos(controlX, controlY);
         result.Check(controlX > mapX + mapWidth * 0.8 && controlY > mapY + mapHeight * 0.8, "the glyph controls sit inside the lower-right map corner");
+    }
+
+    static void CheckTabletFit(PredateReceiverValidationResult result, PredateTrackerMenu menu)
+    {
+        ImageWidget artwork = ImageWidget.Cast(menu.m_Tablet.FindAnyWidget("TabletArtwork"));
+        int textureWidth, textureHeight;
+        artwork.GetImageSize(0, textureWidth, textureHeight);
+        result.Check(textureWidth > 0 && textureHeight > 0, "the supplied tablet texture loads");
+        float x, y, width, height, mapX, mapY, mapWidth, mapHeight;
+        menu.m_Tablet.GetScreenPos(x, y);
+        menu.m_Tablet.GetScreenSize(width, height);
+        menu.m_Map.GetScreenPos(mapX, mapY);
+        menu.m_Map.GetScreenSize(mapWidth, mapHeight);
+        float scale = width / PredateTrackerMenu.TABLET_WIDTH;
+        result.Check(Math.AbsFloat(height - PredateTrackerMenu.TABLET_HEIGHT * scale) < 1, "the tablet artwork keeps its source aspect ratio");
+        bool originMatches = Math.AbsFloat(mapX - (x + 75 * scale)) < 1 && Math.AbsFloat(mapY - (y + 69 * scale)) < 1;
+        bool sizeMatches = Math.AbsFloat(mapWidth - 1028 * scale) < 1 && Math.AbsFloat(mapHeight - 805 * scale) < 1;
+        result.Check(originMatches && sizeMatches, "the terrain sits exactly in the artwork aperture");
+        Widget readout = menu.m_Tablet.FindAnyWidget("Readout");
+        float readoutX, readoutY, readoutWidth, readoutHeight;
+        readout.GetScreenPos(readoutX, readoutY);
+        readout.GetScreenSize(readoutWidth, readoutHeight);
+        originMatches = Math.AbsFloat(readoutX - (x + 1119 * scale)) < 1 && Math.AbsFloat(readoutY - (y + 69 * scale)) < 1;
+        sizeMatches = Math.AbsFloat(readoutWidth - 479 * scale) < 1 && Math.AbsFloat(readoutHeight - 805 * scale) < 1;
+        result.Check(originMatches && sizeMatches, "the tracking pane fits the right artwork opening");
     }
 
     static void CheckOverlappingPulses(PredateReceiverValidationResult result, PredateTrackerMenu menu, PlayerBase player)

@@ -48,7 +48,10 @@ class PredateMapOverlay
     static void LoadStyles()
     {
         if (s_StylesLoaded) return;
-        if (!LoadWidgetImageSet("Predate/gui/map_icons.imageset") || !LoadWidgetImageSet("Predate/gui/map_arcs.imageset"))
+        bool imagesLoaded = LoadWidgetImageSet("Predate/gui/map_icons.imageset");
+        imagesLoaded = LoadWidgetImageSet("Predate/gui/map_arcs.imageset") && imagesLoaded;
+        imagesLoaded = LoadWidgetImageSet("Predate/gui/map_tablet.imageset") && imagesLoaded;
+        if (!imagesLoaded)
         {
             Print("[Predate] MAP ERROR: map image sets failed to load.");
             return;

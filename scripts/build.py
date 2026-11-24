@@ -77,13 +77,16 @@ def layouts():
     pulse_labels = "".join(map_label(f"MapPulse{index}", "1 0.79 0.44 1") for index in range(100))
     historical_label = map_label("MapLastKnown", "0.66 0.88 0.90 1")
     arrow = map_image("MapPlayer", "set:PredateMapIcons image:Player", extra="visible 0\npriority 130")
-    children = widget("MapWidgetClass", "Terrain", .016,.04,.644,.92, 'clipchildren 1',
+    # Widget edges are measured from the original 1672 by 941 tablet art.
+    children = widget("MapWidgetClass", "Terrain", 75/1672,69/941,1028/1672,805/941, 'clipchildren 1',
                       history_canvas+canvas+bearing_labels+pulse_labels+historical_label+arrow)
+    children += map_image("TabletArtwork", "set:PredateMapTablet image:Tablet", extra="priority 150")
     for name, glyph in (("Overview", "Overview"), ("CenterPlayer", "Center")):
         icon = map_image(name+"Icon", f"set:PredateMapIcons image:{glyph}", .2,.2,.6,.6)
         children += widget("ButtonWidgetClass", name, 0,0,.035,.055,
                            'priority 200\nstyle PredateMapControl', icon)
-    readout = label("TrackingTitle", "TRACKING", .06,0,.50,.053,"0.72 0.72 0.72 1")
+    header_inset = 3 / 805
+    readout = label("TrackingTitle", "TRACKING", .06,header_inset,.50,.053,"0.72 0.72 0.72 1")
     readout = readout.replace('"text valign" center', '"text valign" top')
     readout += label("Status", "Waiting for pulses", .06,.084,.88,.047)
     readout += label("TargetName", "", .06,.084,.88,.047).replace(
@@ -91,13 +94,13 @@ def layouts():
     readout += label("Bearing", "No pulse", .06,.145,.88,.042)
     readout += label("Timing", "", .06,.20,.88,.04)
     readout += label("Hint", "", .06,.26,.88,.04)
-    readout += label("InterceptionStatus", "HUNTED", .62,0,.32,.053,"1 0.698039 0.325490 1").replace(
+    readout += label("InterceptionStatus", "HUNTED", .62,header_inset,.32,.053,"1 0.698039 0.325490 1").replace(
         '"text valign" center', '"text valign" top\n"text halign" right').replace(
         'ignorepointer 1','ignorepointer 1\nvisible 0\n"bold text" 1')
     readout += label("HistoryTitle", "PULSES", .06,.50,.88,.048,
                      "0.72 0.72 0.72 1").replace('ignorepointer 1','ignorepointer 1\nvisible 0')
     for index in range(4):
-        row = label(f"History{index}", "", .06,.548 + index * .044,.88,.043)
+        row = label(f"History{index}", "", .06,.548 + index * .044,.92,.043)
         readout += row.replace('ignorepointer 1','ignorepointer 1\nvisible 0')
     readout = readout.replace('font "gui/fonts/etelkatextpro22"',
                               'scaled 0\nfont "gui/fonts/sdf_MetronBook24"\n"exact text" 1\n"exact text size" 15')
@@ -117,10 +120,9 @@ def layouts():
                        'visible 0\nstyle Default\ntext "Confirm hunt"')
     readout += widget("ButtonWidgetClass","Close",.758,.9177,.182,.0533,
                        'style Default\ntext "Close"')
-    children += widget("PanelWidgetClass","Readout",.676,.04,.308,.92,
-                       'color 0.05 0.085 0.11 1\nstyle UIDefaultPanel',readout)
-    panel = widget("PanelWidgetClass","Panel",.025,.035,.95,.93,
-                   'color 0.025 0.045 0.06 1\nstyle UIDefaultPanel',children)
+    children += widget("FrameWidgetClass","Readout",1119/1672,69/941,479/1672,805/941,
+                       'priority 200',readout)
+    panel = widget("FrameWidgetClass","Panel",.035,.035,.93,.93,"ignorepointer 1",children)
     release.write_changed(gui/"tracker.layout",widget("FrameWidgetClass","PredateTracker",0,0,1,1,children=panel))
     directions={0:"N",45:"NE",90:"E",135:"SE",180:"S",225:"SW",270:"W",315:"NW"}
     ticks=""

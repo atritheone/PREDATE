@@ -1,0 +1,18 @@
+ImageSetClass {
+ Name "PredateMapTablet"
+ RefSize 4096 2048
+ Textures {
+  ImageSetTextureClass {
+   mpix 0
+   path "Predate/gui/map_tablet_ca.paa"
+  }
+ }
+ Images {
+  ImageSetDefClass Tablet {
+   Name "Tablet"
+   Pos 4 4
+   Size 3344 1882
+   Flags 0
+  }
+ }
+}

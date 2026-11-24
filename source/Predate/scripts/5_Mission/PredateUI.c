@@ -31,6 +31,8 @@ class PredateReceiverEvents : ScriptedWidgetEventHandler
 
 class PredateTrackerMenu : UIScriptedMenu
 {
+    static const float TABLET_WIDTH = 1672;
+    static const float TABLET_HEIGHT = 941;
     ref PredateReceiverEvents m_Events;
     TextWidget m_Status;
     TextWidget m_TargetName;
@@ -50,6 +52,7 @@ class PredateTrackerMenu : UIScriptedMenu
     ButtonWidget m_ConfirmDeploy;
     Widget m_Overview;
     Widget m_CenterPlayer;
+    Widget m_Tablet;
     MapWidget m_Map;
     CanvasWidget m_MapCanvas;
     ref PredateMapOverlay m_MapOverlay;
@@ -58,6 +61,8 @@ class PredateTrackerMenu : UIScriptedMenu
     vector m_MapPress;
     vector m_MapPressCenter;
     float m_MapScale = 1;
+    float m_MapViewportWidth;
+    float m_MapViewportHeight;
     int m_MapTextSize;
     int m_MapHeaderSize;
     bool m_PredateOwnAimExclude;
@@ -66,6 +71,7 @@ class PredateTrackerMenu : UIScriptedMenu
     {
         PredateMapOverlay.LoadStyles();
         layoutRoot = GetGame().GetWorkspace().CreateWidgets("Predate/gui/tracker.layout");
+        m_Tablet = layoutRoot.FindAnyWidget("Panel");
         m_Events = new PredateReceiverEvents(this);
         layoutRoot.SetHandler(m_Events);
         m_Status = TextWidget.Cast(layoutRoot.FindAnyWidget("Status"));
@@ -111,6 +117,7 @@ class PredateTrackerMenu : UIScriptedMenu
     override void OnShow()
     {
         super.OnShow();
+        UpdateMapScale();
         Mission mission = GetGame().GetMission();
         if (mission && !mission.IsInputExcludeActive("aiming"))
         {
@@ -225,7 +232,19 @@ class PredateTrackerMenu : UIScriptedMenu
     {
         float width, height;
         layoutRoot.GetScreenSize(width, height);
-        m_MapScale = Math.Clamp(Math.Min(width / 1280.0, height / 720.0), 0.8, 2.5);
+        if (width <= 0 || height <= 0) return;
+        if (width == m_MapViewportWidth && height == m_MapViewportHeight) return;
+        m_MapViewportWidth = width;
+        m_MapViewportHeight = height;
+
+        // Use one physical scale for both axes so the artwork and every
+        // child widget share the same coordinates at any aspect ratio.
+        float tabletScale = Math.Min(width * 0.95 / TABLET_WIDTH, height * 0.93 / TABLET_HEIGHT);
+        float tabletWidth = TABLET_WIDTH * tabletScale / width;
+        float tabletHeight = TABLET_HEIGHT * tabletScale / height;
+        m_Tablet.SetSize(tabletWidth, tabletHeight);
+        m_Tablet.SetPos((1 - tabletWidth) * 0.5, (1 - tabletHeight) * 0.5);
+        m_MapScale = Math.Clamp(TABLET_HEIGHT * tabletScale / (720.0 * 0.93), 0.8, 2.5);
         int size = Math.Round(15 * m_MapScale);
         if (size != m_MapTextSize)
         {
