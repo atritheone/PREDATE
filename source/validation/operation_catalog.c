@@ -24,6 +24,9 @@ class PredateMapPlace
 class PredateSetupExport
 {
     int size;
+    string world;
+    int sunrise;
+    int sunset;
     ref array<ref PredateCatalogItem> items = new array<ref PredateCatalogItem>;
     ref array<ref PredateMapPlace> places = new array<ref PredateMapPlace>;
 }
@@ -81,6 +84,13 @@ class PredateExportMission : MissionServer
     {
         PredateSetupExport data = new PredateSetupExport;
         data.size = GetGame().GetWorld().GetWorldSize();
+        data.world = GetGame().GetWorldName();
+        WorldData lighting = GetWorldData();
+        if (lighting)
+        {
+            data.sunrise = Math.Ceil(lighting.GetApproxSunriseTime(9) * 60);
+            data.sunset = Math.Ceil(lighting.GetApproxSunsetTime(9) * 60);
+        }
         AddCatalog(data, "CfgWeapons", "weapon");
         AddCatalog(data, "CfgMagazines", "magazine");
         AddCatalog(data, "CfgVehicles", "item");

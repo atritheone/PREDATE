@@ -9,7 +9,16 @@ export interface Preferences {
   receiver_high_contrast: boolean
 }
 
+export type HuntMap = 'chernarusplus' | 'enoch'
+export type SpawnPoint = { id: string; name: string; x: number; z: number }
+export type HuntTerrain = { id: HuntMap; name: string; size: number; spawnPoints: SpawnPoint[] }
+
+export function huntMapName(map?: HuntMap): string {
+  return map === 'enoch' ? 'Livonia' : 'Chernarus'
+}
+
 export interface Operation {
+  map?: HuntMap
   id: string
   name: string
   created: string | null
@@ -18,6 +27,7 @@ export interface Operation {
 }
 
 export interface Backup {
+  map?: HuntMap
   file: string
   name: string
   created: string
@@ -39,7 +49,8 @@ export interface WeaponModulePreview {
 
 export interface Overview {
   loadouts: { id: string; name: string; description: string; workshop?: boolean }[]
-  spawnPoints: { id: string; name: string; x: number; z: number }[]
+  spawnPoints: SpawnPoint[]
+  maps: HuntTerrain[]
   operationOptions?: {
     opponents: OpponentCount[]
     randomRegion: boolean
@@ -123,7 +134,12 @@ export const DEFAULT_OPPONENT_COUNT = MAX_OPPONENT_COUNT
 export type OpponentCount = number
 
 export function isOpponentCount(value: unknown): value is OpponentCount {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= MAX_OPPONENT_COUNT
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= MAX_OPPONENT_COUNT
+  )
 }
 
 export type SessionAction =
@@ -132,6 +148,7 @@ export type SessionAction =
   | { action: 'delete'; profile: string }
   | {
       action: 'new'
+      map?: HuntMap
       name: string
       loadout?: string
       opponents?: OpponentCount

@@ -6,6 +6,8 @@ class PredateRosterReceiverReport
     string First;
     string Second;
     int InRange;
+    string Terrain;
+    vector Viewport;
     void Check(bool passed, string name)
     {
         Checks++;
@@ -66,7 +68,18 @@ class PredateRosterReceiverValidation
             m_Result.Check(firstArcRadius > originalRadius, "the centered bearing dial draws a larger selectable arc");
         }
         vector position = overlay.m_LabelPositions[slot];
-        if (!useLabel) position = overlay.RadialPoint(pulse.Start + 7.5, overlay.m_ArcRadii[slot]);
+        if (!useLabel)
+        {
+            // Map edges can clip the middle of a sector even with its name on-screen.
+            array<float> sectorAngles = {7.5, 2.5, 12.5};
+            foreach (float sample : sectorAngles)
+            {
+                vector onArc = overlay.RadialPoint(pulse.Start + sample, overlay.m_ArcRadii[slot]);
+                if (onArc[0] < 1 || onArc[0] > overlay.m_Width - 1 || onArc[1] < 1 || onArc[1] > overlay.m_Height - 1) continue;
+                position = onArc;
+                break;
+            }
+        }
         int clickX = Math.Round(overlay.m_Left + position[0]);
         int clickY = Math.Round(overlay.m_Top + position[1]);
         array<string> hits = {};
@@ -110,6 +123,38 @@ class PredateRosterReceiverValidation
         return entry.Origin == state.PulseOrigin && entry.Bearing == state.Bearing && entry.Error == state.BearingError;
     }
 
+    void CheckTerrainGeometry(PlayerBase player)
+    {
+        m_Result.Terrain = GetGame().GetWorldName();
+        float screenWidth, screenHeight;
+        m_Menu.GetLayoutRoot().GetScreenSize(screenWidth, screenHeight);
+        m_Result.Viewport = Vector(screenWidth, screenHeight, 0);
+        m_Menu.OnClick(m_Menu.m_Overview, 0, 0, 0);
+        float midpoint = GetGame().GetWorld().GetWorldSize() / 2;
+        m_Result.Check(PredateHunterBrain.Distance(m_Menu.m_Map.GetMapPos(), Vector(midpoint, 0, midpoint)) < 25, "overview centers on the active terrain");
+        PredateMapOverlay overlay = m_Menu.m_MapOverlay;
+        float dialRadius = overlay.m_DialRadius;
+        array<float> scales = {0.085, 0.33, 0.68};
+        foreach (float scale : scales)
+        {
+            m_Menu.m_Map.SetScale(scale);
+            m_Menu.m_Map.SetMapPos(player.GetPosition());
+            m_Menu.Update(0);
+            vector arrow = overlay.m_PlayerPoint + Vector(overlay.m_Left, overlay.m_Top, 0);
+            vector underArrow = m_Menu.m_Map.ScreenToMap(arrow);
+            m_Result.Check(PredateHunterBrain.Distance(player.GetPosition(), underArrow) < 25, "player arrow follows map coordinates through zoom");
+            m_Result.Check(Math.AbsFloat(dialRadius - overlay.m_DialRadius) < 0.1, "bearing dial keeps its size through zoom");
+        }
+        vector start = overlay.m_PlayerPoint;
+        vector pan = Vector(overlay.m_Left + overlay.m_Width * 0.68, overlay.m_Top + overlay.m_Height * 0.54, 0);
+        m_Menu.m_Map.SetMapPos(m_Menu.m_Map.ScreenToMap(pan));
+        m_Menu.Update(0);
+        m_Result.Check(vector.Distance(start, overlay.m_PlayerPoint) > 20, "panning moves the player arrow");
+        m_Menu.OnClick(m_Menu.m_CenterPlayer, 0, 0, 0);
+        m_Menu.Update(0);
+        m_Result.Check(PredateHunterBrain.Distance(m_Menu.m_Map.GetMapPos(), player.GetPosition()) < 25, "center control returns to the player");
+    }
+
     bool Update(PredateState state)
     {
         if (!state || state.AvailableOperators < 2) return true;
@@ -121,6 +166,10 @@ class PredateRosterReceiverValidation
             m_Result.Check(m_Menu != null, "receiver opens in the operation");
             if (!m_Menu) return Finish();
             PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+            m_Menu.m_Map.SetScale(0.085);
+            m_Menu.CenterOn(player.GetPosition());
+            m_Menu.Update(0);
+            CheckTerrainGeometry(player);
             m_Menu.m_Map.SetScale(0.085);
             m_Menu.CenterOn(player.GetPosition());
             m_Menu.Update(0);

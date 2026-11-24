@@ -12,6 +12,7 @@ import uuid
 
 import platform_win
 import mod_presets
+import maps
 import session_store as store
 import world
 import world_pause
@@ -21,7 +22,7 @@ from app_runtime import ROOT, command as helper_command, saves_directory
 RUNTIME = ROOT / "session-runtime"
 STATUS = RUNTIME / "status.json"
 MANAGER = RUNTIME / "manager.json"
-OPERATION_SETUP_VERSION = 8
+OPERATION_SETUP_VERSION = 9
 _status_cache = None
 
 
@@ -54,7 +55,7 @@ def request(action, **values):
         raise RuntimeError("Steam is not running. Open Steam, then try again.")
     ensure_manager()
     required = None
-    if action == "new" and "setup" in values:
+    if action == "new" and ("setup" in values or "map" in values):
         required = ("operation_setup_version", OPERATION_SETUP_VERSION)
     elif action == "delete":
         required = ("can_delete_saves", True)
@@ -382,7 +383,8 @@ class Supervisor:
                 info = store.create_operation(command.get("name", ""), player_loadout=command.get('loadout', 'm4a1'),
                                               opponent_count=command.get('opponents', store.DEFAULT_OPPONENT_COUNT),
                                               footprints=command.get('footprints', True), spawn=command.get('spawn'),
-                                              setup=command.get('setup'), require_modern_gear=True)
+                                              setup=command.get('setup'), require_modern_gear=True,
+                                              map_id=command.get('map', maps.DEFAULT_MAP))
                 self.start_operation(info["id"], command.get("launcher_pid"), command.get("diagnostics"))
             elif action == "restore":
                 store.validate_snapshot(ROOT / "backups" / command["backup"])

@@ -244,7 +244,7 @@ modded class eAIBase
                 if (PredateRoutePlanner.Plan(ownPosition, destination, intermediate, state))
                 {
                     group.AddWaypoint(intermediate);
-                    group.AddWaypoint(destination);
+                    if (intermediate != destination) group.AddWaypoint(destination);
                     group.SetCurrentWaypoint(intermediate);
                     eAI_ResetPathfinding();
                 }

@@ -1,5 +1,7 @@
 import { useRef, type KeyboardEvent, type ReactNode } from 'react'
-import type { Operation } from '../../shared/types'
+import { huntMapName, type Operation } from '../../shared/types'
+
+const huntLabel = (hunt: Operation): string => `${hunt.name} - ${huntMapName(hunt.map)}`
 
 export function HuntPicker({
   hunts,
@@ -30,7 +32,7 @@ export function HuntPicker({
       <button
         type="button"
         className="hunt-delete"
-        aria-label={`Delete save: ${hunt.name}`}
+        aria-label={`Delete save: ${huntLabel(hunt)}`}
         title="Delete Save"
         disabled={deleteDisabled}
         onClick={() => {
@@ -69,9 +71,7 @@ export function HuntPicker({
               close()
             } else {
               options.current?.showPopover({ source: event.currentTarget })
-              options.current
-                ?.querySelector<HTMLButtonElement>('[aria-current="true"]')
-                ?.focus()
+              options.current?.querySelector<HTMLButtonElement>('[aria-current="true"]')?.focus()
             }
           }}
           onKeyDown={(event) => {
@@ -81,7 +81,7 @@ export function HuntPicker({
             }
           }}
         >
-          <span id="hunt-value">{selected?.name ?? 'No Saved Hunts'}</span>
+          <span id="hunt-value">{selected ? huntLabel(selected) : 'No Saved Hunts'}</span>
         </button>
         {selected && deleteButton(selected)}
       </div>
@@ -99,14 +99,14 @@ export function HuntPicker({
               type="button"
               className="hunt-option"
               aria-current={hunt.id === selected?.id ? 'true' : undefined}
-              title={hunt.name}
+              title={huntLabel(hunt)}
               disabled={disabled}
               onClick={() => {
                 close()
                 select(hunt.id)
               }}
             >
-              {hunt.name}
+              {huntLabel(hunt)}
             </button>
             {deleteButton(hunt)}
           </li>

@@ -87,7 +87,27 @@ class PredateRoutePlanner
             bestCost = cost;
             intermediate = candidate;
         }
-        return bestCost < 1000000;
+        if (bestCost < 1000000) return true;
+        return NavmeshDetour(ownPosition, goal, intermediate);
+    }
+
+    static bool NavmeshDetour(vector start, vector goal, out vector intermediate)
+    {
+        // A bridge deck is traversable even when terrain samples beneath it hit water.
+        if (PredateHunterBrain.Distance(start, goal) > 1200) return false;
+        PGFilter filter = ExpansionPathFilters.GetInstance().m_PathFilter_NoJumpClimb;
+        array<vector> path = {};
+        if (!GetGame().GetWorld().GetAIWorld().FindPath(start, goal, filter, path)) return false;
+        if (path.Count() < 2 || vector.DistanceSq(path[path.Count() - 1], goal) > 16) return false;
+        for (int index = 1; index < path.Count() - 1; index++)
+        {
+            // Ignore the first mesh corners when they are already under this Operator.
+            if (vector.DistanceSq(start, path[index]) < 16) continue;
+            intermediate = path[index];
+            return true;
+        }
+        intermediate = goal;
+        return true;
     }
 
     static bool PartOfAreaVisible(vector start, vector point, Object observer)

@@ -94,8 +94,22 @@ class PredatePersistence
             return Fail(s, "Unsupported opponent count");
         if (opponentCount > 1 && !s.m_HuntConfig.EnableStrategicHunter)
             return Fail(s, "Multi-opponent operations require strategic hunters");
-        if (s.m_HuntConfig.ExplicitPlayerStart && s.m_HuntProgress.PlayerPlacementRevision == 0 && !PredateSpawnPlanner.PlayerTerrain(s.m_HuntConfig.PlayerStart))
-            return Fail(s, "The selected spawn is outside usable Chernarus ground. Choose a dry, level point for a new operation.");
+        string terrainName = GetGame().GetWorldName();
+        terrainName.ToLower();
+        bool livonia = terrainName == "enoch";
+        if (livonia && !s.m_HuntConfig.ExplicitPlayerStart && !s.m_HuntProgress.BotCreated)
+        {
+            s.m_HuntConfig.PlayerStart = "5400 0 6350";
+            s.m_HuntConfig.ExplicitPlayerStart = true;
+            s.m_HuntConfig.RandomInitialSpawns = true;
+        }
+        if (s.m_HuntConfig.ExplicitPlayerStart && s.m_HuntProgress.PlayerPlacementRevision == 0)
+        {
+            bool usable;
+            if (livonia) usable = PredateSpawnPlanner.ExactPlayerSite(s.m_HuntConfig.PlayerStart);
+            else usable = PredateSpawnPlanner.PlayerTerrain(s.m_HuntConfig.PlayerStart);
+            if (!usable) return Fail(s, "The selected spawn is outside usable ground on this map. Choose a dry, level point with room to stand.");
+        }
         if (s.m_HuntConfig.FootprintRulesVersion == 0)
             s.m_HuntConfig.EnableFootprints = s.m_HuntConfig.EnableFootprints || s.m_HuntConfig.EnableStrategicHunter;
         if (s.m_HuntConfig.EnableFootprints && !s.m_HuntConfig.EnableStrategicHunter)

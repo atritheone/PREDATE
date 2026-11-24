@@ -1,0 +1,187 @@
+{
+  "size": 12800,
+  "places": [
+    {
+      "name": "Bielawa",
+      "x": 1573,
+      "z": 9677,
+      "major": false
+    },
+    {
+      "name": "Lukow",
+      "x": 3530,
+      "z": 11967,
+      "major": false
+    },
+    {
+      "name": "Gliniska",
+      "x": 4993,
+      "z": 9922,
+      "major": false
+    },
+    {
+      "name": "Brena",
+      "x": 6618,
+      "z": 11211,
+      "major": true
+    },
+    {
+      "name": "Tarnow",
+      "x": 9328,
+      "z": 10905,
+      "major": true
+    },
+    {
+      "name": "Sitnik",
+      "x": 11502,
+      "z": 9573,
+      "major": false
+    },
+    {
+      "name": "Borek",
+      "x": 9807,
+      "z": 8495,
+      "major": false
+    },
+    {
+      "name": "Zapadlisko",
+      "x": 8058,
+      "z": 8712,
+      "major": false
+    },
+    {
+      "name": "Nidek",
+      "x": 6129,
+      "z": 8013,
+      "major": false
+    },
+    {
+      "name": "Topolin",
+      "x": 1859,
+      "z": 7331,
+      "major": true
+    },
+    {
+      "name": "Adamów",
+      "x": 3076,
+      "z": 6851,
+      "major": false
+    },
+    {
+      "name": "Muratyn",
+      "x": 4568,
+      "z": 6384,
+      "major": false
+    },
+    {
+      "name": "Radunin",
+      "x": 7298,
+      "z": 6492,
+      "major": true
+    },
+    {
+      "name": "Lembork",
+      "x": 8680,
+      "z": 6636,
+      "major": false
+    },
+    {
+      "name": "Gieraltów",
+      "x": 11240,
+      "z": 4380,
+      "major": false
+    },
+    {
+      "name": "Nadbór",
+      "x": 6110,
+      "z": 3983,
+      "major": true
+    },
+    {
+      "name": "Zalesie",
+      "x": 896,
+      "z": 5536,
+      "major": false
+    },
+    {
+      "name": "Huta",
+      "x": 5141,
+      "z": 5473,
+      "major": false
+    },
+    {
+      "name": "Radacz",
+      "x": 4008,
+      "z": 7940,
+      "major": false
+    },
+    {
+      "name": "Olszanka",
+      "x": 4819,
+      "z": 7674,
+      "major": false
+    },
+    {
+      "name": "Lipina",
+      "x": 5942,
+      "z": 6820,
+      "major": false
+    },
+    {
+      "name": "Kolembrody",
+      "x": 8417,
+      "z": 11982,
+      "major": false
+    },
+    {
+      "name": "Karlin",
+      "x": 10073,
+      "z": 6957,
+      "major": false
+    },
+    {
+      "name": "Sobotka",
+      "x": 6257,
+      "z": 10253,
+      "major": false
+    },
+    {
+      "name": "Roztoka",
+      "x": 7695,
+      "z": 5317,
+      "major": false
+    },
+    {
+      "name": "Polana",
+      "x": 3280,
+      "z": 2132,
+      "major": false
+    },
+    {
+      "name": "Dolnik",
+      "x": 11312,
+      "z": 656,
+      "major": false
+    },
+    {
+      "name": "Grabin",
+      "x": 10666,
+      "z": 11026,
+      "major": false
+    },
+    {
+      "name": "Sarnówek",
+      "x": 3308,
+      "z": 4970,
+      "major": false
+    },
+    {
+      "name": "Konopki",
+      "x": 11490,
+      "z": 2898,
+      "major": false
+    }
+  ],
+  "sunrise": 276,
+  "sunset": 1165
+}

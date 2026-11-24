@@ -54,12 +54,15 @@ def terrain_image(raster):
 def main():
     parser = argparse.ArgumentParser(description="Build launcher assets from the native operation setup export")
     parser.add_argument("profile", type=Path)
+    parser.add_argument("--map", choices=("chernarusplus", "enoch"), default="chernarusplus")
     args = parser.parse_args()
     source = json.loads((args.profile / "SetupExport.json").read_text(encoding="utf-8-sig"))
     rows = (args.profile / "TerrainExport.csv").read_text(encoding="ascii").splitlines()
     raster = [list(map(int, row.split(","))) for row in rows]
     if len(raster) != 512 or any(len(row) != 512 for row in raster):
-        raise ValueError("Expected a complete 512×512 Chernarus terrain export")
+        raise ValueError("Expected a complete 512×512 terrain export")
+    if source.get("world", "chernarusplus").lower() != args.map:
+        raise ValueError("The terrain export comes from a different map")
 
     catalog = {}
     for item in source["items"]:
@@ -72,20 +75,26 @@ def main():
             item[key] = list(dict.fromkeys(value for value in item[key] if value))
         catalog[identifier] = item
     places = [{
-        "name": latin(place["name"]), "x": round(place["x"]), "z": round(place["z"]),
+        "name": latin(place["name"]) if args.map == "chernarusplus" else place["name"],
+        "x": round(place["x"]), "z": round(place["z"]),
         "major": place["kind"] in {"Capital", "City"}
     } for place in source["places"] if place["kind"] in {"Capital", "City", "Village"}]
     items = sorted(catalog.values(), key=lambda item: (item["name"].casefold(), item["id"]))
-    (RESOURCES / "operation-catalog.json").write_text(
-        '[\n' + ',\n'.join(json.dumps(item, ensure_ascii=False, separators=(',', ':')) for item in items) + '\n]\n',
-        encoding="utf-8",
-    )
-    (RESOURCES / "chernarus-places.json").write_text(
-        json.dumps({"size": source["size"], "places": places}, ensure_ascii=False, indent=2) + "\n",
+    if args.map == "chernarusplus":
+        (RESOURCES / "operation-catalog.json").write_text(
+            '[\n' + ',\n'.join(json.dumps(item, ensure_ascii=False, separators=(',', ':')) for item in items) + '\n]\n',
+            encoding="utf-8",
+        )
+    name = "livonia" if args.map == "enoch" else "chernarus"
+    data = {"size": source["size"], "places": places}
+    if args.map == "enoch":
+        data.update(sunrise=source["sunrise"], sunset=source["sunset"])
+    (RESOURCES / f"{name}-places.json").write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     ASSETS.mkdir(parents=True, exist_ok=True)
-    (ASSETS / "chernarus.png").write_bytes(terrain_image(raster))
+    (ASSETS / f"{name}.png").write_bytes(terrain_image(raster))
 
 
 if __name__ == "__main__":

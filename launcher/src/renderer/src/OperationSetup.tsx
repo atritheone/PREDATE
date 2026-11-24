@@ -5,6 +5,7 @@ import {
   OPPONENT_COUNTS,
   isOpponentCount,
   weaponSlots,
+  type HuntMap,
   type LoadoutPreset,
   type OpponentCount,
   type Overview,
@@ -14,6 +15,7 @@ import {
 import { InventoryEditor } from './InventoryEditor'
 import { SavePresetDialog } from './SavePresetDialog'
 import { SpawnEditor, validSpawn } from './SpawnEditor'
+import livonia from '../../../resources/livonia-places.json'
 import {
   changeOutfit,
   clothingPresets,
@@ -38,12 +40,13 @@ const timePresets = [
 ] as const
 const defaultTime = '12:00'
 
-function isNightStart(time: string): boolean {
+function isNightStart(time: string, map: HuntMap = 'chernarusplus'): boolean {
   if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) return false
   const [hour, minute] = time.split(':').map(Number)
   const start = hour * 60 + minute
   // Fresh Chernarus hunts start in September. These are the first whole
   // minutes after the map's approximate sunrise and sunset thresholds.
+  if (map === 'enoch') return start < livonia.sunrise || start >= livonia.sunset
   return start < 4 * 60 + 19 || start >= 19 * 60 + 42
 }
 
@@ -59,6 +62,7 @@ const rifleGroups = [
 
 export interface OperationDraft {
   name: string
+  map: HuntMap
   time: string
   dayNightCycle: boolean
   opponents: OpponentCount
@@ -77,6 +81,7 @@ export interface OperationDraft {
 
 const defaults: OperationDraft = {
   name: '',
+  map: 'chernarusplus',
   time: defaultTime,
   dayNightCycle: true,
   opponents: DEFAULT_OPPONENT_COUNT,
@@ -100,6 +105,7 @@ export function readOperationDraft(): OperationDraft {
       footprints?: boolean
     }
     delete draft.footprints
+    if (draft.map !== 'enoch' && draft.map !== 'chernarusplus') delete draft.map
     if (typeof draft.dayNightCycle !== 'boolean') delete draft.dayNightCycle
     if (!isOpponentCount(draft.opponents)) delete draft.opponents
     if (draft.inventory) {
@@ -122,7 +128,7 @@ export function readOperationDraft(): OperationDraft {
     if (
       draft.inventory &&
       draft.time &&
-      isNightStart(draft.time) &&
+      isNightStart(draft.time, draft.map) &&
       !draft.weaponPresetId &&
       draft.dayNightCycle === undefined
     ) {
@@ -210,17 +216,30 @@ export function OperationSetup({
   const operatorOutfit = clothingPresets.some(({ Id }) => Id === draft.operatorOutfit)
     ? draft.operatorOutfit
     : defaults.operatorOutfit
-  const night = isNightStart(draft.time)
+  const terrain = overview.maps.find((item) => item.id === draft.map) ?? overview.maps[0]
+  const night = isNightStart(draft.time, draft.map)
   const standardLoadout = starterInventory(kit?.id ?? '', playerOutfit, night)
   const loadout = draft.inventory ?? standardLoadout
   const changeTime = (time: string): void => {
-    const nextNight = isNightStart(time)
+    const nextNight = isNightStart(time, terrain.id)
     if (draft.inventory && !draft.weaponPresetId && nextNight !== night) {
       const nextLoadout = starterInventory(kit?.id ?? '', playerOutfit, nextNight)
       change({ time, inventory: switchPresetOptic(draft.inventory, standardLoadout, nextLoadout) })
     } else {
       change({ time })
     }
+  }
+  const changeMap = (map: HuntMap): void => {
+    const nextNight = isNightStart(draft.time, map)
+    const inventory =
+      draft.inventory && !draft.weaponPresetId && nextNight !== night
+        ? switchPresetOptic(
+            draft.inventory,
+            standardLoadout,
+            starterInventory(kit?.id ?? '', playerOutfit, nextNight),
+          )
+        : draft.inventory
+    change({ map, spawn: 'original', x: '', z: '', inventory })
   }
   const weaponPresets = presets?.filter(({ kind }) => kind === 'weapon') ?? []
   const equipmentPresets = presets?.filter(({ kind }) => kind === 'equipment') ?? []
@@ -286,7 +305,7 @@ export function OperationSetup({
   const opponents = exactOpponents === null ? draft.opponents : Number(exactOpponents)
   const randomRegion = overview.operationOptions?.randomRegion === true
   const spawn = draft.spawn === 'regional' && !randomRegion ? 'original' : draft.spawn
-  const spawnValid = spawn !== 'custom' || validSpawn(draft.x, draft.z)
+  const spawnValid = spawn !== 'custom' || validSpawn(draft.x, draft.z, terrain.size)
   const delay = Number(draft.respawnDelay)
   const valid =
     !!draft.name.trim() &&
@@ -327,6 +346,7 @@ export function OperationSetup({
     const [startHour, startMinute] = draft.time.split(':').map(Number)
     void create({
       action: 'new',
+      map: terrain.id,
       name: draft.name,
       loadout: kit.id,
       opponents,
@@ -367,6 +387,23 @@ export function OperationSetup({
                   value={draft.name}
                   onChange={(event) => change({ name: event.target.value })}
                 />
+              </label>
+              <label className="field">
+                Map
+                <select
+                  id="hunt-map"
+                  value={terrain.id}
+                  onChange={(event) => {
+                    const selected = overview.maps.find((item) => item.id === event.target.value)
+                    if (selected) changeMap(selected.id)
+                  }}
+                >
+                  {overview.maps.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
               </label>
               <div className="time-controls">
                 <label className="field">
@@ -487,7 +524,7 @@ export function OperationSetup({
                 Spawn
               </h2>
               <SpawnEditor
-                presets={overview.spawnPoints}
+                terrain={terrain}
                 preset={spawn}
                 randomRegion={randomRegion}
                 x={draft.x}

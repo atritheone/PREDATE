@@ -11,6 +11,16 @@ class PredateSpawnPlanner
         return GetGame().SurfaceGetNormal(point[0], point[2])[1] >= 0.75;
     }
 
+    static bool ExactPlayerSite(vector point)
+    {
+        if (!PlayerTerrain(point)) return false;
+        point[1] = GetGame().SurfaceY(point[0], point[2]);
+        vector sampled;
+        if (!PredateRoutePlanner.Snap(point, 8, sampled) || Math.AbsFloat(sampled[1] - point[1]) > 0.8) return false;
+        array<Object> excluded = {};
+        return !GetGame().IsBoxColliding(point + "0 1.05 0", vector.Zero, "0.65 1.7 0.65", excluded);
+    }
+
     static bool SafeOperatorSite(PredateSession session, vector point, array<vector> occupied, float spacing, out vector site)
     {
         if (!PlayerTerrain(point)) return false;
@@ -85,12 +95,18 @@ class PredateSpawnPlanner
         // separation. A dense initial roster needs more room for local variation.
         if (session.m_HuntConfig.OpponentCount > 30) spacing = 1250;
         if (session.m_HuntConfig.OpponentCount > 65) spacing = 1000;
+        bool compactRoster = GetGame().GetWorld().GetWorldSize() < 14000 && session.m_HuntConfig.OpponentCount > 30;
+        if (compactRoster) spacing *= 0.84;
         for (int attempt = 0; attempt < 3; attempt++)
         {
             array<vector> reserved = {};
             reserved.InsertAll(occupied);
             array<vector> sites = {};
-            if (!TryInitialSites(session, player, reserved, spacing, count, sites)) continue;
+            // Progressively open more slots between AI on smaller terrains.
+            // Initial player separation and later respawns use MINIMUM_DISTANCE.
+            float attemptSpacing = spacing;
+            if (compactRoster) attemptSpacing -= attempt * 70;
+            if (!TryInitialSites(session, player, reserved, attemptSpacing, count, sites)) continue;
             output.InsertAll(sites);
             return true;
         }

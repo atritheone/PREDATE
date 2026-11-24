@@ -1,28 +1,33 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import terrain from './assets/chernarus.png'
-import map from '../../../resources/chernarus-places.json'
-import type { Overview } from '../../shared/types'
+import chernarusImage from './assets/chernarus.png'
+import livoniaImage from './assets/livonia.png'
+import chernarus from '../../../resources/chernarus-places.json'
+import livonia from '../../../resources/livonia-places.json'
+import type { HuntTerrain } from '../../shared/types'
 
 type Point = { x: number; z: number }
 
 const maxZoom = 8
 const lower = 10.01
-const upper = 15349.99
 
 const constrain = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value))
 
-function coordinate(value: number): string {
-  return constrain(value, lower, upper).toFixed(2)
+function coordinate(value: number, size: number): string {
+  return constrain(value, lower, size - lower).toFixed(2)
 }
 
 function MapView({
+  terrain,
   point,
   select,
 }: {
+  terrain: HuntTerrain
   point: Point | undefined
   select: (point: Point) => void
 }): ReactNode {
+  const places = terrain.id === 'enoch' ? livonia.places : chernarus.places
+  const image = terrain.id === 'enoch' ? livoniaImage : chernarusImage
   const frame = useRef<HTMLDivElement>(null)
   const layer = useRef<HTMLDivElement>(null)
   const [view, setView] = useState({ zoom: 1, left: 0, top: 0 })
@@ -34,8 +39,8 @@ function MapView({
   useEffect(() => {
     if (selectedX === undefined || selectedZ === undefined) return
     setView((current) => {
-      const x = selectedX / map.size
-      const y = 1 - selectedZ / map.size
+      const x = selectedX / terrain.size
+      const y = 1 - selectedZ / terrain.size
       const span = 1 / current.zoom
       if (
         x >= current.left &&
@@ -50,11 +55,11 @@ function MapView({
         top: constrain(y - span / 2, 0, 1 - span),
       }
     })
-  }, [selectedX, selectedZ])
+  }, [selectedX, selectedZ, terrain.size])
 
   const setZoom = (zoom: number): void => {
-    const focusX = point ? point.x / map.size : view.left + 0.5 / view.zoom
-    const focusY = point ? 1 - point.z / map.size : view.top + 0.5 / view.zoom
+    const focusX = point ? point.x / terrain.size : view.left + 0.5 / view.zoom
+    const focusY = point ? 1 - point.z / terrain.size : view.top + 0.5 / view.zoom
     setView({
       zoom,
       left: constrain(focusX - 0.5 / zoom, 0, 1 - 1 / zoom),
@@ -84,15 +89,15 @@ function MapView({
     if (!start || start.moved || !layer.current) return
     const bounds = layer.current.getBoundingClientRect()
     select({
-      x: ((event.clientX - bounds.left) * map.size) / bounds.width,
-      z: ((bounds.bottom - event.clientY) * map.size) / bounds.height,
+      x: ((event.clientX - bounds.left) * terrain.size) / bounds.width,
+      z: ((bounds.bottom - event.clientY) * terrain.size) / bounds.height,
     })
   }
 
   return (
     <div className="map-panel">
       <div className="map-toolbar split">
-        <strong>Chernarus</strong>
+        <strong>{terrain.name}</strong>
         <div className="map-zoom">
           <button
             type="button"
@@ -119,7 +124,7 @@ function MapView({
         <div
           ref={frame}
           className="map-viewport"
-          aria-label="Chernarus spawn map. Select a point, or enter coordinates below."
+          aria-label={`${terrain.name} spawn map. Select a point, or enter coordinates below.`}
           role="img"
           onPointerDown={(event) => {
             if (event.button !== 0) return
@@ -147,17 +152,17 @@ function MapView({
               top: -view.top * view.zoom * 100 + '%',
             }}
           >
-            <img src={terrain} alt="" draggable={false} />
+            <img src={image} alt="" draggable={false} />
             <div className="map-grid" />
-            {map.places
+            {places
               .filter((place) => view.zoom >= 2 || place.major)
               .map((place) => (
                 <span
                   className="map-label"
                   key={place.name + place.x + place.z}
                   style={{
-                    left: (place.x / map.size) * 100 + '%',
-                    top: (1 - place.z / map.size) * 100 + '%',
+                    left: (place.x / terrain.size) * 100 + '%',
+                    top: (1 - place.z / terrain.size) * 100 + '%',
                   }}
                 >
                   {place.name}
@@ -167,15 +172,15 @@ function MapView({
               <span
                 className="spawn-pin"
                 style={{
-                  left: (point.x / map.size) * 100 + '%',
-                  top: (1 - point.z / map.size) * 100 + '%',
+                  left: (point.x / terrain.size) * 100 + '%',
+                  top: (1 - point.z / terrain.size) * 100 + '%',
                 }}
               />
             )}
           </div>
           <span className="map-north">▲ N</span>
           <span className="map-scale">
-            {Math.round(map.size / (view.zoom * 5)).toLocaleString()} m
+            {Math.round(terrain.size / (view.zoom * 5)).toLocaleString()} m
           </span>
         </div>
       </div>
@@ -184,31 +189,38 @@ function MapView({
 }
 
 export function SpawnEditor({
-  presets,
+  terrain,
   preset,
   randomRegion,
   x,
   z,
   change,
 }: {
-  presets: Overview['spawnPoints']
+  terrain: HuntTerrain
   preset: string
   randomRegion: boolean
   x: string
   z: string
   change: (preset: string, x: string, z: string) => void
 }): ReactNode {
+  const presets = terrain.spawnPoints
   const selected = presets.find((item) => item.id === preset)
   const point =
     selected ??
-    (preset === 'custom' && validSpawn(x, z) ? { x: Number(x), z: Number(z) } : undefined)
+    (preset === 'custom' && validSpawn(x, z, terrain.size)
+      ? { x: Number(x), z: Number(z) }
+      : undefined)
   const east = selected ? String(selected.x) : x
   const north = selected ? String(selected.z) : z
   return (
     <section className="spawn-workspace" aria-label="Spawn Setup">
       <MapView
+        key={terrain.id}
+        terrain={terrain}
         point={point}
-        select={(next) => change('custom', coordinate(next.x), coordinate(next.z))}
+        select={(next) =>
+          change('custom', coordinate(next.x, terrain.size), coordinate(next.z, terrain.size))
+        }
       />
       <div className="spawn-controls stack">
         <label className="field">
@@ -229,7 +241,7 @@ export function SpawnEditor({
                 </option>
               ))}
             </optgroup>
-            {randomRegion && <option value="regional">Random Region Across Chernarus</option>}
+            {randomRegion && <option value="regional">Random Region Across {terrain.name}</option>}
             <option value="custom">Custom Coordinates</option>
           </select>
         </label>
@@ -241,7 +253,7 @@ export function SpawnEditor({
               id="spawn-x"
               step="any"
               min={10}
-              max={15350}
+              max={terrain.size - 10}
               value={east}
               onChange={(event) => change('custom', event.target.value, north)}
             />
@@ -253,7 +265,7 @@ export function SpawnEditor({
               id="spawn-z"
               step="any"
               min={10}
-              max={15350}
+              max={terrain.size - 10}
               value={north}
               onChange={(event) => change('custom', east, event.target.value)}
             />
@@ -267,6 +279,6 @@ export function SpawnEditor({
   )
 }
 
-export function validSpawn(x: string, z: string): boolean {
-  return [x, z].every((value) => Number(value) > 10 && Number(value) < 15350)
+export function validSpawn(x: string, z: string, size: number): boolean {
+  return [x, z].every((value) => Number(value) > 10 && Number(value) < size - 10)
 }

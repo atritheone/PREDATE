@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import type { Operation, Overview, Preferences, SessionAction, SessionStatus } from '../../shared/types'
+import type {
+  Operation,
+  Overview,
+  Preferences,
+  SessionAction,
+  SessionStatus,
+} from '../../shared/types'
+import { huntMapName } from '../../shared/types'
 import wordmark from '../../../../flash/predate_wordmark.png'
 import { HuntPicker } from './HuntPicker'
 import { LauncherMusic } from './LauncherMusic'
@@ -47,7 +54,7 @@ const internalDetails =
 const playerValidation = [
   /^(?:Starting inventory|Unknown starting (?:inventory item|kit)|Invalid starting inventory|Too many levels|Cargo overlaps|Two items occupy)/i,
   /^(?:Invalid (?:container|position|quantity|placement|cargo position|(?:operation|hunt) name|new (?:operation|hunt) settings)|Use (?:an operation|a hunt) name|Set (?:a valid|whether|a respawn))/i,
-  /^(?:Choose (?:a spawn|one, three|1, 3)|Unknown Chernarus spawn|Both Chernarus coordinates|The selected spawn|That operation already exists)/i,
+  /^(?:Choose (?:a supported hunt map|a spawn|one, three|1, 3)|Unknown (?:Chernarus|Livonia) spawn|Both (?:Chernarus|Livonia) coordinates|The selected spawn|Livonia mission input|The server configuration does not select|DayZ opened |That operation already exists)/i,
   /^(?:Unsupported launcher settings|Backup retention|Compass|This operation.s mod|Mod content changed|Mod changed while|Additional mod is selected|Use Save and Quit|Select a starting kit|Select a backup)/i,
   /^(?:Save and quit the current hunt before deleting saves|That hunt no longer exists|The original hunt is protected|Select a save)/i,
   /\b(?:does not fit in|is incompatible with)\b/i,
@@ -490,7 +497,7 @@ export function App(): ReactNode {
                           dateStyle: 'medium',
                           timeStyle: 'short',
                         })}{' '}
-                        · {item.name}
+                        · {item.name} · {huntMapName(item.map)}
                       </option>
                     ))}
                   </select>
@@ -556,7 +563,7 @@ export function App(): ReactNode {
       </div>
       {deleteTarget && (
         <DeleteSaveDialog
-          name={deleteTarget.name}
+          name={`${deleteTarget.name} · ${huntMapName(deleteTarget.map)}`}
           close={() => setDeleteTarget(null)}
           confirm={() => {
             setDeleteTarget(null)

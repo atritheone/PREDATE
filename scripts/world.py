@@ -20,13 +20,16 @@ import zipfile
 import zlib
 import uuid
 import os
+from xml.etree import ElementTree
+import maps
 
 from app_runtime import ROOT, command as helper_command, saves_directory, spawn
 from release import DEPENDENCIES
 WORLD = ROOT / "world"
 PROFILE = WORLD / "profile"
 STORAGE = WORLD / "storage"
-MISSION = WORLD / "mission" / "solo.chernarusplus"
+TERRAIN = maps.terrain()
+MISSION = WORLD / "mission" / TERRAIN.mission
 SETTINGS = ROOT / "config/settings.local.json"
 STATE = WORLD / "server-process.json"
 SERVER = ROOT / "runtime"
@@ -40,18 +43,26 @@ CONFIG = ROOT / "serverDZ.cfg"
 MODS = [ROOT / "mods" / name for name in (*DEPENDENCIES, "@Predate")]
 
 
-def select_profile(name):
+def select_profile(name, map_id=None):
     """Select a complete world, never just a different log directory."""
-    global PROFILE_NAME, WORLD, PROFILE, STORAGE, MISSION, SETTINGS, STATE, CONFIG
+    global PROFILE_NAME, WORLD, PROFILE, STORAGE, MISSION, SETTINGS, STATE, CONFIG, TERRAIN
     global PORT, QUERY_PORT, RCON_PORT
     global MODS
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", name):
         raise ValueError("Profile names use lowercase letters, digits and hyphens (1–32 characters).")
-    PROFILE_NAME = name
-    WORLD = ROOT / "world" if name == "main" else saves_directory(ROOT) / name
+    selected = ROOT / "world" if name == "main" else saves_directory(ROOT) / name
+    if map_id is None:
+        metadata_path = selected / "operation.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.is_file() else {}
+        selected_terrain = maps.operation_terrain(metadata)
+    else:
+        selected_terrain = maps.terrain(map_id)
+    if name == "main" and selected_terrain.id != maps.DEFAULT_MAP:
+        raise ValueError("The original hunt uses Chernarus.")
+    PROFILE_NAME, WORLD, TERRAIN = name, selected, selected_terrain
     PROFILE = WORLD / "profile"
     STORAGE = WORLD / "storage"
-    MISSION = WORLD / "mission" / "solo.chernarusplus"
+    MISSION = WORLD / "mission" / TERRAIN.mission
     SETTINGS = ROOT / "config/settings.local.json" if name == "main" else WORLD / "settings.local.json"
     CONFIG = ROOT / "serverDZ.cfg" if name == "main" else WORLD / "serverDZ.cfg"
     STATE = WORLD / "server-process.json"
@@ -88,6 +99,18 @@ def existing_profiles():
     return ["main"] + sorted(p.name for p in saves_directory(ROOT).glob("*")
                              if p.is_dir() and (p / "settings.local.json").exists())
 
+def native_mission_inputs():
+    manifest = ROOT / "source" / "mission" / TERRAIN.base_manifest
+    if not manifest.is_file():
+        raise RuntimeError(f"{TERRAIN.name} mission input lock is missing. Update the PREDATE checkout.")
+    base = json.loads(manifest.read_text())
+    native = SERVER / "mpmissions" / TERRAIN.native_mission
+    for rel, expected in base.items():
+        original = native / rel
+        if not original.is_file() or hashlib.sha256(original.read_bytes()).hexdigest() != expected:
+            raise RuntimeError(f"{TERRAIN.name} mission input is missing or changed: {rel}. Verify the DayZ Server installation.")
+    return native, base
+
 
 def install_mission():
     """Copy authored mission files only. Native and Expansion saves are never inputs."""
@@ -97,12 +120,21 @@ def install_mission():
         print("Main retains the previous prototype mission while Milestone A is under validation.", flush=True)
         return
     source = ROOT / "source" / "mission" / "template"
-    base = json.loads((source.parent / "base-files.json").read_text())
+    native, base = native_mission_inputs()
     for rel, expected in base.items():
-        original = SERVER / "mpmissions" / "dayzOffline.chernarusplus" / rel
-        if hashlib.sha256(original.read_bytes()).hexdigest() != expected:
-            raise RuntimeError(f"Native mission version changed: {rel}. Review the release lock first.")
+        original = native / rel
         target = MISSION / rel
+        if TERRAIN.id == "enoch" and rel == "db/events.xml":
+            events = ElementTree.parse(original)
+            for event in events.getroot().findall("event"):
+                if event.attrib.get("name") == "Player":
+                    continue
+                for field in ("active", "nominal", "min", "max"):
+                    element = event.find(field)
+                    if element is not None: element.text = "0"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(ElementTree.tostring(events.getroot(), encoding="utf-8", xml_declaration=True))
+            continue
         if not target.exists() or hashlib.sha256(target.read_bytes()).hexdigest() != expected:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(original, target)
@@ -110,6 +142,8 @@ def install_mission():
         if not path.is_file():
             continue
         rel = path.relative_to(source)
+        if TERRAIN.id == "enoch" and rel.as_posix() in ("db/events.xml", "expansion/settings/AILocationSettings.json"):
+            continue
         if rel.as_posix() == "init.c":
             raise RuntimeError("Author mission startup in bootstrap.c, server/ and factory.c; template/init.c is ambiguous.")
         if any(part.startswith("storage_") for part in rel.parts):
@@ -247,10 +281,10 @@ class Missions
 {
     class DayZ
     {
-        template = "solo.chernarusplus";
+        template = "MISSION_TEMPLATE";
     };
 };
-'''.replace("JOIN_PASSWORD", private["join_password"]).replace("QUERY_PORT", str(QUERY_PORT))
+'''.replace("JOIN_PASSWORD", private["join_password"]).replace("QUERY_PORT", str(QUERY_PORT)).replace("MISSION_TEMPLATE", TERRAIN.mission)
     CONFIG.write_text(config, encoding="ascii")
     if PROFILE_NAME == "development":
         (PROFILE / "PredateDevelopment.txt").write_text("Isolated development world; tests may change actors.\n")
@@ -262,7 +296,7 @@ class Missions
         globals_text = re.sub(r'(<var name="' + name + r'" type="0" value=")\d+("\s*/>)',
                               lambda m: m[1] + str(value) + m[2], globals_text)
     globals_file.write_text(globals_text, encoding="utf-8")
-    print("Created a separate Chernarus world. Steam installation files were retained.", flush=True)
+    print(f"Created a separate {TERRAIN.name} world. Steam installation files were retained.", flush=True)
 
 
 def packet(payload):
@@ -354,6 +388,7 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
     import release
     import workshop_lasers
     release.verify()
+    native_mission_inputs()
     mods = launch_mods()
     workshop_lasers.verify_launch(mods)
     setup()
@@ -365,6 +400,9 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
         session_id = session_id or uuid.uuid4().hex
     # Offline operation uses the ordinary local executable and omits BattlEye.
     config = CONFIG.read_text(encoding="utf-8")
+    expected_template = re.escape(TERRAIN.mission)
+    if not MISSION.is_dir() or not re.search(rf'(?im)^\s*template\s*=\s*"{expected_template}"\s*;', config):
+        raise RuntimeError(f"The server configuration does not select {TERRAIN.name}.")
     updated_config = re.sub(r"BattlEye\s*=\s*\d+;", f"BattlEye = {0 if offline else 1};", config)
     updated_config = managed_server_config(updated_config)
     if updated_config != config:
@@ -418,6 +456,9 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
             if status.get("SessionId") == session_id:
                 if status.get("Error"): raise RuntimeError(status["Error"])
                 if status.get("Ready") and status.get("Phase") == "ready":
+                    actual_map = status.get("WorldName", maps.DEFAULT_MAP).lower()
+                    if actual_map != TERRAIN.id:
+                        raise RuntimeError(f"DayZ opened {actual_map} instead of {TERRAIN.name}.")
                     print(f"PREDATE mission and operator are ready ({PROFILE_NAME}).", flush=True)
                     return
             if progress: progress("Loading the world and restoring its operator...")
@@ -437,12 +478,13 @@ def backup():
         raise RuntimeError("Backup refused while the server is running.")
     folder = ROOT / "backups"
     folder.mkdir(exist_ok=True)
-    destination = folder / (PROFILE_NAME + "-chernarus-" + timestamp() + ".zip")
+    map_label = "chernarus" if TERRAIN.id == maps.DEFAULT_MAP else "livonia"
+    destination = folder / (PROFILE_NAME + "-" + map_label + "-" + timestamp() + ".zip")
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
         archive.write(CONFIG, "serverDZ.cfg")
         for path in MISSION.rglob("*"):
             if path.is_file():
-                archive.write(path, "mission/solo.chernarusplus/" + path.relative_to(MISSION).as_posix())
+                archive.write(path, f"mission/{TERRAIN.mission}/" + path.relative_to(MISSION).as_posix())
         expansion = PROFILE / "ExpansionMod"
         if expansion.exists():
             for path in expansion.rglob("*"):

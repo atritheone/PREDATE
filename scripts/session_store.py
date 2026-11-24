@@ -14,6 +14,7 @@ import uuid
 import zipfile
 import mod_presets
 import loadouts
+import maps
 import spawn_points
 import presentation
 import release
@@ -119,9 +120,10 @@ def metadata(profile):
     saved = read_json(path)
     if saved is not None:
         if saved.get("schema") != SCHEMA: raise ValueError("Unsupported operation metadata")
-        return saved
+        return {**saved, "map": maps.operation_terrain(saved).id}
     return {"schema": SCHEMA, "id": profile, "name": "Original Hunt" if profile == "main" else profile,
-            "created": None, "extra_mods": [], "kind": "operation" if profile == "main" else "validation"}
+            "created": None, "extra_mods": [], "map": maps.DEFAULT_MAP,
+            "kind": "operation" if profile == "main" else "validation"}
 
 
 def worlds():
@@ -129,7 +131,7 @@ def worlds():
     values = [] if world.stable_fallback() else [metadata("main")]
     for path in sorted(saves_directory(ROOT).glob("*/operation.json")):
         item = read_json(path)
-        if item and item.get("kind") == "operation": values.append(item)
+        if item and item.get("kind") == "operation": values.append({**item, "map": maps.operation_terrain(item).id})
     return values
 
 
@@ -181,7 +183,8 @@ def validate_opponent_count(value):
 
 
 def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, player_loadout='m4a1',
-                     opponent_count=1, footprints=True, spawn=None, setup=None, require_modern_gear=False):
+                     opponent_count=1, footprints=True, spawn=None, setup=None, require_modern_gear=False,
+                     map_id=maps.DEFAULT_MAP):
     import operation_setup
     import world
     name = name.strip()
@@ -189,7 +192,8 @@ def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, pl
     validate_opponent_count(opponent_count)
     if not isinstance(footprints, bool): raise ValueError("Footprint clues must be true or false")
     kit = loadouts.get(player_loadout) if hunt_defaults else None
-    player_start = spawn_points.config(spawn) if spawn is not None else {}
+    map_id = maps.terrain(map_id).id
+    player_start = spawn_points.config({"preset": "original"} if spawn is None else spawn, map_id)
     rules = operation_setup.config(setup) if setup is not None else {}
     if kit and kit.get("PlayerPreset") and not rules.get("HasCustomInventory"):
         raise ValueError("Workshop starting kits require a loadout from New Operation")
@@ -212,7 +216,8 @@ def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, pl
     profile = profile or new_id()
     target = world_path(profile)
     if target.exists(): raise ValueError("That operation already exists; its saved data was retained")
-    world.select_profile(profile)
+    if map_id == maps.DEFAULT_MAP: world.select_profile(profile)
+    else: world.select_profile(profile, map_id)
     world.setup()
     if hunt_defaults:
         atomic_json(target / 'profile/PredateConfig.json', {
@@ -232,7 +237,7 @@ def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, pl
         })
     info = {"schema": SCHEMA, "id": profile, "name": name,
             "created": datetime.now(timezone.utc).isoformat(),
-            "extra_mods": mods, "mod_lock": mod_lock, "kind": "operation"}
+            "extra_mods": mods, "mod_lock": mod_lock, "kind": "operation", "map": map_id}
     atomic_json(target / "operation.json", info)
     return info
 
@@ -243,7 +248,8 @@ def digest(path):
 
 def save_files(profile):
     base = world_path(profile)
-    for folder in ("storage", "mission/solo.chernarusplus/storage_1", "profile/ExpansionMod"):
+    terrain = maps.operation_terrain(metadata(profile))
+    for folder in ("storage", f"mission/{terrain.mission}/storage_1", "profile/ExpansionMod"):
         for path in sorted((base / folder).rglob("*")):
             if path.is_file(): yield path, path.relative_to(base).as_posix()
     for path in sorted((base / "profile").glob("Predate*.json")):
@@ -287,13 +293,17 @@ def validate_snapshot(path):
         if len(names) != len(set(names)): raise ValueError("Duplicate backup entries")
         for name in names:
             item = PurePosixPath(name)
-            if item.is_absolute() or ".." in item.parts or "\\" in name or ":" in name:
+            if not item.parts or item.is_absolute() or ".." in item.parts or "\\" in name or ":" in name:
                 raise ValueError("Unsafe backup path")
         manifest = json.loads(archive.read("manifest.json"))
         if manifest.get("schema") != SCHEMA: raise ValueError("Unsupported backup schema")
+        terrain = maps.operation_terrain(manifest["operation"])
         if set(names) != set(manifest["files"]) | {"manifest.json"}:
             raise ValueError("Backup manifest does not match its files")
         for name, expected in manifest["files"].items():
+            parts = PurePosixPath(name).parts
+            if parts[0] == "mission" and (len(parts) < 4 or parts[1:3] != (terrain.mission, "storage_1")):
+                raise ValueError("Backup mission storage does not match the hunt map.")
             payload = archive.read(name)
             if hashlib.sha256(payload).hexdigest() != expected: raise ValueError(f"Backup hash mismatch: {name}")
             if name.endswith("players.db"):
@@ -319,7 +329,7 @@ def backups():
             if current.get("kind") == "validation": kind = "validation"
             result.append({"file": path.name, "name": info["operation"]["name"],
                            "created": info["created"], "bytes": path.stat().st_size,
-                           "kind": kind})
+                           "kind": kind, "map": maps.operation_terrain(operation).id})
         except (OSError, ValueError, KeyError, zipfile.BadZipFile):
             result.append({"file": path.name, "name": "Unreadable snapshot", "created": "", "bytes": path.stat().st_size})
     return sorted(result, key=lambda item: item.get('created', ''), reverse=True)
@@ -330,10 +340,11 @@ def restore_snapshot(filename, name):
     path = ROOT / "backups" / filename
     manifest = validate_snapshot(path)
     current = read_json(ROOT / "config/release-lock.json")
-    if not release.snapshot_matches(manifest["release"], current):
+    terrain = maps.operation_terrain(manifest["operation"])
+    if not release.snapshot_matches(manifest["release"], current, terrain.id):
         raise ValueError("This snapshot requires a different game/dependency release; its files were retained")
     restored_mod_lock = mod_presets.verify(manifest['operation']['extra_mods'], manifest['operation'].get('mod_lock'))
-    info = create_operation(name, extra_mods=manifest["operation"]["extra_mods"], hunt_defaults=False)
+    info = create_operation(name, extra_mods=manifest["operation"]["extra_mods"], hunt_defaults=False, map_id=terrain.id)
     base = world_path(info["id"])
     info["kind"] = "restoring"
     atomic_json(base / "operation.json", info)

@@ -11,6 +11,7 @@ class PredateServerBridge
         string sessionId;
         GetGame().CommandlineGetParam("predateSessionId", sessionId);
         m_Status.SessionId = sessionId;
+        m_Status.WorldName = GetGame().GetWorldName();
     }
 
     static int MagazineCount(PlayerBase actor)

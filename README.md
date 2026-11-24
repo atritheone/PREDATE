@@ -18,13 +18,14 @@
 
 ## About the game
 
-Pick an insertion point, choose your starting kit, and enter Chernarus alongside a roster of AI Operators. Move between pulses to narrow the search, then rely on sight and sound as you close in. Every Operator has a private receiver with the same pulse rules. AI Operators pursue the closest contact they can infer from their own readings and observations, and move on when a hunt stalls.
+Choose Chernarus or Livonia, pick an insertion point, and enter the map alongside a roster of AI Operators. Move between pulses to narrow the search, then rely on sight and sound as you close in. Every Operator has a private receiver with the same pulse rules. AI Operators pursue the closest contact they can infer from their own readings and observations, and move on when a hunt stalls.
 
 The hunt persists between sessions. Surviving Operators carry their injuries and remaining ammunition into the next encounter, and you can redeploy into the same world after death.
 
 ## Highlights
 
-- First-person hunts across the full Chernarus map with 1–100 AI Operators. New hunts default to 100.
+- First-person hunts on Chernarus or Livonia with 1–100 AI Operators. New hunts default to 100.
+- Wildlife and infected spawns are disabled. Animals cannot damage the player or Operators.
 - Operators carry rifles ready on patrol. Stamina never drains for the player or Operators, and bullet damage between them is doubled.
 - Weapons, suppressors, and wearable gear keep their condition for the player and Operators. Ammunition and single-use items are still consumed.
 - Scheduled bearing pulses on the map and compass, with one interception warning per continuous hunt.
@@ -42,9 +43,11 @@ Nearby footprints can be read with a brief look. The combat log reports a foreig
 AI Operators get the same Final Approach cue for their own tracked contact. They pause to look and listen, then walk a short search guided by remembered bearings and anything they see or hear. They keep their normal combat and recovery priorities.
 4. Use **Save and Quit** to save the hunt and stop the local server. Select **Continue** in the launcher to resume it.
 
-Each new hunt shuffles its Operator starting positions. At least one Operator starts 1.5–3.2 km from your insertion, while larger rosters fill regions across Chernarus. Dense starting rosters allow Operators to start closer to each other. The 1.5 km separation for redeployment and Operator respawns still applies.
+Choose Chernarus or Livonia under **Map** in **New Hunt**, then select a named insertion, let PREDATE pick a random region, or choose exact coordinates on the map. The map is recorded with the hunt, and Continue and Restore Copy use that terrain. Earlier hunts and backups belong to Chernarus. Livonia uses surface insertions and DayZ's native bunker doors and lighting.
 
-The pause menu's **Suicide** option asks for confirmation before ending your current life. On death, the screen immediately shows **Death** on solid red. **Redeploy** and **Save and Quit** appear two seconds later on the same screen. Redeploy returns you with the hunt's starting kit. PREDATE samples the map for safe ground at least 1.5 km from every living Operator. It picks a random region with several contacts in the 5 km receiver range when possible. Larger hunts favor regions that offer at least 60% as many contacts as the busiest region sampled. Among those options, it favors a contact within 3.2 km and a location at least 3 km from where you died. Operator and player corpses cannot be looted.
+Each new hunt shuffles its Operator starting positions. At least one Operator starts 1.5–3.2 km from your insertion, while larger rosters fill regions across the selected map. Dense starting rosters allow Operators to start closer to each other. The 1.5 km separation for redeployment and Operator respawns still applies.
+
+The pause menu's **Suicide** option asks for confirmation before ending your current life. On death, the screen immediately shows **Death** on solid red. **Redeploy** and **Save and Quit** appear two seconds later on the same screen. Redeploy returns you with the hunt's starting kit. PREDATE searches for safe ground at least 1.5 km from every living Operator, with multiple contacts within the 5 km receiver range when possible. It favors areas away from recent insertions and at least 5 km from where you died, with a 3.5 km fallback and closer sites available if needed. Operator and player corpses cannot be looted.
 
 Pick player and AI equipment separately from the weapon preset in **New Hunt**. **Spectral** is the player default, with a white T-shirt, beige canvas trousers, brown work boots, a tan plate carrier, and black gloves and night vision. **Ghost** uses a black carrier. **Operator** pairs Spectral's gear with blue jeans and black sneakers. **File** is the original camouflage uniform. The presets mount NVGs on a head strap and carry supplies in clothing and vest pouches. AI Operators have matching black or tan equipment and eye-opening balaclavas.
 

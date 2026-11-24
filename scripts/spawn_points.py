@@ -1,6 +1,7 @@
-"""Player insertion choices for the ChernarusPlus operation."""
+"""Player insertion choices for a hunt's selected terrain."""
 import math
 import random
+import maps
 
 
 # Specific presets are exact ground points. The native mission validates them.
@@ -27,36 +28,66 @@ REGIONS = (
 )
 
 
-def options():
+LIVONIA_PRESETS = {
+    "original": ("PREDATE Starting Area", 5400, 6350),
+    "topolin": ("Topolin Outskirts", 2189, 7677),
+    "radacz": ("Radacz Outskirts", 4034, 8266),
+    "gliniska": ("Gliniska Outskirts", 5211, 10043),
+    "brena": ("Brena Outskirts", 6648, 11373),
+    "kolembrody": ("Kolembrody Outskirts", 8353, 11714),
+    "east": ("East • Sitnik Fields", 11600, 9700),
+    "southwest": ("Southwest • Forest Edge", 2550, 3750),
+    "south": ("South • Nadbór Woods", 6600, 4200),
+    "southeast": ("Southeast • Hills", 10100, 3500),
+}
+
+LIVONIA_REGIONS = (
+    ("topolin",), ("radacz", "original"), ("gliniska", "brena"), ("kolembrody", "east"),
+    ("southwest",), ("south",), ("southeast",),
+)
+
+
+def presets_for(map_id):
+    selected = maps.terrain(map_id)
+    if selected.id == "enoch":
+        return LIVONIA_PRESETS, LIVONIA_REGIONS
+    return PRESETS, REGIONS
+
+
+def options(map_id=maps.DEFAULT_MAP):
+    presets, _ = presets_for(map_id)
     return [{'id': key, 'name': label, 'x': x, 'z': z}
-            for key, (label, x, z) in PRESETS.items()]
+            for key, (label, x, z) in presets.items()]
 
 
-def validate(selection):
+def validate(selection, map_id=maps.DEFAULT_MAP):
+    selected = maps.terrain(map_id)
+    presets, _ = presets_for(map_id)
     if not isinstance(selection, dict):
-        raise ValueError('Choose a spawn preset or enter Chernarus coordinates')
+        raise ValueError(f'Choose a spawn preset or enter {selected.name} coordinates')
     if set(selection) == {'preset'}:
         key = selection['preset']
-        if not isinstance(key, str) or (key != 'regional' and key not in PRESETS):
-            raise ValueError('Unknown Chernarus spawn preset')
+        if not isinstance(key, str) or (key != 'regional' and key not in presets):
+            raise ValueError(f'Unknown {selected.name} spawn preset')
     elif set(selection) == {'x', 'z'}:
         x, z = selection['x'], selection['z']
-        if any(type(value) not in (int, float) or not 10 < value < 15350 or not math.isfinite(value)
+        if any(type(value) not in (int, float) or not 10 < value < selected.size - 10 or not math.isfinite(value)
                for value in (x, z)):
-            raise ValueError('Both Chernarus coordinates must be between 10 and 15350 metres')
+            raise ValueError(f'Both {selected.name} coordinates must be between 10 and {selected.size - 10} metres')
     else:
-        raise ValueError('Choose a spawn preset or enter Chernarus coordinates')
+        raise ValueError(f'Choose a spawn preset or enter {selected.name} coordinates')
 
 
-def config(selection):
-    validate(selection)
+def config(selection, map_id=maps.DEFAULT_MAP):
+    validate(selection, map_id)
+    presets, regions = presets_for(map_id)
     if 'preset' in selection:
         key = selection['preset']
-        if key == 'original':
+        if key == 'original' and map_id == maps.DEFAULT_MAP:
             return {}
         if key == 'regional':
-            key = random.choice(random.choice(REGIONS))
-        _, x, z = PRESETS[key]
+            key = random.choice(random.choice(regions))
+        _, x, z = presets[key]
     else:
         x, z = selection['x'], selection['z']
     return {'PlayerStart': [x, 0, z], 'ExplicitPlayerStart': True}

@@ -30,7 +30,7 @@ def installed_realism_mod(value):
     return None
 
 
-def snapshot_matches(saved, current):
+def snapshot_matches(saved, current, map_id="chernarusplus"):
     if saved == current:
         return True
     if not isinstance(saved, dict) or not isinstance(saved.get("dependencies"), dict) or not current:
@@ -38,6 +38,10 @@ def snapshot_matches(saved, current):
     dependencies = saved["dependencies"]
     added = {name: current["dependencies"][name] for name in REALISM_MODS
              if name in current["dependencies"] and name not in dependencies}
+    saved, current = dict(saved), dict(current)
+    other_mission = "mission_base" if map_id == "enoch" else "livonia_mission_base"
+    saved.pop(other_mission, None)
+    current.pop(other_mission, None)
     return {**saved, "dependencies": dependencies | added} == current
 
 
@@ -91,7 +95,8 @@ def collect():
                       ("PboUtils/FileBank.exe", "DsUtils/DSSignFile.exe", "DsUtils/DSCreateKey.exe")},
             "dependencies": {name: {"workshop_id": item, "version": mod_version(ROOT / "mods" / name),
                 "files": fingerprints(ROOT / "mods" / name)} for name, item in DEPENDENCIES.items()},
-            "mission_base": json.loads((ROOT / "source/mission/base-files.json").read_text())}
+            "mission_base": json.loads((ROOT / "source/mission/base-files.json").read_text()),
+            "livonia_mission_base": json.loads((ROOT / "source/mission/base-files.enoch.json").read_text())}
 
 
 def verify():

@@ -11,6 +11,7 @@ import session
 import session_store as store
 import world
 import loadouts
+import maps
 import operation_setup
 import spawn_points
 import workshop_lasers
@@ -47,6 +48,8 @@ def overview():
         operation_options["weaponModule"] = {"className": "MM_ANPEQ15", "name": "AN/PEQ-15 Laser / Light Module"}
     return {"operations": operations, "preferences": preferences, "loadouts": loadouts.options(preferences["extra_mods"]),
             "spawnPoints": spawn_points.options(),
+            "maps": [{"id": item.id, "name": item.name, "size": item.size,
+                      "spawnPoints": spawn_points.options(item.id)} for item in maps.TERRAINS.values()],
             "operationOptions": operation_options,
             "backups": [item for item in store.backups() if item.get("kind", "operation") == "operation" and not item["file"].startswith("crashlab-")],
             "status": session.state()}
@@ -66,11 +69,15 @@ def dispatch(method, params):
             raise ValueError("Offline must be true or false")
         return store.save_preferences(params)
     if method == "action":
-        allowed = {"action", "profile", "name", "backup", "loadout", "opponents", "footprints", "spawn", "setup"}
+        allowed = {"action", "profile", "name", "backup", "loadout", "opponents", "footprints", "spawn", "setup", "map", "diagnostics"}
         if not isinstance(params, dict) or set(params) - allowed: raise ValueError("Unsupported action parameters")
         values = dict(params)
         action = values.pop("action", None)
         if action not in {"continue", "quit", "new", "restore", "backup", "delete"}: raise ValueError("Unsupported action")
+        selected_map = maps.DEFAULT_MAP
+        if "map" in values:
+            if action != "new": raise ValueError("Choose a map when creating a new hunt.")
+            selected_map = maps.terrain(values["map"]).id
         if action == "delete" and (set(values) != {"profile"} or not isinstance(values["profile"], str)):
             raise ValueError("Select a save to delete.")
         if 'loadout' in values:
@@ -84,7 +91,7 @@ def dispatch(method, params):
             if not isinstance(values['footprints'], bool): raise ValueError('Footprint clues must be true or false')
         if 'spawn' in values:
             if action != 'new': raise ValueError('Spawn selection applies only to a new operation')
-            spawn_points.validate(values['spawn'])
+            spawn_points.validate(values['spawn'], selected_map)
         if 'setup' in values:
             if action != 'new': raise ValueError('Game settings apply only to a new operation')
             operation_setup.config(values['setup'])

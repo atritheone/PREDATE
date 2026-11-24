@@ -10,6 +10,7 @@ class PredateSessionStatus
 {
     int Schema = 1;
     string SessionId;
+    string WorldName;
     string Phase = "booting";
     string Error;
     bool Ready;
