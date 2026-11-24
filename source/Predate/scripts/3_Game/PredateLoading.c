@@ -110,7 +110,8 @@ class PredateLoadingStyle
 
 class PredateLoadingProgress
 {
-    float Value;
+    static const float INITIAL_FILL = 2;
+    float Value = INITIAL_FILL;
     bool WorldPhase;
     bool PlayerReady;
     protected float m_NativeProgress;
@@ -144,8 +145,8 @@ class PredateLoadingProgress
 
         m_PhaseElapsed += seconds;
         m_NativeProgress = Math.Max(m_NativeProgress, Math.Clamp(nativeFraction, 0, 1));
-        float phaseStart = 0;
-        float phaseWidth = 46;
+        float phaseStart = INITIAL_FILL;
+        float phaseWidth = 46 - INITIAL_FILL;
         if (WorldPhase)
         {
             phaseStart = 46;
@@ -187,6 +188,7 @@ modded class LoadingScreen
             // can reset it between passes without resetting the displayed fill.
             m_PredateProgress = new PredateLoadingProgress;
             m_PredateVisibleProgress = blue;
+            if (blue) blue.SetCurrent(m_PredateProgress.Value);
         }
         else if (blue)
         {
