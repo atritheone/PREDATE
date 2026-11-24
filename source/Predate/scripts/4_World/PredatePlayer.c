@@ -73,8 +73,10 @@ modded class DayZPlayerImplement
 
 modded class PlayerBase
 {
+    static PlayerBase s_PredateTrackingRequester;
     ref PredateState m_PredateState;
     int m_PredateRequest;
+    int m_PredateTrackingRequest;
     int m_PredateTrackingChoice;
     string m_PredateRequestedOperator = "raven-01";
     bool m_PredateReceivedState;
@@ -245,8 +247,13 @@ modded class PlayerBase
                     m_PredateSuicideRequested = true;
                     return;
                 }
-                m_PredateRequest = request;
-                m_PredateRequestedOperator = operatorId;
+                if (request == 1 || request == 2)
+                {
+                    m_PredateTrackingRequest = request;
+                    m_PredateRequestedOperator = operatorId;
+                    s_PredateTrackingRequester = this;
+                }
+                else m_PredateRequest = request;
                 Print("[Predate] Received receiver request " + request);
             }
         }

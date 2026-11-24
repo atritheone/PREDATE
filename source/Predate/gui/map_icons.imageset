@@ -1,0 +1,66 @@
+ImageSetClass {
+ Name "PredateMapIcons"
+ RefSize 256 128
+ Textures {
+  ImageSetTextureClass {
+   mpix 0
+   path "Predate/gui/map_icons_ca.paa"
+  }
+ }
+ Images {
+  ImageSetDefClass Player {
+   Name "Player"
+   Pos 8 8
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Overview {
+   Name "Overview"
+   Pos 88 8
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Center {
+   Name "Center"
+   Pos 168 8
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Control0 {
+   Name "Control0"
+   Pos 10 86
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass Control1 {
+   Name "Control1"
+   Pos 30 86
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass Control2 {
+   Name "Control2"
+   Pos 50 86
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass Clear0 {
+   Name "Clear0"
+   Pos 10 106
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass Clear1 {
+   Name "Clear1"
+   Pos 30 106
+   Size 8 8
+   Flags 0
+  }
+  ImageSetDefClass Clear2 {
+   Name "Clear2"
+   Pos 50 106
+   Size 8 8
+   Flags 0
+  }
+ }
+}

@@ -566,37 +566,8 @@ class PredateSession
             player.PredateSyncWeaponSlots();
             PredateMemoryPersistence.RestoreContact(this, player);
             int request = player.m_PredateRequest;
-            string requestedOperator = player.m_PredateRequestedOperator;
             player.m_PredateRequest = 0;
-            player.m_PredateRequestedOperator = "raven-01";
-            if ((request == 1 || request == 2) && m_PeerRoster)
-            {
-                string selection;
-                if (request == 1) selection = requestedOperator;
-                string previousSelection;
-                PredatePeerBinding previousPeer = m_PeerRoster.PlayerLock();
-                if (previousPeer) previousSelection = previousPeer.State.Operator.Id;
-                else if (m_WorldState.PlayerSignal.Selected) previousSelection = "raven-01";
-                if (selection != previousSelection && m_PeerRoster.SelectPlayerTarget(this, selection))
-                {
-                    player.m_PredateTrackingChoice++;
-                    PredateRequestCheckpoint();
-                }
-            }
-            else if (request == 1 && requestedOperator == "raven-01" && !m_WorldState.PlayerSignal.Selected && !m_WorldState.PlayerSignal.HasLostPlayerReception())
-            {
-                PredateSignalService.Select(this, true);
-                player.m_PredateTrackingChoice++;
-                Print("[Predate] Player selected " + PredateProtocol.SignatureFor(requestedOperator) + ".");
-                PredateSave();
-            }
-            else if (request == 2 && requestedOperator == "raven-01" && m_WorldState.PlayerSignal.Selected)
-            {
-                PredateSignalService.Select(this, false);
-                player.m_PredateTrackingChoice++;
-                PredateSave();
-            }
-            else if (request == 3 && m_Development)
+            if (request == 3 && m_Development)
             {
                 PredateResetHunt(player);
             }
@@ -659,6 +630,46 @@ class PredateSession
         if (m_HuntStateTimer >= 1.25) m_HuntStateTimer = 0;
     }
 
+    void PredateHandleTrackingRequest()
+    {
+        PlayerBase player = PlayerBase.s_PredateTrackingRequester;
+        if (!player || m_Paused) return;
+        PlayerBase.s_PredateTrackingRequester = null;
+        int request = player.m_PredateTrackingRequest;
+        string operatorId = player.m_PredateRequestedOperator;
+        player.m_PredateTrackingRequest = 0;
+        player.m_PredateRequestedOperator = "raven-01";
+        if (m_Suspending || !m_HuntReady || !m_HuntSchemaValid || m_HuntError != "") return;
+        if (!player.GetIdentity() || !player.IsAlive() || m_WorldState.PlayerAwaitingRedeploy) return;
+
+        string selection;
+        if (request == 1) selection = operatorId;
+        else if (request != 2) return;
+        string previousSelection;
+        PredatePeerBinding previousPeer;
+        if (m_PeerRoster) previousPeer = m_PeerRoster.PlayerLock();
+        if (previousPeer) previousSelection = previousPeer.State.Operator.Id;
+        else if (m_WorldState.PlayerSignal.Selected) previousSelection = "raven-01";
+        if (selection == previousSelection) return;
+
+        if (m_PeerRoster)
+        {
+            if (!m_PeerRoster.SelectPlayerTarget(this, selection)) return;
+        }
+        else
+        {
+            if (operatorId != "raven-01") return;
+            if (selection != "" && m_WorldState.PlayerSignal.HasLostPlayerReception()) return;
+            PredateSignalService.Select(this, selection != "");
+        }
+        player.m_PredateTrackingChoice++;
+        // Confirm on the next server frame. Routine receiver refreshes and
+        // checkpoint writes remain on their existing schedules.
+        PredateSend(player);
+        m_HuntStateTimer = 0;
+        PredateRequestCheckpoint();
+    }
+
     void Update(float timeslice)
     {
         if (m_Bridge) m_Bridge.Update(timeslice);
@@ -668,6 +679,7 @@ class PredateSession
             m_SoloCombatTimer = 0;
             return;
         }
+        PredateHandleTrackingRequest();
         m_SoloCombatTimer += timeslice;
         bool updatedHunt = m_SoloCombatTimer >= 0.25;
         if (updatedHunt)

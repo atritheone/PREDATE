@@ -26,7 +26,7 @@ class PredateReceiverText
         int east = Math.Round(sample.Origin[0]);
         int north = Math.Round(sample.Origin[2]);
         int seconds = Math.Floor(sample.Age);
-        return PredateBearingPulse.RangeText(sample.Bearing) + "   |   E " + east + " / N " + north + "   |   " + seconds + "s";
+        return PredateBearingPulse.RangeText(sample.Bearing, " - ") + "   |   E " + east + " / N " + north + "   |   " + seconds + "s";
     }
 
     static string Origin(PredateState state, vector receiverPosition)

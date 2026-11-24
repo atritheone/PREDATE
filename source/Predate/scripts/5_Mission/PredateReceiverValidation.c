@@ -62,6 +62,7 @@ class PredateReceiverValidation
         player.m_PredateKillNotices.Insert(0);
         feed.Update(player, state, 0);
         result.Check(feed.m_Notices[0].Text == "Deadbolt is KIA." && Fits(feed.m_Rows[0]) && feed.m_Rows[0].GetColor() == PredateHuntFeed.NORMAL && HuntWarningVisible(feed));
+        CheckHuntFeedSpacing(result, feed);
         feed.Post("Tracking Blackout.");
         feed.Update(player, state, 0);
         result.Check(feed.m_Rows[0].GetColor() == 0xFFFFFFFF);
@@ -126,6 +127,7 @@ class PredateReceiverValidation
             result.Check(!GetGame().GetInput().HasGameFocus(INPUT_DEVICE_MOUSE));
             menu.Update(0);
             result.Check(menu.m_Map && menu.m_MapCanvas && menu.m_MapOverlay && menu.m_Map.IsVisible());
+            CheckMapPresentation(result, menu);
             result.Check(state.Pulses.Count() == 1);
             if (menu.m_MapOverlay && state.Pulses.Count() == 1)
             {
@@ -157,7 +159,7 @@ class PredateReceiverValidation
                     menu.Update(0);
                     vector arrow = overlay.m_PlayerPoint;
                     // The native map clamps panning when the viewport reaches a world edge.
-                    // The blue marker should still land on the player at any zoom.
+                    // The marker should still land on the player at any zoom.
                     vector screenArrow = arrow + Vector(overlay.m_Left, overlay.m_Top, 0);
                     vector underArrow = menu.m_Map.ScreenToMap(screenArrow);
                     bool pointsToPlayer = PredateSignalRules.WithinFinalApproach(player.GetPosition(), underArrow, 25);
@@ -219,7 +221,7 @@ class PredateReceiverValidation
             state.HasPulse = true;
             string buttonText;
             menu.m_Select.GetText(buttonText);
-            result.Check(buttonText == "Clear target lock");
+            result.Check(buttonText == "Clear Lock");
             menu.OnClick(menu.m_Deploy, 0, 0, 0);
             menu.Update(0);
             result.Check(!menu.m_ConfirmReplacement && !menu.m_ConfirmDeploy.IsVisible());
@@ -263,6 +265,49 @@ class PredateReceiverValidation
             interact.ActionsSelectReset();
         }
         if (barrel) GetGame().ObjectDelete(barrel);
+    }
+
+    static void CheckHuntFeedSpacing(PredateReceiverValidationResult result, PredateHuntFeed feed)
+    {
+        TextWidget first = feed.m_Rows[0];
+        TextWidget second = feed.m_Rows[1];
+        int textWidth, textHeight;
+        float unused, rowHeight, top, nextTop;
+        first.GetTextSize(textWidth, textHeight);
+        first.GetScreenSize(unused, rowHeight);
+        first.GetScreenPos(unused, top);
+        second.GetScreenPos(unused, nextTop);
+        float gap = Math.Max(0, rowHeight - textHeight);
+        result.Check(textHeight > 0 && Math.AbsFloat(nextTop - top - textHeight - gap * 0.5) < 1, "combat log lines have half the previous whitespace");
+    }
+
+    static void CheckMapPresentation(PredateReceiverValidationResult result, PredateTrackerMenu menu)
+    {
+        PredateMapOverlay overlay = menu.m_MapOverlay;
+        result.Check(overlay.m_Strokes.m_Visible >= 2, "the receiver draws both filtered pulse layers");
+        result.Check(overlay.m_PlayerArrow.IsVisible() && overlay.m_PlayerArrow.GetColor() == PredateMapOverlay.PLAYER_GOLD, "the gold player arrow is visible");
+        result.Check(overlay.m_DialPoints.Count() > 72, "the compass ring is tessellated for the current resolution");
+        int iconWidth, iconHeight;
+        overlay.m_PlayerArrow.GetImageSize(0, iconWidth, iconHeight);
+        result.Check(iconWidth > 0 && iconHeight > 0, "the map loads the downloaded player arrow");
+        result.Check(overlay.m_DialRadius > 0, "the compass ring is drawn in map coordinates");
+        foreach (PredateMapStroke stroke : overlay.m_Strokes.m_Strokes)
+            result.Check(stroke.Size[0] > 0 && stroke.Size[0] == stroke.Size[1], "arc masks have room to rotate at every bearing");
+        result.Check(menu.m_TargetName.IsVisible() && menu.m_TargetName.GetBold(), "the tracked name is bold");
+        result.Check(menu.m_Select.IsVisible() && menu.m_Select.GetStyleName() == "PredateMapClear", "the lock uses its dedicated button style");
+        float clearWidth, clearHeight;
+        menu.m_Select.GetScreenSize(clearWidth, clearHeight);
+        bool compactWidth = Math.AbsFloat(clearWidth - Math.Round(86 * menu.m_MapScale)) < 1;
+        bool compactHeight = Math.AbsFloat(clearHeight - Math.Round(26 * menu.m_MapScale)) < 1;
+        bool fittedCaption = Math.AbsFloat(menu.m_Select.GetTextProportion() - 0.55) < 0.01;
+        result.Check(compactWidth && compactHeight && fittedCaption, "the compact clear button fits its label");
+        float mapX, mapY, mapWidth, mapHeight, titleX, titleY, controlX, controlY;
+        menu.m_Map.GetScreenPos(mapX, mapY);
+        menu.m_Map.GetScreenSize(mapWidth, mapHeight);
+        menu.m_TrackingTitle.GetScreenPos(titleX, titleY);
+        result.Check(Math.AbsFloat(titleY - mapY) < 1, "the tracking header aligns with the map top");
+        menu.m_CenterPlayer.GetScreenPos(controlX, controlY);
+        result.Check(controlX > mapX + mapWidth * 0.8 && controlY > mapY + mapHeight * 0.8, "the glyph controls sit inside the lower-right map corner");
     }
 
     static void CheckOverlappingPulses(PredateReceiverValidationResult result, PredateTrackerMenu menu, PlayerBase player)

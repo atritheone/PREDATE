@@ -62,29 +62,40 @@ def map_label(name, color):
                   '"exact text" 1\n"exact text size" 15\n"bold text" 1\n"text halign" center\n"text valign" center')
 
 
+def map_image(name, image, x=0, y=0, w=1, h=1, extra=""):
+    return widget("ImageWidgetClass", name, x, y, w, h,
+                  f'ignorepointer 1\nscaled 0\nmode blend\n"src alpha" 1\n'
+                  f'"stretch mode" stretch_w_h\nfilter 1\nimage0 "{image}"\n{extra}')
+
+
 def layouts():
     gui = ROOT / "source/Predate/gui"
     gui.mkdir(exist_ok=True)
-    canvas = widget("CanvasWidgetClass", "MapOverlay", 0,0,1,1,"ignorepointer 1\npriority 100")
+    history_canvas = widget("CanvasWidgetClass", "MapHistoryGuides", 0,0,1,1,"ignorepointer 1\npriority 80")
+    canvas = widget("CanvasWidgetClass", "MapOverlay", 0,0,1,1,"ignorepointer 1\npriority 110")
     bearing_labels = "".join(map_label(f"MapBearing{index}", "0.70 0.85 0.95 1") for index in range(24))
     pulse_labels = "".join(map_label(f"MapPulse{index}", "1 0.79 0.44 1") for index in range(100))
-    historical_label = map_label("MapLastKnown", "0.66 0.88 0.96 1")
-    children = widget("MapWidgetClass", "Terrain", .016,.085,.644,.89,
-                      'clipchildren 1', canvas+bearing_labels+pulse_labels+historical_label)
-    children += label("Title", "Operation Map", .016,.012,.32,.06,"0.82 0.91 0.96 1")
-    children += widget("ButtonWidgetClass","Overview",.259,.023,.11,.044,
-                       'style Default\ntext "Overview"')
-    children += widget("ButtonWidgetClass","CenterPlayer",.379,.023,.123,.044,
-                       'style Default\ntext "Center on me"')
-    readout = label("TrackingTitle", "Tracking", .06,.018,.88,.053,"0.55 0.85 0.90 1")
+    historical_label = map_label("MapLastKnown", "0.66 0.88 0.90 1")
+    arrow = map_image("MapPlayer", "set:PredateMapIcons image:Player", extra="visible 0\npriority 130")
+    children = widget("MapWidgetClass", "Terrain", .016,.04,.644,.92, 'clipchildren 1',
+                      history_canvas+canvas+bearing_labels+pulse_labels+historical_label+arrow)
+    for name, glyph in (("Overview", "Overview"), ("CenterPlayer", "Center")):
+        icon = map_image(name+"Icon", f"set:PredateMapIcons image:{glyph}", .2,.2,.6,.6)
+        children += widget("ButtonWidgetClass", name, 0,0,.035,.055,
+                           'priority 200\nstyle PredateMapControl', icon)
+    readout = label("TrackingTitle", "TRACKING", .06,0,.50,.053,"0.72 0.72 0.72 1")
+    readout = readout.replace('"text valign" center', '"text valign" top')
     readout += label("Status", "Waiting for pulses", .06,.084,.88,.047)
+    readout += label("TargetName", "", .06,.084,.88,.047).replace(
+        'ignorepointer 1', 'ignorepointer 1\nvisible 0\n"bold text" 1')
     readout += label("Bearing", "No pulse", .06,.145,.88,.042)
     readout += label("Timing", "", .06,.20,.88,.04)
     readout += label("Hint", "", .06,.26,.88,.04)
-    readout += label("InterceptionStatus", "You are being hunted.", .06,.31,.88,.045,
-                     "1 0.698 0.325 1").replace('ignorepointer 1','ignorepointer 1\nvisible 0')
-    readout += label("HistoryTitle", "Historical sectors", .06,.50,.88,.048,
-                     "0.55 0.85 0.90 1").replace('ignorepointer 1','ignorepointer 1\nvisible 0')
+    readout += label("InterceptionStatus", "HUNTED", .62,0,.32,.053,"1 0.698039 0.325490 1").replace(
+        '"text valign" center', '"text valign" top\n"text halign" right').replace(
+        'ignorepointer 1','ignorepointer 1\nvisible 0\n"bold text" 1')
+    readout += label("HistoryTitle", "PULSES", .06,.50,.88,.048,
+                     "0.72 0.72 0.72 1").replace('ignorepointer 1','ignorepointer 1\nvisible 0')
     for index in range(4):
         row = label(f"History{index}", "", .06,.548 + index * .044,.88,.043)
         readout += row.replace('ignorepointer 1','ignorepointer 1\nvisible 0')
@@ -96,17 +107,17 @@ def layouts():
     pulse_picker += widget("TextListboxWidgetClass","PulseChoices",0,.16,1,.84,
                            'lines 9\nfont "gui/fonts/sdf_MetronBook24"')
     readout += widget("FrameWidgetClass","PulsePicker",.06,.48,.88,.40,'visible 0',pulse_picker)
-    readout += widget("ButtonWidgetClass","Select",.06,.366,.88,.057,
-                       'visible 0\nstyle Default\ntext "Clear target lock"')
+    readout += widget("ButtonWidgetClass","Select",.06,.366,.24,.041,
+                       'visible 0\nstyle PredateMapClear\ntext "Clear Lock"')
     readout += widget("ButtonWidgetClass","NewHunt",.06,.913,.52,.058,
                        'visible 0\nstyle Default\ntext "Reset test range"')
     readout += widget("ButtonWidgetClass","Deploy",.06,.366,.42,.057,
                        'visible 0\nstyle Default\ntext "Start another hunt"')
     readout += widget("ButtonWidgetClass","ConfirmDeploy",.52,.366,.42,.057,
                        'visible 0\nstyle Default\ntext "Confirm hunt"')
-    readout += widget("ButtonWidgetClass","Close",.64,.913,.30,.058,
+    readout += widget("ButtonWidgetClass","Close",.758,.9177,.182,.0533,
                        'style Default\ntext "Close"')
-    children += widget("PanelWidgetClass","Readout",.676,.025,.308,.95,
+    children += widget("PanelWidgetClass","Readout",.676,.04,.308,.92,
                        'color 0.05 0.085 0.11 1\nstyle UIDefaultPanel',readout)
     panel = widget("PanelWidgetClass","Panel",.025,.035,.95,.93,
                    'color 0.025 0.045 0.06 1\nstyle UIDefaultPanel',children)

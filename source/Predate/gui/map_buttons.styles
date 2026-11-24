@@ -1,0 +1,18 @@
+<WidgetStyles>
+ <Widget Name="ButtonWidget">
+  <Style Name="PredateMapControl" Font="gui/fonts/sdf_MetronBook24" ImageSet="PredateMapIcons" Color="4294967295">
+   <State Name="Normal"><Item Name="Center" Image="Control0"/></State>
+   <State Name="Highlight"><Item Name="Center" Image="Control1"/></State>
+   <State Name="Pushed"><Item Name="Center" Image="Control2"/></State>
+   <State Name="Focus"><Item Name="Center" Image="Control1"/></State>
+   <State Name="Disabled"><Item Name="Center" Image="Control0"/></State>
+  </Style>
+  <Style Name="PredateMapClear" Font="gui/fonts/sdf_MetronBook24" ImageSet="PredateMapIcons" Color="4294967295">
+   <State Name="Normal"><Item Name="Center" Image="Clear0"/></State>
+   <State Name="Highlight"><Item Name="Center" Image="Clear1"/></State>
+   <State Name="Pushed"><Item Name="Center" Image="Clear2"/></State>
+   <State Name="Focus"><Item Name="Center" Image="Clear1"/></State>
+   <State Name="Disabled"><Item Name="Center" Image="Clear0"/></State>
+  </Style>
+ </Widget>
+</WidgetStyles>

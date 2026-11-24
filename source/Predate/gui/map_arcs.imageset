@@ -1,0 +1,162 @@
+ImageSetClass {
+ Name "PredateMapArcs"
+ RefSize 2048 2048
+ Textures {
+  ImageSetTextureClass {
+   mpix 0
+   path "Predate/gui/map_arcs_ca.paa"
+  }
+ }
+ Images {
+  ImageSetDefClass Arc24 {
+   Name "Arc24"
+   Pos 4 4
+   Size 848 848
+   Flags 0
+  }
+  ImageSetDefClass Arc23 {
+   Name "Arc23"
+   Pos 860 4
+   Size 712 712
+   Flags 0
+  }
+  ImageSetDefClass Arc22 {
+   Name "Arc22"
+   Pos 4 860
+   Size 596 596
+   Flags 0
+  }
+  ImageSetDefClass Arc21 {
+   Name "Arc21"
+   Pos 608 860
+   Size 500 500
+   Flags 0
+  }
+  ImageSetDefClass Arc20 {
+   Name "Arc20"
+   Pos 1116 860
+   Size 420 420
+   Flags 0
+  }
+  ImageSetDefClass Arc13 {
+   Name "Arc13"
+   Pos 1544 860
+   Size 384 384
+   Flags 0
+  }
+  ImageSetDefClass Arc19 {
+   Name "Arc19"
+   Pos 4 1464
+   Size 352 352
+   Flags 0
+  }
+  ImageSetDefClass Arc12 {
+   Name "Arc12"
+   Pos 364 1464
+   Size 336 336
+   Flags 0
+  }
+  ImageSetDefClass Arc18 {
+   Name "Arc18"
+   Pos 708 1464
+   Size 296 296
+   Flags 0
+  }
+  ImageSetDefClass Arc11 {
+   Name "Arc11"
+   Pos 1012 1464
+   Size 288 288
+   Flags 0
+  }
+  ImageSetDefClass Arc17 {
+   Name "Arc17"
+   Pos 1308 1464
+   Size 252 252
+   Flags 0
+  }
+  ImageSetDefClass Arc10 {
+   Name "Arc10"
+   Pos 1568 1464
+   Size 252 252
+   Flags 0
+  }
+  ImageSetDefClass Arc9 {
+   Name "Arc9"
+   Pos 1828 1464
+   Size 216 216
+   Flags 0
+  }
+  ImageSetDefClass Arc16 {
+   Name "Arc16"
+   Pos 4 1824
+   Size 212 212
+   Flags 0
+  }
+  ImageSetDefClass Arc8 {
+   Name "Arc8"
+   Pos 224 1824
+   Size 192 192
+   Flags 0
+  }
+  ImageSetDefClass Arc15 {
+   Name "Arc15"
+   Pos 424 1824
+   Size 180 180
+   Flags 0
+  }
+  ImageSetDefClass Arc7 {
+   Name "Arc7"
+   Pos 612 1824
+   Size 168 168
+   Flags 0
+  }
+  ImageSetDefClass Arc14 {
+   Name "Arc14"
+   Pos 788 1824
+   Size 152 152
+   Flags 0
+  }
+  ImageSetDefClass Arc6 {
+   Name "Arc6"
+   Pos 948 1824
+   Size 144 144
+   Flags 0
+  }
+  ImageSetDefClass Arc5 {
+   Name "Arc5"
+   Pos 1100 1824
+   Size 132 132
+   Flags 0
+  }
+  ImageSetDefClass Arc4 {
+   Name "Arc4"
+   Pos 1240 1824
+   Size 120 120
+   Flags 0
+  }
+  ImageSetDefClass Arc3 {
+   Name "Arc3"
+   Pos 1368 1824
+   Size 108 108
+   Flags 0
+  }
+  ImageSetDefClass Arc2 {
+   Name "Arc2"
+   Pos 1484 1824
+   Size 96 96
+   Flags 0
+  }
+  ImageSetDefClass Arc1 {
+   Name "Arc1"
+   Pos 1588 1824
+   Size 96 96
+   Flags 0
+  }
+  ImageSetDefClass Arc0 {
+   Name "Arc0"
+   Pos 1692 1824
+   Size 84 84
+   Flags 0
+  }
+ }
+}

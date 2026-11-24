@@ -10,7 +10,7 @@ class PredateReceiverEvents : ScriptedWidgetEventHandler
 
     override bool OnMouseButtonDown(Widget w, int x, int y, int button)
     {
-        if (m_Menu && w == m_Menu.m_Map && button == MouseState.LEFT)
+        if (m_Menu && button == MouseState.LEFT && m_Menu.IsMapSurface(w))
             m_Menu.BeginMapPress(x, y);
         return false;
     }
@@ -18,7 +18,7 @@ class PredateReceiverEvents : ScriptedWidgetEventHandler
     override bool OnMouseButtonUp(Widget w, int x, int y, int button)
     {
         if (m_Menu && button == MouseState.LEFT)
-            m_Menu.EndMapPress(w == m_Menu.m_Map, x, y);
+            m_Menu.EndMapPress(m_Menu.IsMapSurface(w), x, y);
         return false;
     }
 
@@ -33,10 +33,12 @@ class PredateTrackerMenu : UIScriptedMenu
 {
     ref PredateReceiverEvents m_Events;
     TextWidget m_Status;
+    TextWidget m_TargetName;
     TextWidget m_Bearing;
     TextWidget m_Timing;
     TextWidget m_Origin;
-    Widget m_HistoryTitle;
+    TextWidget m_HistoryTitle;
+    TextWidget m_TrackingTitle;
     TextWidget m_InterceptionStatus;
     Widget m_PulsePicker;
     TextListboxWidget m_PulseRows;
@@ -46,6 +48,8 @@ class PredateTrackerMenu : UIScriptedMenu
     ButtonWidget m_Select;
     ButtonWidget m_Deploy;
     ButtonWidget m_ConfirmDeploy;
+    Widget m_Overview;
+    Widget m_CenterPlayer;
     MapWidget m_Map;
     CanvasWidget m_MapCanvas;
     ref PredateMapOverlay m_MapOverlay;
@@ -55,31 +59,34 @@ class PredateTrackerMenu : UIScriptedMenu
     vector m_MapPressCenter;
     float m_MapScale = 1;
     int m_MapTextSize;
+    int m_MapHeaderSize;
     bool m_PredateOwnAimExclude;
 
     override Widget Init()
     {
+        PredateMapOverlay.LoadStyles();
         layoutRoot = GetGame().GetWorkspace().CreateWidgets("Predate/gui/tracker.layout");
         m_Events = new PredateReceiverEvents(this);
         layoutRoot.SetHandler(m_Events);
         m_Status = TextWidget.Cast(layoutRoot.FindAnyWidget("Status"));
+        m_TargetName = TextWidget.Cast(layoutRoot.FindAnyWidget("TargetName"));
         m_Bearing = TextWidget.Cast(layoutRoot.FindAnyWidget("Bearing"));
         m_Timing = TextWidget.Cast(layoutRoot.FindAnyWidget("Timing"));
         m_Origin = TextWidget.Cast(layoutRoot.FindAnyWidget("Hint"));
-        m_HistoryTitle = layoutRoot.FindAnyWidget("HistoryTitle");
+        m_HistoryTitle = TextWidget.Cast(layoutRoot.FindAnyWidget("HistoryTitle"));
+        m_TrackingTitle = TextWidget.Cast(layoutRoot.FindAnyWidget("TrackingTitle"));
         m_InterceptionStatus = TextWidget.Cast(layoutRoot.FindAnyWidget("InterceptionStatus"));
         m_PulsePicker = layoutRoot.FindAnyWidget("PulsePicker");
         m_PulseRows = TextListboxWidget.Cast(layoutRoot.FindAnyWidget("PulseChoices"));
         if (m_PulseRows) m_PulseRows.SetHandler(m_Events);
         for (int index = 0; index < PredateProtocol.MAX_BEARING_HISTORY; index++)
             m_HistoryRows.Insert(TextWidget.Cast(layoutRoot.FindAnyWidget("History" + index)));
-        m_MapLabels = {m_Status, m_Bearing, m_Timing, m_Origin};
-        m_MapLabels.Insert(TextWidget.Cast(m_HistoryTitle));
+        m_MapLabels = {m_Status, m_TargetName, m_Bearing, m_Timing, m_Origin};
         m_MapLabels.Insert(m_InterceptionStatus);
-        m_MapLabels.Insert(TextWidget.Cast(layoutRoot.FindAnyWidget("TrackingTitle")));
         m_MapLabels.Insert(TextWidget.Cast(layoutRoot.FindAnyWidget("PulsePickerTitle")));
         foreach (TextWidget historyLabel : m_HistoryRows) m_MapLabels.Insert(historyLabel);
         m_Select = ButtonWidget.Cast(layoutRoot.FindAnyWidget("Select"));
+        m_Select.SetTextProportion(0.55);
         m_Select.SetHandler(m_Events);
         layoutRoot.FindAnyWidget("NewHunt").SetHandler(m_Events);
         m_Deploy = ButtonWidget.Cast(layoutRoot.FindAnyWidget("Deploy"));
@@ -90,9 +97,13 @@ class PredateTrackerMenu : UIScriptedMenu
         if (m_Map) m_Map.SetHandler(m_Events);
         m_MapCanvas = CanvasWidget.Cast(layoutRoot.FindAnyWidget("MapOverlay"));
         if (m_Map && m_MapCanvas) m_MapOverlay = new PredateMapOverlay(m_Map, m_MapCanvas);
-        layoutRoot.FindAnyWidget("Overview").SetHandler(m_Events);
-        layoutRoot.FindAnyWidget("CenterPlayer").SetHandler(m_Events);
-        layoutRoot.FindAnyWidget("Close").SetHandler(m_Events);
+        m_Overview = layoutRoot.FindAnyWidget("Overview");
+        m_CenterPlayer = layoutRoot.FindAnyWidget("CenterPlayer");
+        m_Overview.SetHandler(m_Events);
+        m_CenterPlayer.SetHandler(m_Events);
+        ButtonWidget closeButton = ButtonWidget.Cast(layoutRoot.FindAnyWidget("Close"));
+        closeButton.SetTextProportion(0.55);
+        closeButton.SetHandler(m_Events);
         Print("[Predate] Operation map created.");
         return layoutRoot;
     }
@@ -142,12 +153,12 @@ class PredateTrackerMenu : UIScriptedMenu
         m_ConfirmDeploy.Show(m_ConfirmReplacement);
         m_Select.Show(!state.CanDeploy && state.Locked);
         int available = state.AvailableOperators;
-        m_Status.SetText(state.Message);
+        ShowTrackingStatus(state);
         if (m_InterceptionStatus) m_InterceptionStatus.Show(state.Intercepted);
         if (state.CloseApproach)
             m_Bearing.SetText("Use sight and sound");
         else if (state.HasPulse)
-            m_Bearing.SetText("Bearing " + PredateBearingPulse.RangeText(state.Bearing));
+            m_Bearing.SetText("Bearing " + PredateBearingPulse.RangeText(state.Bearing, " - "));
         else if (state.CanDeploy) m_Bearing.SetText("HUNT COMPLETE");
         else if (available == 0) m_Bearing.SetText("OPERATION COMPLETE");
         else if (state.Locked && !state.Available) m_Bearing.SetText("Signal ended");
@@ -162,15 +173,38 @@ class PredateTrackerMenu : UIScriptedMenu
         m_Origin.SetText("No Operator pulses in range");
         if (state.Pulses.Count() > 0) m_Origin.SetText("Hover over a name to find its arc");
         PredateBearingPulse tracked = state.TrackedPulse();
-        if (tracked) m_Origin.SetText("Pulse range " + tracked.DistanceText());
+        if (tracked) m_Origin.SetText("Pulse range " + tracked.DistanceText(" - "));
         if (m_MapOverlay && m_MapOverlay.m_HoveredPulse)
         {
             PredateBearingPulse hover = m_MapOverlay.m_HoveredPulse;
-            m_Origin.SetText(PredateProtocol.DisplayName(hover.OperatorId) + "  |  " + hover.DistanceText());
+            m_Origin.SetText(PredateProtocol.DisplayName(hover.OperatorId) + "  |  " + hover.DistanceText(" - "));
         }
         else if (m_MapOverlay && m_MapOverlay.m_HoverHits.Count() > 1)
             m_Origin.SetText("Click to choose among " + m_MapOverlay.m_HoverHits.Count().ToString() + " pulses");
         ShowHistory(state);
+    }
+
+    void ShowTrackingStatus(PredateState state)
+    {
+        string name = PredateProtocol.DisplayName(state.OperatorId);
+        bool tracking = state.Locked && state.Message == "Tracking " + name;
+        m_TargetName.Show(tracking);
+        if (!tracking)
+        {
+            m_Status.SetText(state.Message);
+            return;
+        }
+
+        m_Status.SetText("Tracking");
+        m_TargetName.SetText(name);
+        float x, y, width, height;
+        m_Status.GetScreenPos(x, y);
+        m_Status.GetScreenSize(width, height);
+        int prefixWidth, prefixHeight;
+        m_Status.GetTextSize(prefixWidth, prefixHeight);
+        float offset = prefixWidth + 5 * m_MapScale;
+        m_TargetName.SetScreenPos(x + offset, y);
+        m_TargetName.SetScreenSize(width - offset, height);
     }
 
     void ShowHistory(PredateState state)
@@ -193,10 +227,32 @@ class PredateTrackerMenu : UIScriptedMenu
         layoutRoot.GetScreenSize(width, height);
         m_MapScale = Math.Clamp(Math.Min(width / 1280.0, height / 720.0), 0.8, 2.5);
         int size = Math.Round(15 * m_MapScale);
-        if (size == m_MapTextSize) return;
-        m_MapTextSize = size;
-        foreach (TextWidget label : m_MapLabels)
-            if (label) label.SetTextExactSize(size);
+        if (size != m_MapTextSize)
+        {
+            m_MapTextSize = size;
+            foreach (TextWidget label : m_MapLabels)
+                if (label) label.SetTextExactSize(size);
+            m_Select.SetScreenSize(Math.Round(86 * m_MapScale), Math.Round(26 * m_MapScale));
+        }
+        int headerSize = Math.Round(17 * m_MapScale);
+        if (headerSize != m_MapHeaderSize)
+        {
+            m_MapHeaderSize = headerSize;
+            m_TrackingTitle.SetTextExactSize(headerSize);
+            m_HistoryTitle.SetTextExactSize(headerSize);
+        }
+
+        float mapX, mapY, mapWidth, mapHeight;
+        m_Map.GetScreenPos(mapX, mapY);
+        m_Map.GetScreenSize(mapWidth, mapHeight);
+        float buttonSize = Math.Round(34 * m_MapScale);
+        float inset = Math.Round(9 * m_MapScale);
+        float buttonX = mapX + mapWidth - inset - buttonSize;
+        float buttonY = mapY + mapHeight - inset - buttonSize;
+        m_CenterPlayer.SetScreenSize(buttonSize, buttonSize);
+        m_CenterPlayer.SetScreenPos(buttonX, buttonY);
+        m_Overview.SetScreenSize(buttonSize, buttonSize);
+        m_Overview.SetScreenPos(buttonX - inset - buttonSize, buttonY);
     }
 
     void ShowOverview()
@@ -214,6 +270,16 @@ class PredateTrackerMenu : UIScriptedMenu
         m_Map.SetMapPos(position);
     }
 
+    bool IsMapSurface(Widget widget)
+    {
+        while (widget)
+        {
+            if (widget == m_Map) return true;
+            widget = widget.GetParent();
+        }
+        return false;
+    }
+
     void BeginMapPress(int x, int y)
     {
         m_MapPressed = true;
@@ -226,7 +292,11 @@ class PredateTrackerMenu : UIScriptedMenu
         bool pressed = m_MapPressed;
         m_MapPressed = false;
         if (!pressed || !overMap || !m_MapOverlay) return;
-        if (vector.DistanceSq(Vector(x, y, 0), m_MapPress) > 25 || vector.DistanceSq(m_Map.GetMapPos(), m_MapPressCenter) > 1) return;
+        float slop = 5 * m_MapScale;
+        if (vector.DistanceSq(Vector(x, y, 0), m_MapPress) > slop * slop) return;
+        vector currentCenter = m_Map.MapToScreen(m_Map.GetMapPos());
+        vector pressedCenter = m_Map.MapToScreen(m_MapPressCenter);
+        if (vector.DistanceSq(currentCenter, pressedCenter) > slop * slop) return;
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
         if (!player || !player.m_PredateState) return;
         PredateState state = player.m_PredateState;
@@ -247,7 +317,7 @@ class PredateTrackerMenu : UIScriptedMenu
         {
             PredateBearingPulse pulse = state.Pulses[index];
             if (hits.Find(pulse.OperatorId) < 0) continue;
-            int row = m_PulseRows.AddItem(PredateProtocol.DisplayName(pulse.OperatorId) + "  |  " + pulse.DistanceText(), null, 0);
+            int row = m_PulseRows.AddItem(PredateProtocol.DisplayName(pulse.OperatorId) + "  |  " + pulse.DistanceText(" - "), null, 0);
             if (row >= 0) m_PulseChoices.Insert(pulse.OperatorId);
         }
         m_PulsePicker.Show(m_PulseChoices.Count() > 0);

@@ -9,12 +9,18 @@ class PredateMapOverlay
     static const int SELECTED_COLOR = 0xFFFFFFFF;
     static const int LABEL_BACKGROUND = 0xFF14222C;
     static const int LABEL_HIGHLIGHT = 0xFF284758;
+    static const int PLAYER_GOLD = 0xFFFFCA58;
+    static bool s_StylesLoaded;
 
     MapWidget m_Map;
     CanvasWidget m_Canvas;
+    CanvasWidget m_HistoryGuides;
+    ImageWidget m_PlayerArrow;
+    ref PredateMapStrokes m_Strokes;
     TextWidget m_LastKnown;
     ref array<TextWidget> m_Labels = new array<TextWidget>;
     ref array<TextWidget> m_Bearings = new array<TextWidget>;
+    ref array<vector> m_DialPoints = {};
     ref array<vector> m_LabelPositions = new array<vector>;
     ref array<vector> m_LabelAnchors = new array<vector>;
     ref array<float> m_LabelHalfWidths = new array<float>;
@@ -35,13 +41,30 @@ class PredateMapOverlay
     float m_Left;
     float m_Top;
     float m_Scale;
+    float m_DialRadius;
     vector m_PlayerPoint;
     int m_LabelLockSlot = -1;
+
+    static void LoadStyles()
+    {
+        if (s_StylesLoaded) return;
+        if (!LoadWidgetImageSet("Predate/gui/map_icons.imageset") || !LoadWidgetImageSet("Predate/gui/map_arcs.imageset"))
+        {
+            Print("[Predate] MAP ERROR: map image sets failed to load.");
+            return;
+        }
+        LoadWidgetStyles("Predate/gui/map_buttons.styles");
+        s_StylesLoaded = true;
+    }
 
     void PredateMapOverlay(MapWidget terrain, CanvasWidget canvas)
     {
         m_Map = terrain;
         m_Canvas = canvas;
+        m_HistoryGuides = CanvasWidget.Cast(terrain.FindAnyWidget("MapHistoryGuides"));
+        m_PlayerArrow = ImageWidget.Cast(terrain.FindAnyWidget("MapPlayer"));
+        m_PlayerArrow.SetColor(PLAYER_GOLD);
+        m_Strokes = new PredateMapStrokes(terrain);
         m_LastKnown = TextWidget.Cast(terrain.FindAnyWidget("MapLastKnown"));
         for (int index = 0; index < 24; index++)
         {
@@ -92,56 +115,72 @@ class PredateMapOverlay
         return m_PlayerPoint + Vector(radius * Math.Sin(angle), -radius * Math.Cos(angle), 0);
     }
 
-    void DrawArc(float start, float span, float radius, int segments, float width, int color)
-    {
-        vector last = RadialPoint(start, radius);
-        for (int index = 1; index <= segments; index++)
-        {
-            vector point = RadialPoint(start + span * index / segments, radius);
-            m_Canvas.DrawLine(last[0], last[1], point[0], point[1], width, color);
-            last = point;
-        }
-    }
-
     void DrawPulse(PredateBearingPulse pulse, float radius, bool selected, bool hovered = false)
     {
         int distanceColor = pulse.Color();
         float width = 4 * m_Scale;
         int outline = 0xE52C1B0C;
         int fill = distanceColor;
+        int priority = 100;
         if (selected)
         {
             width = 6 * m_Scale;
             outline = distanceColor;
             fill = SELECTED_COLOR;
-            DrawArc(pulse.Start, PredateBearingPulse.DEGREES, radius, 8, width + 6 * m_Scale, 0xE52C1B0C);
+            priority = 105;
         }
         else if (hovered)
         {
             width = 6 * m_Scale;
             outline = 0xFFF5FAFF;
-            DrawArc(pulse.Start, PredateBearingPulse.DEGREES, radius, 8, width + 6 * m_Scale, 0xFF14222C);
+            priority = 103;
+            m_Strokes.DrawArc(m_PlayerPoint, pulse.Start, radius, width + 6 * m_Scale, LABEL_BACKGROUND, 102);
         }
-        DrawArc(pulse.Start, PredateBearingPulse.DEGREES, radius, 8, width + 4 * m_Scale, outline);
-        DrawArc(pulse.Start, PredateBearingPulse.DEGREES, radius, 8, width, fill);
+        m_Strokes.DrawArc(m_PlayerPoint, pulse.Start, radius, width + 4 * m_Scale, outline, priority);
+        m_Strokes.DrawArc(m_PlayerPoint, pulse.Start, radius, width, fill, priority + 1);
     }
 
-    void DrawDial(float radius)
+    void DrawDialRing(float width, int color)
     {
-        DrawArc(0, 360, radius, 96, 3 * m_Scale, 0xEB26292C);
-        DrawArc(0, 360, radius, 96, m_Scale, DIAL_COLOR);
+        for (int step = 1; step < m_DialPoints.Count(); step++)
+        {
+            vector last = m_DialPoints[step - 1];
+            vector next = m_DialPoints[step];
+            m_Canvas.DrawLine(last[0], last[1], next[0], next[1], width, color);
+        }
+    }
+
+    void BuildDial(float radius)
+    {
+        m_DialRadius = radius;
+        m_DialPoints.Clear();
+        // Keep the chord error below a quarter pixel as the map pane grows.
+        int segments = Math.Max(72, Math.Ceil(Math.PI * Math.Sqrt(radius / 0.5)));
+        for (int step = 0; step <= segments; step++)
+            m_DialPoints.Insert(RadialPoint(360.0 * step / segments, radius));
         for (int index = 0; index < 24; index++)
         {
             int degrees = index * PredateBearingPulse.DEGREES;
-            float tick = 5 * m_Scale;
-            if (degrees % 45 == 0) tick = 9 * m_Scale;
-            vector outside = RadialPoint(degrees, radius);
-            vector inside = RadialPoint(degrees, radius - tick);
-            m_Canvas.DrawLine(outside[0], outside[1], inside[0], inside[1], 2 * m_Scale, DIAL_COLOR);
             TextWidget label = m_Bearings[index];
             if (!label) continue;
             vector point = RadialPoint(degrees, radius + BEARING_LABEL_OFFSET * m_Scale);
             PlaceLabel(label, point, BEARING_LABEL_WIDTH * m_Scale, Math.Round(12 * m_Scale));
+        }
+    }
+
+    void DrawDial(float radius)
+    {
+        float width = 1.5 * m_Scale;
+        DrawDialRing(width + 1, 0x404B4E52);
+        DrawDialRing(width, DIAL_COLOR);
+        for (int index = 0; index < 24; index++)
+        {
+            int degrees = index * PredateBearingPulse.DEGREES;
+            float length = 5 * m_Scale;
+            if (degrees % 45 == 0) length = 9 * m_Scale;
+            vector outside = RadialPoint(degrees, radius);
+            vector inside = RadialPoint(degrees, radius - length);
+            m_Canvas.DrawLine(outside[0], outside[1], inside[0], inside[1], width, DIAL_COLOR);
         }
     }
 
@@ -163,22 +202,18 @@ class PredateMapOverlay
             int edge = ARGB(alpha, 100, 226, 255);
             int guide = ARGB(alpha / 2, 100, 226, 255);
             vector origin = HistoryPoint(sample, sample.Bearing, 0);
-            vector nearPoint = HistoryPoint(sample, sample.Bearing, inner);
-            vector farPoint = HistoryPoint(sample, sample.Bearing, outer);
-            m_Canvas.DrawLine(origin[0], origin[1], nearPoint[0], nearPoint[1], m_Scale, guide);
-            m_Canvas.DrawLine(nearPoint[0], nearPoint[1], farPoint[0], farPoint[1], 2 * m_Scale, edge);
-            for (int step = 1; step <= 8; step++)
+            float nearRadius = vector.Distance(origin, HistoryPoint(sample, sample.Bearing, inner));
+            float farRadius = vector.Distance(origin, HistoryPoint(sample, sample.Bearing, outer));
+            m_Strokes.DrawArc(origin, sample.Bearing, nearRadius, 2 * m_Scale, edge, 81);
+            m_Strokes.DrawArc(origin, sample.Bearing, farRadius, 2 * m_Scale, edge, 81);
+            for (int side = 0; side < 2; side++)
             {
-                float bearing = sample.Bearing + PredateBearingPulse.DEGREES * step / 8.0;
-                vector nextNear = HistoryPoint(sample, bearing, inner);
-                vector nextFar = HistoryPoint(sample, bearing, outer);
-                m_Canvas.DrawLine(nearPoint[0], nearPoint[1], nextNear[0], nextNear[1], 2 * m_Scale, edge);
-                m_Canvas.DrawLine(farPoint[0], farPoint[1], nextFar[0], nextFar[1], 2 * m_Scale, edge);
-                nearPoint = nextNear;
-                farPoint = nextFar;
+                float bearing = sample.Bearing + side * PredateBearingPulse.DEGREES;
+                vector nearPoint = HistoryPoint(sample, bearing, inner);
+                vector farPoint = HistoryPoint(sample, bearing, outer);
+                m_HistoryGuides.DrawLine(origin[0], origin[1], nearPoint[0], nearPoint[1], m_Scale, guide);
+                m_HistoryGuides.DrawLine(nearPoint[0], nearPoint[1], farPoint[0], farPoint[1], 2 * m_Scale, edge);
             }
-            m_Canvas.DrawLine(origin[0], origin[1], nearPoint[0], nearPoint[1], m_Scale, guide);
-            m_Canvas.DrawLine(nearPoint[0], nearPoint[1], farPoint[0], farPoint[1], 2 * m_Scale, edge);
         }
     }
 
@@ -210,21 +245,11 @@ class PredateMapOverlay
         vector position = player.GetPosition();
         vector facing = LocalPoint(position + player.GetDirection() * 100) - m_PlayerPoint;
         if (facing.LengthSq() < 0.01) facing = "0 -1 0";
-        facing.Normalize();
-        vector right = Vector(-facing[1], facing[0], 0);
-        vector nose = m_PlayerPoint + facing * (10 * scale);
-        vector rear = m_PlayerPoint - facing * (6 * scale);
-        vector left = rear - right * (6 * scale);
-        right = rear + right * (6 * scale);
-        DrawTriangle(nose, left, right, 5 * scale, 0xFF10242D);
-        DrawTriangle(nose, left, right, 2 * scale, 0xFF69EFFC);
-    }
-
-    void DrawTriangle(vector a, vector b, vector c, float width, int color)
-    {
-        m_Canvas.DrawLine(a[0], a[1], b[0], b[1], width, color);
-        m_Canvas.DrawLine(b[0], b[1], c[0], c[1], width, color);
-        m_Canvas.DrawLine(c[0], c[1], a[0], a[1], width, color);
+        float size = 26 * scale;
+        m_PlayerArrow.SetScreenSize(size, size);
+        m_PlayerArrow.SetScreenPos(m_Left + m_PlayerPoint[0] - size / 2, m_Top + m_PlayerPoint[1] - size / 2);
+        m_PlayerArrow.SetRotation(0, 0, Math.Atan2(facing[0], -facing[1]) * Math.RAD2DEG);
+        m_PlayerArrow.Show(true);
     }
 
     void PlaceLabel(TextWidget label, vector center, float width, int textSize, float height = 0)
@@ -519,10 +544,12 @@ class PredateMapOverlay
         matches.Clear();
         if (!state) return;
         vector click = Vector(x - m_Left, y - m_Top, 0);
+        if (click[0] < 0 || click[0] > m_Width || click[1] < 0 || click[1] > m_Height) return;
         vector offset = click - m_PlayerPoint;
         float distance = offset.Length();
         float bearing = PredateMath.WrapHeading(Math.Atan2(offset[0], -offset[1]) * Math.RAD2DEG);
-        float closestGap = 9 * m_Scale;
+        float tolerance = 9 * m_Scale;
+        float closestGap = tolerance;
         float closestRadius;
         foreach (int placed : m_PlacedSlots)
         {
@@ -537,7 +564,15 @@ class PredateMapOverlay
             if (slot < 0 || slot >= m_Labels.Count()) continue;
             float radius = m_ArcRadii[slot];
             float gap = Math.AbsFloat(distance - radius);
-            if (radius <= 0 || !PredateBearingPulse.Contains(pulse.Start, bearing)) continue;
+            if (radius <= 0 || gap >= tolerance) continue;
+            if (!PredateBearingPulse.Contains(pulse.Start, bearing))
+            {
+                float end = pulse.Start + PredateBearingPulse.DEGREES;
+                float startGap = vector.Distance(click, RadialPoint(pulse.Start, radius));
+                float endGap = vector.Distance(click, RadialPoint(end, radius));
+                gap = Math.Min(startGap, endGap);
+                if (gap >= tolerance) continue;
+            }
             if (gap < closestGap)
             {
                 closestGap = gap;
@@ -566,15 +601,21 @@ class PredateMapOverlay
     void Draw(PlayerBase player, PredateState state, float scale, bool allowHover = true)
     {
         m_Canvas.Clear();
+        m_HistoryGuides.Clear();
         if (m_LastKnown) m_LastKnown.Show(false);
         m_NextSlots.Clear();
         m_HoverHits.Clear();
         m_HoveredPulse = null;
-        foreach (TextWidget bearing : m_Bearings) if (bearing) bearing.Show(false);
         vector oldViewport = Vector(m_Width, m_Height, 0);
         vector oldOrigin = Vector(m_Left, m_Top, 0);
-        if (!UpdateProjection())
+        bool projected = UpdateProjection();
+        m_Strokes.Begin(m_Left, m_Top, m_Width, m_Height);
+        if (!projected)
         {
+            m_DialRadius = 0;
+            foreach (TextWidget bearing : m_Bearings) if (bearing) bearing.Show(false);
+            m_PlayerArrow.Show(false);
+            m_Strokes.Finish();
             m_ActiveSlots.Clear();
             ArrangePulseLabels(-1);
             return;
@@ -589,6 +630,7 @@ class PredateMapOverlay
         float horizontalRoom = m_Width / 2 - (BEARING_LABEL_OFFSET + BEARING_LABEL_WIDTH / 2) * scale;
         float verticalRoom = m_Height / 2 - (BEARING_LABEL_OFFSET + 12.5) * scale;
         float radius = Math.Max(60 * scale, Math.Min(horizontalRoom, verticalRoom));
+        if (moved || radius != m_DialRadius) BuildDial(radius);
         DrawDial(radius);
         if (state && state.Pulses.Count() > 0)
         {
@@ -665,5 +707,6 @@ class PredateMapOverlay
         }
         DrawLastKnown(state);
         DrawPlayer(player, scale);
+        m_Strokes.Finish();
     }
 }

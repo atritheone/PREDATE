@@ -18,6 +18,7 @@ class PredateHuntFeed
     string m_Target;
     int m_TrackingChoice;
     bool m_Visible = true;
+    float m_SpacedHeight;
 
     void PredateHuntFeed()
     {
@@ -118,6 +119,29 @@ class PredateHuntFeed
             label.SetColor(notice.Color);
             label.SetAlpha(Math.Min(1, notice.Remaining / 0.6));
         }
+        if (m_Visible && m_Notices.Count() > 0) AdjustSpacing();
+    }
+
+    void AdjustSpacing()
+    {
+        if (m_Rows.Count() == 0 || !m_Rows[0]) return;
+        TextWidget first = m_Rows[0];
+        float width, rowHeight;
+        first.GetScreenSize(width, rowHeight);
+        if (rowHeight <= 0 || rowHeight == m_SpacedHeight) return;
+        int textWidth, textHeight;
+        first.GetTextSize(textWidth, textHeight);
+        if (textHeight <= 0) return;
+
+        // Keep the first line anchored and halve the whitespace between lines.
+        float pitch = textHeight + Math.Max(0, rowHeight - textHeight) * 0.5;
+        float step = pitch / (rowHeight * ROWS);
+        for (int index = 1; index < m_Rows.Count(); index++)
+        {
+            TextWidget row = m_Rows[index];
+            if (row) row.SetPos(0, index * step);
+        }
+        m_SpacedHeight = rowHeight;
     }
 
     void Show(bool visible)
