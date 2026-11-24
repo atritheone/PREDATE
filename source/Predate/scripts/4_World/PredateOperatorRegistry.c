@@ -144,6 +144,7 @@ modded class eAIBase
     PredateOperatorRecord m_PredateOperatorRecord;
     bool m_PredateBleedingDeath;
     bool m_PredatePlayerBleedout;
+    protected bool m_PredateDeferDeathFiles;
 
     override void EEKilled(Object killer)
     {
@@ -166,6 +167,15 @@ modded class eAIBase
                 }
             }
         }
+        // Expansion queues removal from the group after EEKilled. For an
+        // operator's one-member group, that cleanup deletes all its files.
+        m_PredateDeferDeathFiles = m_PredateOperatorRecord && group && group.m_BaseName == m_PredateOperatorRecord.StorageKey && group.Count() == 1 && group.GetMember(0) == this;
         super.EEKilled(killer);
+        m_PredateDeferDeathFiles = false;
+    }
+
+    override void eAI_DeletePersistentFiles()
+    {
+        if (!m_PredateDeferDeathFiles) super.eAI_DeletePersistentFiles();
     }
 }

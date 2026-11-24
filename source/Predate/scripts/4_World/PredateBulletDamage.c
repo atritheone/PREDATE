@@ -16,8 +16,9 @@ modded class eAIDamageHandler
         bool shotAtOperator = !aiShooter && aiTarget && aiTarget.m_PredateCombatEnabled;
         if (damageType == DT_FIRE_ARM && sourcePlayer && target && (operatorShot || shotAtOperator))
         {
-            // Process on a later tick so the native engine has released the original hit.
-            GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(PredateProcessBulletDamage, 35, false, damageType, source, sourcePlayer, dmgZone, ammo, modelPos, damageCoef);
+            // A positive delay carries the replacement into the next queue tick.
+            // The native engine can still reject it in the original hit's tick.
+            GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(PredateProcessBulletDamage, 1, false, damageType, source, sourcePlayer, dmgZone, ammo, modelPos, damageCoef);
             return;
         }
         super.ProcessDamage(damageType, source, sourcePlayer, dmgZone, ammo, modelPos, damageCoef);

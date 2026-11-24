@@ -3,7 +3,7 @@ class CfgPatches
     class Predate_Prototype
     {
         units[]={"PredateWeaponModule","PredatePanoramicNVG","PredateOperatorNVG_Black","PredateOperatorNVG_Tan","PredateOperatorHeadstrap_Black","PredateOperatorHeadstrap_Tan","PredateChinos_Brown","PredateSpectralTrousers","PredateGhostTrousers","PredateOperatorTrousers","PredateRiflePouches","PredateRiflePouches_Black","PredateRiflePouches_Desert"}; weapons[]={}; requiredVersion=0.1;
-        requiredAddons[]={"DZ_Data","DZ_Characters_Glasses","DZ_Characters_Pants","DZ_Gear_Containers","DZ_Weapons_Lights","DZ_Worlds_Chernarusplus_World","DayZExpansion_AI_Scripts"};
+        requiredAddons[]={"DZ_Data","DZ_Characters_Glasses","DZ_Characters_Pants","DZ_Gear_Containers","DZ_Weapons_Lights","DZ_Worlds_Chernarusplus_World","DayZExpansion_AI_Scripts","ReactiveRagdolls"};
     };
 };
 class CfgVehicles
