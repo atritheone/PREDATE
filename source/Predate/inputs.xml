@@ -4,6 +4,10 @@
     <actions>
       <input name="UAPredateWeaponLight" loc="Toggle weapon light"/>
       <input name="UAPredateWeaponLightMode" loc="Cycle weapon light mode"/>
+      <input name="UAPredatePEQWhite" loc="Toggle white flashlight"/>
+      <input name="UAPredatePEQLaser" loc="Toggle selected laser"/>
+      <input name="UAPredatePEQMode" loc="Switch visible/IR laser"/>
+      <input name="UAPredatePEQInfrared" loc="Toggle IR illuminator"/>
       <input name="UAPredateToggleNVG" loc="Toggle night vision"/>
       <input name="UAPredateLowReady" loc="Lower firearm to low ready"/>
       <input name="UAPredateHighReady" loc="Raise firearm"/>
@@ -15,10 +19,20 @@
       <input name="UAPredateLowReady"/>
       <input name="UAPredateHighReady"/>
     </sorting>
+    <sorting name="predate_peq" loc="PREDATE weapon module">
+      <input name="UAPredatePEQWhite"/>
+      <input name="UAPredatePEQLaser"/>
+      <input name="UAPredatePEQMode"/>
+      <input name="UAPredatePEQInfrared"/>
+    </sorting>
   </inputs>
   <preset>
     <input name="UAPredateWeaponLight"><btn name="kU"/></input>
     <input name="UAPredateWeaponLightMode"><btn name="kK"/></input>
+    <input name="UAPredatePEQWhite"><btn name="k5"/></input>
+    <input name="UAPredatePEQLaser"><btn name="k6"/></input>
+    <input name="UAPredatePEQMode"><btn name="k7"/></input>
+    <input name="UAPredatePEQInfrared"><btn name="k8"/></input>
     <input name="UAPredateToggleNVG"><btn name="kN"/></input>
     <input name="UAPredateLowReady"><btn name="mWheelDown"/></input>
     <input name="UAPredateHighReady"><btn name="mWheelUp"/></input>

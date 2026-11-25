@@ -9,6 +9,7 @@ enum PredateWeaponModuleMode
 class PredateWeaponModule extends UniversalLight
 {
     protected int m_PredateMode;
+    protected bool m_PredateSelectedInfraredLaser;
 #ifndef SERVER
     protected ScriptedLightBase m_PredateEmitter;
     protected Shape m_PredateInfraredBeam;
@@ -30,9 +31,48 @@ class PredateWeaponModule extends UniversalLight
 
     void CycleMode(PlayerBase player)
     {
-        m_PredateMode = (m_PredateMode + 1) % (PredateWeaponModuleMode.INFRARED_LIGHT + 1);
-        SetSynchDirty();
+        SelectMode((m_PredateMode + 1) % (PredateWeaponModuleMode.INFRARED_LIGHT + 1));
         ReportMode(player);
+    }
+
+    protected void SelectMode(int mode)
+    {
+        m_PredateMode = mode;
+        if (mode == PredateWeaponModuleMode.VISIBLE_LASER || mode == PredateWeaponModuleMode.INFRARED_LASER)
+            m_PredateSelectedInfraredLaser = mode == PredateWeaponModuleMode.INFRARED_LASER;
+        SetSynchDirty();
+    }
+
+    protected int SelectedLaserMode()
+    {
+        if (m_PredateSelectedInfraredLaser) return PredateWeaponModuleMode.INFRARED_LASER;
+        return PredateWeaponModuleMode.VISIBLE_LASER;
+    }
+
+    override bool PredateSupportsWeaponControl(int control)
+    {
+        return control >= PredateWeaponControl.WHITE_LIGHT && control <= PredateWeaponControl.INFRARED_LIGHT;
+    }
+
+    override void PredateUseWeaponControl(PlayerBase player, int control)
+    {
+        if (control == PredateWeaponControl.LASER_MODE)
+        {
+            m_PredateSelectedInfraredLaser = !m_PredateSelectedInfraredLaser;
+            if (m_PredateMode == PredateWeaponModuleMode.VISIBLE_LASER || m_PredateMode == PredateWeaponModuleMode.INFRARED_LASER)
+                SelectMode(SelectedLaserMode());
+            if (m_PredateSelectedInfraredLaser) player.PredateWeaponModuleMessage("Laser Mode IR");
+            else player.PredateWeaponModuleMessage("Laser Mode Visible");
+            return;
+        }
+
+        int mode = PredateWeaponModuleMode.WHITE_LIGHT;
+        if (control == PredateWeaponControl.LASER_POWER) mode = SelectedLaserMode();
+        else if (control == PredateWeaponControl.INFRARED_LIGHT) mode = PredateWeaponModuleMode.INFRARED_LIGHT;
+        bool changeWhilePowered = m_PredateMode != mode && GetCompEM().IsSwitchedOn();
+        SelectMode(mode);
+        if (changeWhilePowered) ReportMode(player);
+        else TogglePower(player);
     }
 
     void TogglePower(PlayerBase player)
@@ -82,6 +122,7 @@ class PredateWeaponModule extends UniversalLight
         if (!super.OnStoreLoad(ctx, version)) return false;
         if (!ctx.Read(m_PredateMode)) return false;
         m_PredateMode = Math.Clamp(m_PredateMode, PredateWeaponModuleMode.WHITE_LIGHT, PredateWeaponModuleMode.INFRARED_LIGHT);
+        m_PredateSelectedInfraredLaser = m_PredateMode == PredateWeaponModuleMode.INFRARED_LASER;
         return true;
     }
 

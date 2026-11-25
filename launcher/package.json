@@ -1,7 +1,7 @@
 {
   "name": "predate-launcher",
   "version": "0.3.0",
-  "description": "PREDATE singleplayer launcher",
+  "description": "PREDATE",
   "author": "PREDATE contributors",
   "private": true,
   "type": "commonjs",
@@ -33,6 +33,7 @@
   "build": {
     "appId": "com.predate.launcher",
     "productName": "PREDATE",
+    "copyright": "",
     "asar": true,
     "directories": {
       "output": "release"

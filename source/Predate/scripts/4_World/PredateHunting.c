@@ -210,12 +210,12 @@ modded class eAIBase
     void PredateApplyRoute(PredateHunterState state)
     {
         m_PredateStrategicControl = true;
-        m_PredateRouteActive = state.HasGoal;
         m_PredateWatchPoint = state.WatchPoint;
         m_PredateWatchUntil = state.WatchUntil;
         // Observation stops need the same active perception as travel.
         if (GetIsSimulationDisabled()) PredateActorSimulation.SetHeld(this, false);
         if (m_PredateAppliedGoal == state.GoalRevision) return;
+        m_PredateRouteActive = state.HasGoal;
         int previousRevision = m_PredateAppliedGoal;
         m_PredateLookStep = 0;
         m_PredateNextLookAt = GetGame().GetTime() + Math.RandomIntInclusive(700, 1200);
@@ -253,7 +253,8 @@ modded class eAIBase
             if (!legal)
             {
                 m_PredateRouteActive = false;
-                PredateHunterBrain.Hold(state, "reassess", "Proposed route leaves traversable map terrain");
+                // If this detour cannot be planned, let the stall timer try the other side.
+                if (!state.HasDetour) PredateHunterBrain.Hold(state, "reassess", "Proposed route leaves traversable map terrain");
             }
         }
         m_PredateAppliedGoal = state.GoalRevision;

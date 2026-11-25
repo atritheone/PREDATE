@@ -214,6 +214,10 @@ modded class ActionConstructor
         super.RegisterActions(actions);
         actions.Insert(ActionPredateWeaponLightMode);
         actions.Insert(ActionPredateWeaponLightPower);
+        actions.Insert(ActionPredatePEQWhite);
+        actions.Insert(ActionPredatePEQLaser);
+        actions.Insert(ActionPredatePEQMode);
+        actions.Insert(ActionPredatePEQInfrared);
     }
 }
 
@@ -224,5 +228,9 @@ modded class Weapon_Base
         super.SetActions();
         AddAction(ActionPredateWeaponLightMode);
         AddAction(ActionPredateWeaponLightPower);
+        AddAction(ActionPredatePEQWhite);
+        AddAction(ActionPredatePEQLaser);
+        AddAction(ActionPredatePEQMode);
+        AddAction(ActionPredatePEQInfrared);
     }
 }

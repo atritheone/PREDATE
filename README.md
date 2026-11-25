@@ -82,7 +82,7 @@ Head-mounted NVGs blur the view through standard weapon scopes. Tap <kbd>N</kbd>
 
 With active goggles, entering a night vision scope plays the goggles-off cue. Leaving the scope plays the goggles-on cue if the goggles are still active.
 
-The Workshop weapon module reports mode and power changes in the same bottom-left HUD log as fire mode and zeroing. It emits one laser at a time. The visible laser and white light work with unaided vision. The IR laser and illuminator require active night vision. Keys <kbd>5</kbd> through <kbd>8</kbd> control the module when it is fitted to the weapon in your hands. Hunts using the original PREDATE module continue to use <kbd>K</kbd> to select a mode and <kbd>U</kbd> to toggle it.
+Keys <kbd>5</kbd> through <kbd>8</kbd> control the supported light and laser modes on the weapon in your hands, including sidearms. A white-light-only attachment uses <kbd>5</kbd>. Mode and power changes appear in the same bottom-left HUD log as fire mode and zeroing. The IR laser and illuminator require active night vision. The original PREDATE module also supports <kbd>K</kbd> to select a mode and <kbd>U</kbd> to toggle it.
 
 Weapon lights and lasers stop emitting when holstered. Drawing the weapon restores the settings you left on that weapon.
 

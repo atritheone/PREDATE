@@ -2,6 +2,7 @@ class PredateMapOverlay
 {
     static const float BEARING_LABEL_OFFSET = 22;
     static const float BEARING_LABEL_WIDTH = 68;
+    static const float MAP_BUTTON_CLEARANCE = 46;
     static const int DIAL_COLOR = 0xF04B4E52;
     static const float INNER_CLEARANCE = 76;
     static const float MIN_LANE_SPACING = 18;
@@ -38,11 +39,13 @@ class PredateMapOverlay
     float m_LabelHeight;
     float m_Width;
     float m_Height;
+    float m_PulseBottom;
     float m_Left;
     float m_Top;
     float m_Scale;
     float m_DialRadius;
     vector m_PlayerPoint;
+    vector m_DialCenter;
     int m_LabelLockSlot = -1;
 
     static void LoadStyles()
@@ -115,7 +118,7 @@ class PredateMapOverlay
     vector RadialPoint(float bearing, float radius)
     {
         float angle = bearing * Math.DEG2RAD;
-        return m_PlayerPoint + Vector(radius * Math.Sin(angle), -radius * Math.Cos(angle), 0);
+        return m_DialCenter + Vector(radius * Math.Sin(angle), -radius * Math.Cos(angle), 0);
     }
 
     void DrawPulse(PredateBearingPulse pulse, float radius, bool selected, bool hovered = false)
@@ -137,10 +140,10 @@ class PredateMapOverlay
             width = 6 * m_Scale;
             outline = 0xFFF5FAFF;
             priority = 103;
-            m_Strokes.DrawArc(m_PlayerPoint, pulse.Start, radius, width + 6 * m_Scale, LABEL_BACKGROUND, 102);
+            m_Strokes.DrawArc(m_DialCenter, pulse.Start, radius, width + 6 * m_Scale, LABEL_BACKGROUND, 102);
         }
-        m_Strokes.DrawArc(m_PlayerPoint, pulse.Start, radius, width + 4 * m_Scale, outline, priority);
-        m_Strokes.DrawArc(m_PlayerPoint, pulse.Start, radius, width, fill, priority + 1);
+        m_Strokes.DrawArc(m_DialCenter, pulse.Start, radius, width + 4 * m_Scale, outline, priority);
+        m_Strokes.DrawArc(m_DialCenter, pulse.Start, radius, width, fill, priority + 1);
     }
 
     void DrawDialRing(float width, int color)
@@ -340,7 +343,7 @@ class PredateMapOverlay
     {
         float halfWidth = LabelHalfWidth(slot);
         float halfHeight = m_LabelHeight / 2;
-        if (center[0] < halfWidth || center[0] + halfWidth > m_Width || center[1] < halfHeight || center[1] + halfHeight > m_Height) return false;
+        if (center[0] < halfWidth || center[0] + halfWidth > m_Width || center[1] < halfHeight || center[1] + halfHeight > m_PulseBottom) return false;
         vector fromPlayer = center - m_PlayerPoint;
         if (Math.AbsFloat(fromPlayer[0]) < halfWidth + 14 * m_Scale && Math.AbsFloat(fromPlayer[1]) < halfHeight + 16 * m_Scale) return false;
         vector first = m_LabelAnchors[slot];
@@ -380,11 +383,11 @@ class PredateMapOverlay
             foreach (float attachment : attachmentOffsets)
             {
                 vector point = RadialPoint(middle + attachment, m_ArcRadii[slot]);
-                if (point[0] < 0 || point[0] > m_Width || point[1] < 0 || point[1] > m_Height) continue;
+                if (point[0] < 0 || point[0] > m_Width || point[1] < 0 || point[1] > m_PulseBottom) continue;
                 m_LabelAnchors[slot] = point;
                 foreach (float angle : directions)
                 {
-                    vector direction = RadialPoint(middle + angle, 1) - m_PlayerPoint;
+                    vector direction = RadialPoint(middle + angle, 1) - m_DialCenter;
                     float horizontal = LabelHalfWidth(slot) / Math.Max(0.01, Math.AbsFloat(direction[0]));
                     float vertical = m_LabelHeight / 2 / Math.Max(0.01, Math.AbsFloat(direction[1]));
                     vector center = point + direction * (Math.Min(horizontal, vertical) + reach * m_Scale);
@@ -433,7 +436,7 @@ class PredateMapOverlay
         float halfWidth = width * 0.5;
         float halfHeight = m_LabelHeight * 0.5;
         int columns = Math.Floor(m_Width / column);
-        int rows = Math.Floor(m_Height / row);
+        int rows = Math.Floor(m_PulseBottom / row);
         for (int across = 0; across < columns; across++)
         {
             for (int down = 0; down < rows; down++)
@@ -485,10 +488,10 @@ class PredateMapOverlay
             m_PlacedSlots.Clear();
             waiting.Copy(m_ActiveSlots);
             float desired = waiting.Count() + 8;
-            int rows = Math.Max(1, Math.Ceil(Math.Sqrt(desired * m_Height * width / (m_Width * m_LabelHeight))));
+            int rows = Math.Max(1, Math.Ceil(Math.Sqrt(desired * m_PulseBottom * width / (m_Width * m_LabelHeight))));
             int columns = Math.Ceil(desired / rows);
             float fitWidth = m_Width / (columns * (width + 3 * m_Scale));
-            float fitHeight = m_Height / (rows * (m_LabelHeight + 3 * m_Scale));
+            float fitHeight = m_PulseBottom / (rows * (m_LabelHeight + 3 * m_Scale));
             m_LabelFit = Math.Min(1, Math.Min(fitWidth, fitHeight) * 0.99);
             m_LabelHeight *= m_LabelFit;
             width *= m_LabelFit;
@@ -548,7 +551,7 @@ class PredateMapOverlay
         if (!state) return;
         vector click = Vector(x - m_Left, y - m_Top, 0);
         if (click[0] < 0 || click[0] > m_Width || click[1] < 0 || click[1] > m_Height) return;
-        vector offset = click - m_PlayerPoint;
+        vector offset = click - m_DialCenter;
         float distance = offset.Length();
         float bearing = PredateMath.WrapHeading(Math.Atan2(offset[0], -offset[1]) * Math.RAD2DEG);
         float tolerance = 9 * m_Scale;
@@ -629,12 +632,19 @@ class PredateMapOverlay
         m_PlayerPoint = playerPoint;
         DrawHistory(state);
         SizePulseLabels(scale);
-        // Set the radius from the viewport. The map clips the dial when the player is off-centre.
-        float horizontalRoom = m_Width / 2 - (BEARING_LABEL_OFFSET + BEARING_LABEL_WIDTH / 2) * scale;
-        float verticalRoom = m_Height / 2 - (BEARING_LABEL_OFFSET + 12.5) * scale;
-        float radius = Math.Max(60 * scale, Math.Min(horizontalRoom, verticalRoom));
+        // Keep the terrain and player arrow in real map coordinates. Shift only the fixed-size dial at the edges.
+        float buttons = Math.Min(MAP_BUTTON_CLEARANCE * scale, m_Height / 4);
+        m_PulseBottom = m_Height - buttons;
+        float horizontalPad = Math.Min((BEARING_LABEL_OFFSET + BEARING_LABEL_WIDTH / 2) * scale, m_Width / 2);
+        float verticalPad = Math.Min((BEARING_LABEL_OFFSET + 12.5) * scale, m_Height / 2 - buttons);
+        float radius = Math.Min(m_Width / 2 - horizontalPad, m_Height / 2 - buttons - verticalPad);
+        float marginX = radius + horizontalPad;
+        float marginY = radius + verticalPad;
+        m_DialCenter = Vector(Math.Clamp(playerPoint[0], marginX, m_Width - marginX), Math.Clamp(playerPoint[1], marginY, m_PulseBottom - marginY), 0);
         if (moved || radius != m_DialRadius) BuildDial(radius);
         DrawDial(radius);
+        if (vector.DistanceSq(m_PlayerPoint, m_DialCenter) > 4)
+            m_Canvas.DrawLine(m_PlayerPoint[0], m_PlayerPoint[1], m_DialCenter[0], m_DialCenter[1], 1.5 * scale, 0xA0785B25);
         if (state && state.Pulses.Count() > 0)
         {
             // The wire order is farthest to nearest. Any overlapping nearer arc

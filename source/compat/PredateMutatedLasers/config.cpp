@@ -16,7 +16,6 @@ class CfgMods
         dir = "PredateMutatedLasers";
         name = "PREDATE MutatedLasers Compatibility";
         type = "mod";
-        inputs = "PredateMutatedLasers/inputs.xml";
         dependencies[] = {"Game", "World", "Mission"};
         class defs
         {

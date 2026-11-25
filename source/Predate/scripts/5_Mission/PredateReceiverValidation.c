@@ -177,6 +177,13 @@ class PredateReceiverValidation
                 menu.Update(0);
                 result.Check(vector.Distance(centeredArrow, overlay.m_PlayerPoint) > 20, "panning moves the map marker");
                 result.Check(Math.AbsFloat(overlay.m_ArcRadii[pulseSlot] - arcRadius) < 0.1, "panning does not resize the bearing dial");
+                vector dialCenter = overlay.m_DialCenter;
+                float dialRadius = overlay.m_DialRadius;
+                result.Check(dialCenter[0] - dialRadius >= 0 && dialCenter[0] + dialRadius <= width && dialCenter[1] - dialRadius >= 0 && dialCenter[1] + dialRadius <= height, "panning keeps the entire bearing dial in the pane");
+                vector arc = overlay.m_ArcCenters[pulseSlot];
+                array<string> edgeHits = {};
+                overlay.HitPulses(overlay.m_Left + arc[0], overlay.m_Top + arc[1], state, edgeHits);
+                result.Check(edgeHits.Find(pulse.OperatorId) >= 0, "the arc remains selectable after panning near the edge");
                 menu.m_Map.SetMapPos(player.GetPosition());
                 menu.Update(0);
                 CheckOverlappingPulses(result, menu, player);
@@ -363,7 +370,7 @@ class PredateReceiverValidation
         {
             TextWidget nameplate = overlay.m_Labels[placed];
             vector namePoint = overlay.m_LabelPositions[placed];
-            vector anchorOffset = overlay.m_LabelAnchors[placed] - overlay.m_PlayerPoint;
+            vector anchorOffset = overlay.m_LabelAnchors[placed] - overlay.m_DialCenter;
             overlay.PreviewPulse(namePoint[0] + overlay.m_Left, namePoint[1] + overlay.m_Top, example);
             bool clear = true;
             foreach (int shown : overlay.m_ActiveSlots)

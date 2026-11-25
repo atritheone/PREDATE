@@ -21,10 +21,18 @@ modded class MM_LaserSight_Base
         return MM_LaserSight_Base.Cast(item.FindAttachmentBySlotName("weaponFlashlight"));
     }
 
-    void PredateControlPEQ(PlayerBase player, int control)
+    override bool PredateSupportsWeaponControl(int control)
+    {
+        return control >= PredateWeaponControl.WHITE_LIGHT && control <= PredateWeaponControl.INFRARED_LIGHT;
+    }
+
+    override void PredateUseWeaponControl(PlayerBase player, int control)
     {
         ComponentEnergyManager energy = GetCompEM();
-        if ((control == 5 && !m_MM_FlashModeSynch || control == 6 && !m_MM_LaserModeSynch || control == 8 && !m_PredateIRLight) && (!energy || !energy.CanWork()))
+        bool enablingWhiteLight = control == PredateWeaponControl.WHITE_LIGHT && !m_MM_FlashModeSynch;
+        bool enablingLaser = control == PredateWeaponControl.LASER_POWER && !m_MM_LaserModeSynch;
+        bool enablingIlluminator = control == PredateWeaponControl.INFRARED_LIGHT && !m_PredateIRLight;
+        if ((enablingWhiteLight || enablingLaser || enablingIlluminator) && (!energy || !energy.CanWork()))
         {
             player.PredateWeaponModuleMessage("Weapon module needs a working battery.");
             return;
@@ -34,21 +42,21 @@ modded class MM_LaserSight_Base
         bool active;
         switch (control)
         {
-            case 5:
+            case PredateWeaponControl.WHITE_LIGHT:
                 m_MM_FlashModeSynch = !m_MM_FlashModeSynch;
                 m_MM_FlashStrobeSynch = false;
                 status = "White Light";
                 active = m_MM_FlashModeSynch;
                 break;
-            case 6:
+            case PredateWeaponControl.LASER_POWER:
                 m_MM_LaserModeSynch = !m_MM_LaserModeSynch;
                 status = PredateLaserModeName();
                 active = m_MM_LaserModeSynch;
                 break;
-            case 7:
+            case PredateWeaponControl.LASER_MODE:
                 m_PredateLaserIR = !m_PredateLaserIR;
                 break;
-            case 8:
+            case PredateWeaponControl.INFRARED_LIGHT:
                 m_PredateIRLight = !m_PredateIRLight;
                 status = "IR Illuminator";
                 active = m_PredateIRLight;
@@ -56,7 +64,7 @@ modded class MM_LaserSight_Base
         }
         m_MM_VisibleBeamsEnabledSynch = !m_PredateLaserIR;
         MM_EnsureEnergyState_Server();
-        if (control == 7)
+        if (control == PredateWeaponControl.LASER_MODE)
         {
             if (m_PredateLaserIR) player.PredateWeaponModuleMessage("Laser Mode IR");
             else player.PredateWeaponModuleMessage("Laser Mode Visible");

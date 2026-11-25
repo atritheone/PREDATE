@@ -145,7 +145,7 @@ class PredateHuntRuntime
             int routeSlot = (routeCursor + offset) % count;
             PredateHuntParticipant hunter = participants[routeSlot];
             if (!hunter.Receiver) continue;
-            if (Think(session, hunter, live, playerId, now, routeBudget > 0, hunter.Actor == playerTarget))
+            if (Think(session, player, hunter, live, playerId, now, routeBudget > 0, hunter.Actor == playerTarget))
             {
                 routeBudget--;
                 if (routeBudget == 0) session.m_PredateRouteCursor = routeSlot + 1;
@@ -161,7 +161,7 @@ class PredateHuntRuntime
         return targetId != "" && live.Find(targetId, subjectPosition) && PredateSignalRules.FinalApproach(observer.Position, subjectPosition);
     }
 
-    static bool Think(PredateSession session, PredateHuntParticipant hunter, map<string, vector> live, string playerId, float now, bool canPlan, bool playerCloseApproach)
+    static bool Think(PredateSession session, PlayerBase player, PredateHuntParticipant hunter, map<string, vector> live, string playerId, float now, bool canPlan, bool playerCloseApproach)
     {
         eAIBase actor = eAIBase.Cast(hunter.Actor);
         if (!actor || !actor.IsAlive()) return false;
@@ -185,7 +185,10 @@ class PredateHuntRuntime
             hunter.Hunter.WatchUntil = 0;
         }
         actor.PredateSetFinalApproach(finalApproach && !combat && !recover);
+        bool hadRoute = hunter.Hunter.HasGoal;
         PredateHunterBrain.Step(hunter.Hunter, position, now, hunter.Memory, track, combat, recover, now < hunter.InterceptedUntil, session.m_WorldState.PlayerLastDeathAt, playerId, subject, receiver.Replanned, limited, finalApproach);
+        if (hadRoute && hunter.Hunter.Mode == "reassess" && hunter.Hunter.RouteFailures == 3)
+            actor.PredateQueueRockRecovery(hunter.Hunter, previousMode, position, now);
         if (track && track.LastSample && track.LastSample.ObservedAt == now && session.m_PeerRoster)
             session.m_PeerRoster.MarkInterception(session, track.SubjectId, now);
         else if (track && track.LastSample && track.LastSample.ObservedAt == now && track.SubjectId == "player-01")
@@ -198,6 +201,7 @@ class PredateHuntRuntime
         }
         else
         {
+            if (canPlan && actor.PredateTryRockRecovery(player, hunter.Hunter, position, now)) return true;
             if (canPlan && !limited && !hunter.Hunter.HasGoal && receiver.TargetId == "" && now >= hunter.Hunter.ScoutAt && now >= hunter.Hunter.WatchUntil)
             {
                 Scout(hunter.Hunter, position, now);
