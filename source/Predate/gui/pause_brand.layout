@@ -41,7 +41,7 @@ FrameWidgetClass PredatePauseBrand {
   FrameWidgetClass PredatePauseStats {
    ignorepointer 1
    position 0.58 0.043
-   size 0.39 78
+   size 0.39 83
    hexactpos 0
    vexactpos 0
    hexactsize 0
@@ -65,7 +65,7 @@ FrameWidgetClass PredatePauseBrand {
     }
     TextWidgetClass PredatePauseScore {
      ignorepointer 1
-     position 0 32
+     position 0 37
      size 1 46
      hexactpos 0
      vexactpos 1

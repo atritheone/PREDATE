@@ -402,6 +402,8 @@ modded class MissionGameplay
 
         m_PredateRedeployCovered = false;
         m_PredateRedeployCorpse = null;
+        // The mission HUD survives respawn, while the new player's pill notifier starts inactive.
+        if (m_Hud) m_Hud.DisplayBadge(NTFKEY_PILLS, eBadgeLevel.NONE);
         Continue();
         GetGame().GetUIManager().ShowUICursor(false);
         GetDayZGame().PredateSuppressRedeployCursor(false);

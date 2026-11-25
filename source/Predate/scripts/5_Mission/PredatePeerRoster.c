@@ -310,7 +310,11 @@ class PredatePeerRoster
         {
             PredateSignalTrack track = peer.State.PlayerReceiver;
             bool sampled = PredateSignalService.SamplePlayerPulse(track, player, peer.Actor, now, session.m_HuntConfig);
-            if (sampled && track.Selected && track.LastSample) peer.State.InterceptedUntil = now + PredateBearingPulse.INTERVAL + 30;
+            if (sampled && track.Selected && track.LastSample)
+            {
+                peer.State.InterceptedUntil = now + PredateBearingPulse.INTERVAL + 30;
+                if (session.m_Score) session.m_Score.RecordPulse(player, peer.Actor, track.LastSample);
+            }
         }
     }
 

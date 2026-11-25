@@ -54,8 +54,21 @@ class PredateRivalTests
         float now = 100;
         patient.SetHealth("", "Blood", patient.GetMaxHealth("", "Blood") * 0.6);
         TestTreatment(patient, "SalineBagIV", eModifiers.MDF_SALINE, now + 30);
-        patient.SetHealth("", "Health", patient.GetMaxHealth("", "Health") * 0.5);
+        float maxHealth = patient.GetMaxHealth("", "Health");
+        patient.SetHealth("", "Health", maxHealth * 0.72);
+        Check(!patient.PredateNeedsMedicine("Morphine", now + 60), "keeps morphine for later when low blood limits recovery from a moderate wound");
+        patient.SetHealth("", "Health", maxHealth * 0.5);
+        Check(patient.PredateNeedsMedicine("Morphine", now + 60), "still considers morphine for a severe wound with low blood");
+        patient.SetHealth("", "Blood", patient.GetMaxHealth("", "Blood"));
+        patient.SetHealth("", "Health", maxHealth * 0.9);
+        Check(!patient.PredateNeedsMedicine("Morphine", now + 60), "keeps morphine for later when a wound is minor");
+        patient.SetHealth("", "Health", maxHealth * 0.72);
         TestTreatment(patient, "Morphine", eModifiers.MDF_MORPHINE, now + 60);
+        Check(!patient.PredateNeedsMedicine("Morphine", now + 81), "does not inject again while morphine is active");
+        ModifierBase morphine = patient.GetModifiersManager().GetModifier(eModifiers.MDF_MORPHINE);
+        float healthBeforeTick = patient.GetHealth("", "Health");
+        if (morphine) morphine.Tick(1.01);
+        Check(patient.GetHealth("", "Health") > healthBeforeTick, "a morphine dose restores operator health");
         GetGame().ObjectDelete(patient);
         Report();
     }

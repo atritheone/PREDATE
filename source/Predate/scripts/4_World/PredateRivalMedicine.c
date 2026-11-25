@@ -42,7 +42,15 @@ modded class eAIBase
         if (type == "SalineBagIV")
             return !IsBleeding() && GetHealth01("", "Blood") < 0.72 && !modifiers.IsModifierActive(eModifiers.MDF_SALINE);
         if (type == "Morphine")
-            return (GetBrokenLegs() == eBrokenLegs.BROKEN_LEGS || GetHealth01("", "Health") < 0.60) && !modifiers.IsModifierActive(eModifiers.MDF_MORPHINE);
+        {
+            if (modifiers.IsModifierActive(eModifiers.MDF_MORPHINE)) return false;
+            float health = GetHealth01("", "Health");
+            if (GetBrokenLegs() == eBrokenLegs.BROKEN_LEGS || health < 0.60) return true;
+            if (health > 0.75) return false;
+            // Use an injector for moderate wounds if the current blood level supports meaningful recovery.
+            MorphineMdfr morphine = MorphineMdfr.Cast(modifiers.GetModifier(eModifiers.MDF_MORPHINE));
+            return morphine && morphine.PredateExpectedBonusHealing(this) >= 15.0;
+        }
         return false;
     }
 
@@ -77,17 +85,17 @@ modded class eAIBase
         array<EntityAI> inventory = {};
         GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
         ItemBase fluids;
-        ItemBase painRelief;
+        ItemBase injector;
         foreach (EntityAI entity : inventory)
         {
             ItemBase available = ItemBase.Cast(entity);
             if (!available || available.IsRuined()) continue;
             string itemType = available.GetType();
             if (saline && itemType == "SalineBagIV") fluids = available;
-            else if (morphine && itemType == "Morphine") painRelief = available;
+            else if (morphine && itemType == "Morphine") injector = available;
         }
         if (fluids) m_PredateTreatment = fluids;
-        else m_PredateTreatment = painRelief;
+        else m_PredateTreatment = injector;
         if (!m_PredateTreatment) return;
         m_PredateTreatmentEnds = now + 2.5;
         if (m_PredateTreatment == fluids) m_PredateTreatmentEnds = now + UATimeSpent.SALINE;

@@ -84,6 +84,21 @@ class PredateScoreService
         RefreshTracking(player, life);
     }
 
+    void RecordPulse(PlayerBase player, eAIBase actor, PredateObservation pulse)
+    {
+        PredateWorldState state = m_Session.m_WorldState;
+        if (!player.IsPlayerLoaded() || state.PlayerAwaitingRedeploy || !actor || !actor.m_PredateOperatorRecord) return;
+        PredateLifeScore life = Life(state.PlayerLife, true);
+        if (!life || life.EndReason != "") return;
+        PredateOperatorRecord record = actor.m_PredateOperatorRecord;
+        PredatePursuitScore encounter = life.Find(record.Id, record.Deployment, true);
+        if (pulse.Serial <= encounter.LastPulseSerial) return;
+        encounter.BeginTracking(state.SimulationSeconds, life.Shots);
+        encounter.Pulses++;
+        encounter.LastPulseSerial = pulse.Serial;
+        m_DirtyLives.Insert(life.Life);
+    }
+
     void RefreshTracking(PlayerBase player, PredateLifeScore life, bool flush = false)
     {
         PredateWorldState state = m_Session.m_WorldState;
@@ -114,18 +129,8 @@ class PredateScoreService
             if (!encounter.ReachedContact && (encounter.Outcome == "" || encounter.Outcome == "Signal lost"))
             {
                 next = encounter;
-                if (!next.Tracked)
-                {
-                    next.Tracked = true;
-                    next.LockStartedAt = state.SimulationSeconds;
-                    next.RoundsAtLock = life.Shots;
-                }
+                next.BeginTracking(state.SimulationSeconds, life.Shots);
                 next.Outcome = "";
-                if (signal.LastSample && signal.LastSample.Serial > next.LastPulseSerial)
-                {
-                    next.Pulses++;
-                    next.LastPulseSerial = signal.LastSample.Serial;
-                }
             }
         }
         m_Player = player;

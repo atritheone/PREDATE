@@ -253,8 +253,13 @@ class PredateSignalService
     {
         PredateWorldState state = s.m_WorldState;
         float now = state.SimulationSeconds;
-        bool sampled = SamplePlayerPulse(state.PlayerSignal, player, s.m_HuntBot, now, s.m_HuntConfig);
-        if (sampled && state.PlayerSignal.Selected && state.PlayerSignal.LastSample) state.BotInterceptionUntil = now + PredateBearingPulse.INTERVAL + 30;
+        PredateSignalTrack track = state.PlayerSignal;
+        bool sampled = SamplePlayerPulse(track, player, s.m_HuntBot, now, s.m_HuntConfig);
+        if (sampled && track.Selected && track.LastSample)
+        {
+            state.BotInterceptionUntil = now + PredateBearingPulse.INTERVAL + 30;
+            if (s.m_Score) s.m_Score.RecordPulse(player, s.m_HuntBot, track.LastSample);
+        }
         SyncReceiverProgress(s);
         if (!s.m_HuntConfig.EnableSharedSignals) return;
         player.m_PredateSignatureRegistered = true;

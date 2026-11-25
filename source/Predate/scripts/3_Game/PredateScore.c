@@ -31,6 +31,14 @@ class PredatePursuitScore
     int RangePoints;
     int KillPoints;
 
+    void BeginTracking(float now, int shots)
+    {
+        if (Tracked) return;
+        Tracked = true;
+        LockStartedAt = now;
+        RoundsAtLock = shots;
+    }
+
     void Award()
     {
         Outcome = "Converted";

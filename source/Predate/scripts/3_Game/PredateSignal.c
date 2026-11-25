@@ -324,6 +324,7 @@ class PredateSignalRules
         int jitter = Math.Round(Math.Clamp(randomUnit, -1, 1) * error);
         int bearing = (center + jitter + 360) % 360;
         PredateObservation observation = new PredateObservation;
+        observation.Serial = track.NextSampleSerial;
         observation.EventKey = "signal-" + track.OwnerId + "-" + track.SubjectId + "-" + track.NextSampleSerial;
         observation.ObserverId = track.OwnerId;
         observation.SubjectId = track.SubjectId;
