@@ -1,4 +1,5 @@
 """Project paths and helper invocation for source and packaged launchers."""
+from contextlib import contextmanager
 import os
 from pathlib import Path
 import sys
@@ -49,22 +50,41 @@ def command(module, *arguments, windowless=False):
     return [str(executable), str(ROOT / "scripts" / (module + ".py")), *map(str, arguments)]
 
 
-def spawn(arguments, **options):
-    environment = dict(os.environ)
-    if getattr(sys, "frozen", False):
-        # These helpers outlive the portable UI/bridge and need their own bundle.
-        environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
-    options.setdefault("env", environment)
-    if not getattr(sys, "frozen", False):
-        return subprocess.Popen(arguments, **options)
+@contextmanager
+def _spawn_environment():
     # Do not let bundled Python DLLs alter the game/Steam DLL search path.
     with _spawn_lock:
+        if not getattr(sys, "frozen", False):
+            yield
+            return
         kernel = ctypes.WinDLL("kernel32", use_last_error=True)
         kernel.SetDllDirectoryW.argtypes = [ctypes.c_wchar_p]
         old_path = ctypes.create_unicode_buffer(32768)
         kernel.GetDllDirectoryW(32768, old_path)
         kernel.SetDllDirectoryW(None)
         try:
-            return subprocess.Popen(arguments, **options)
+            yield
         finally:
             kernel.SetDllDirectoryW(old_path.value or None)
+
+
+def spawn(arguments, **options):
+    environment = dict(os.environ)
+    if getattr(sys, "frozen", False):
+        # These helpers outlive the portable UI/bridge and need their own bundle.
+        environment["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+    options.setdefault("env", environment)
+    with _spawn_environment():
+        return subprocess.Popen(arguments, **options)
+
+
+def spawn_server(arguments, cwd, desktop, stdout=None):
+    from platform_win import start_on_desktop
+
+    with _spawn_environment():
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        previous = kernel.SetErrorMode(0x0001 | 0x0002 | 0x8000)
+        try:
+            return start_on_desktop(kernel, arguments, cwd, desktop, stdout)
+        finally:
+            kernel.SetErrorMode(previous)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 import ctypes
 from ctypes import wintypes
 from datetime import datetime
@@ -23,7 +24,8 @@ import os
 from xml.etree import ElementTree
 import maps
 
-from app_runtime import ROOT, command as helper_command, saves_directory, spawn
+from app_runtime import ROOT, command as helper_command, saves_directory, spawn, spawn_server
+from platform_win import private_server_desktop
 from release import DEPENDENCIES
 WORLD = ROOT / "world"
 PROFILE = WORLD / "profile"
@@ -428,52 +430,50 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
         args.append("-predateDevelopment")
         if SCENARIO: args.append("-predateScenario=" + SCENARIO)
     log = PROFILE / ("console-" + timestamp() + ".log") if diagnostics else None
-    if log:
-        with log.open("wb") as output:
-            process = launch_hidden(args, SERVER, output)
-    else:
-        process = launch_hidden(args, SERVER)
     log_hint = str(log or PROFILE)
-    identity = process_identity(process.pid)
-    if identity is None:
-        raise RuntimeError(f"Server exited during startup. Inspect {log_hint}")
-    if session_id: identity["session_id"] = session_id
-    from session_store import atomic_json
-    atomic_json(STATE, identity)
-    process_identity_only = {key: identity[key] for key in ("pid", "created", "executable")}
-    guard_process(process_identity_only, PROFILE, PROFILE / "PredateFailure.json", STATE)
-    print("Starting local world. Initial world generation can take a few minutes...", flush=True)
-    if on_started: on_started()
-    deadline = time.monotonic() + 180
-    while time.monotonic() < deadline:
-        failure = process_failure(identity)
-        if failure:
-            raise RuntimeError(f"DayZ {failure['kind']} error: {failure['message']} (failed process closed; log: {failure['log']})")
-        if not running():
-            raise RuntimeError(f"Server exited. Inspect {log_hint}")
-        if cancelled and cancelled():
-            stop()
-            raise RuntimeError("Launch cancelled; the server was stopped")
-        if session_id:
-            status = native_status()
-            if status.get("SessionId") == session_id:
-                if status.get("Error"): raise RuntimeError(status["Error"])
-                if status.get("Ready") and status.get("Phase") == "ready":
-                    actual_map = status.get("WorldName", maps.DEFAULT_MAP).lower()
-                    if actual_map != TERRAIN.id:
-                        raise RuntimeError(f"DayZ opened {actual_map} instead of {TERRAIN.name}.")
-                    print(f"PREDATE mission and operator are ready ({PROFILE_NAME}).", flush=True)
-                    return
-            if progress: progress("Loading the world and restoring its operator...")
-            time.sleep(0.5)
-            continue
-        try:
-            rcon("players", timeout=1)
-            print(f"Local world ({PROFILE_NAME}) is accepting connections at 127.0.0.1:{PORT}.", flush=True)
-            return
-        except (OSError, RuntimeError, TimeoutError):
-            time.sleep(2)
-    raise RuntimeError("Server is still running but readiness timed out. Inspect world/profile logs.")
+    with private_server_desktop() as desktop:
+        with (log.open("wb") if log else nullcontext()) as output:
+            pid = spawn_server(args, SERVER, desktop, output)
+        identity = process_identity(pid)
+        if identity is None:
+            raise RuntimeError(f"Server exited during startup. Inspect {log_hint}")
+        if session_id: identity["session_id"] = session_id
+        from session_store import atomic_json
+        atomic_json(STATE, identity)
+        process_identity_only = {key: identity[key] for key in ("pid", "created", "executable")}
+        guard_process(process_identity_only, PROFILE, PROFILE / "PredateFailure.json", STATE)
+        print("Starting local world. Initial world generation can take a few minutes...", flush=True)
+        if on_started: on_started()
+        deadline = time.monotonic() + 180
+        while time.monotonic() < deadline:
+            failure = process_failure(identity)
+            if failure:
+                raise RuntimeError(f"DayZ {failure['kind']} error: {failure['message']} (failed process closed; log: {failure['log']})")
+            if not running():
+                raise RuntimeError(f"Server exited. Inspect {log_hint}")
+            if cancelled and cancelled():
+                stop()
+                raise RuntimeError("Launch cancelled; the server was stopped")
+            if session_id:
+                status = native_status()
+                if status.get("SessionId") == session_id:
+                    if status.get("Error"): raise RuntimeError(status["Error"])
+                    if status.get("Ready") and status.get("Phase") == "ready":
+                        actual_map = status.get("WorldName", maps.DEFAULT_MAP).lower()
+                        if actual_map != TERRAIN.id:
+                            raise RuntimeError(f"DayZ opened {actual_map} instead of {TERRAIN.name}.")
+                        print(f"PREDATE mission and operator are ready ({PROFILE_NAME}).", flush=True)
+                        return
+                if progress: progress("Loading the world and restoring its operator...")
+                time.sleep(0.5)
+                continue
+            try:
+                rcon("players", timeout=1)
+                print(f"Local world ({PROFILE_NAME}) is accepting connections at 127.0.0.1:{PORT}.", flush=True)
+                return
+            except (OSError, RuntimeError, TimeoutError):
+                time.sleep(2)
+        raise RuntimeError("Server is still running but readiness timed out. Inspect world/profile logs.")
 
 
 def backup():

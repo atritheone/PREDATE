@@ -92,7 +92,7 @@ Operators can investigate a visible laser beam, its impact point, or a flashligh
 
 ## Installation
 
-PREDATE is set up with a coding agent on your Windows PC. Download or clone this repository, open its folder in your coding agent, and ask it to run the setup.
+PREDATE requires 64-bit Windows 10 or Windows 11. Download or clone this repository, open its folder in your coding agent, and ask it to run the setup.
 
 > Set up PREDATE on this PC. Read `AGENTS.md`, check my Steam and build dependencies, and get the game launcher ready to play.
 

@@ -36,9 +36,12 @@ modded class GesturesMenu
 modded class InGameMenu
 {
     static const int PREDATE_SUICIDE_DIALOG = 918607;
+    static const int PREDATE_SUICIDE_WAIT_MS = 5000;
     bool m_PredateDeploymentScreen;
     bool m_PredateRedeployPending;
     bool m_PredateSuicidePending;
+    PlayerBase m_PredateSuicideQueuedFor;
+    int m_PredateSuicideWaitUntil;
     bool m_PredateDeploymentTest;
     Widget m_PredateDeathOptions;
     Widget m_PredatePauseBrand;
@@ -87,8 +90,15 @@ modded class InGameMenu
             ButtonSetText(m_ExitButton, "Save and Quit");
             ButtonSetText(m_ContinueButton, "Resume");
             ButtonSetText(m_RestartButton, "Suicide");
+            m_RestartButton.Show(PredateCanSuicide(PlayerBase.Cast(GetGame().GetPlayer()), GetDayZGame().m_PredateClientAgent));
         }
         return root;
+    }
+
+    override void OnHide()
+    {
+        m_PredateSuicideQueuedFor = null;
+        super.OnHide();
     }
 
     override protected void OnClick_Continue()
@@ -107,6 +117,7 @@ modded class InGameMenu
         super.UpdateGUI();
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+        if (agent) PredateUpdateSuicide(player, agent);
         UpdatePredatePauseBrand(!PredateNeedsRedeploy(player));
         PredateState receiver;
         if (player) receiver = player.m_PredateState;
@@ -136,7 +147,6 @@ modded class InGameMenu
             if (gameplay && !gameplay.m_PredateRedeployCovered) gameplay.Continue();
             return;
         }
-        if (agent) m_RestartButton.Show(PredateCanSuicide(player, agent));
         if (!agent || (!agent.m_UserPaused && !agent.m_ResumePending)) return;
         m_ContinueButton.Show(true);
         m_ContinueButton.Enable(!agent.m_ResumePending);
@@ -216,9 +226,28 @@ modded class InGameMenu
 
     bool PredateCanSuicide(PlayerBase player, PredateClientAgent agent)
     {
-        if (!agent || !agent.m_UserPaused || !agent.m_ServerFrozen || agent.m_ResumePending || agent.m_QuitRequested || agent.m_PauseDisconnected) return false;
+        if (!agent || agent.m_ResumePending || agent.m_QuitRequested || agent.m_PauseDisconnected) return false;
         if (m_PredateSuicidePending || !player || !player.IsAlive() || !player.IsPlayerLoaded()) return false;
         return player.m_PredateState && !player.m_PredateState.NeedsRedeploy;
+    }
+
+    void PredateUpdateSuicide(PlayerBase player, PredateClientAgent agent)
+    {
+        bool available = PredateCanSuicide(player, agent);
+        if (m_PredateSuicideQueuedFor)
+        {
+            if (!available || !agent.m_UserPaused || player != m_PredateSuicideQueuedFor || GetGame().GetUIManager().GetMenu() != this || GetGame().GetTime() >= m_PredateSuicideWaitUntil)
+                m_PredateSuicideQueuedFor = null;
+            else if (agent.m_ServerFrozen)
+            {
+                m_PredateSuicideQueuedFor = null;
+                m_PredateSuicidePending = true;
+                player.PredateRequest(PredateProtocol.REQUEST_SUICIDE);
+                available = false;
+            }
+        }
+        m_RestartButton.Show(available);
+        m_RestartButton.Enable(!m_PredateSuicideQueuedFor);
     }
 
     override protected void OnClick_Restart()
@@ -229,7 +258,7 @@ modded class InGameMenu
             super.OnClick_Restart();
             return;
         }
-        if (!PredateCanSuicide(PlayerBase.Cast(GetGame().GetPlayer()), agent)) return;
+        if (!agent.m_UserPaused || m_PredateSuicideQueuedFor || !PredateCanSuicide(PlayerBase.Cast(GetGame().GetPlayer()), agent)) return;
         GetGame().GetUIManager().ShowDialog("Suicide", "End this life? You can redeploy in the same hunt.",
             PREDATE_SUICIDE_DIALOG, DBT_YESNO, DBB_NO, DMT_QUESTION, this);
     }
@@ -238,10 +267,11 @@ modded class InGameMenu
     {
         if (code != PREDATE_SUICIDE_DIALOG) return super.OnModalResult(w, x, y, code, result);
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
-        if (result == DBB_YES && PredateCanSuicide(player, GetDayZGame().m_PredateClientAgent))
+        PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
+        if (result == DBB_YES && agent && agent.m_UserPaused && !m_PredateSuicideQueuedFor && PredateCanSuicide(player, agent))
         {
-            m_PredateSuicidePending = true;
-            player.PredateRequest(PredateProtocol.REQUEST_SUICIDE);
+            m_PredateSuicideQueuedFor = player;
+            m_PredateSuicideWaitUntil = GetGame().GetTime() + PREDATE_SUICIDE_WAIT_MS;
         }
         return true;
     }

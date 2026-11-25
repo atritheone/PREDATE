@@ -93,7 +93,7 @@ class PredateServerBridge
             if (player.m_PredateSuicideRequested)
             {
                 player.m_PredateSuicideRequested = false;
-                if (m_Session.m_Paused && !m_Session.m_Suspending && !player.m_PredateSessionQuitRequested && m_Session.m_HuntReady && m_Session.m_HuntError == "" && !m_Session.m_WorldState.PlayerAwaitingRedeploy && player.IsAlive() && player.IsPlayerLoaded())
+                if (m_Session.m_Paused && m_Session.m_PauseReady && !m_Session.m_Suspending && !player.m_PredateSessionQuitRequested && m_Session.m_HuntReady && m_Session.m_HuntError == "" && !m_Session.m_WorldState.PlayerAwaitingRedeploy && player.IsAlive() && player.IsPlayerLoaded())
                 {
                     bool allowedDamage = player.GetAllowDamage();
                     // Accept this deliberate life change while gameplay stays held.

@@ -1,13 +1,116 @@
-"""Process ownership checks and single-supervisor locking. No window automation."""
+"""Windows process ownership, startup, and single-supervisor locking."""
+from contextlib import ExitStack, contextmanager
 import ctypes
 from ctypes import wintypes
 from pathlib import Path
 import hashlib
+import os
+import subprocess
+import uuid
 
 
 SYNCHRONIZE = 0x00100000
 WAIT_OBJECT_0 = 0
 ERROR_INVALID_PARAMETER = 87
+
+
+class StartupInfo(ctypes.Structure):
+    _fields_ = [
+        ("cb", wintypes.DWORD), ("lpReserved", wintypes.LPWSTR),
+        ("lpDesktop", wintypes.LPWSTR), ("lpTitle", wintypes.LPWSTR),
+        ("dwX", wintypes.DWORD), ("dwY", wintypes.DWORD),
+        ("dwXSize", wintypes.DWORD), ("dwYSize", wintypes.DWORD),
+        ("dwXCountChars", wintypes.DWORD), ("dwYCountChars", wintypes.DWORD),
+        ("dwFillAttribute", wintypes.DWORD), ("dwFlags", wintypes.DWORD),
+        ("wShowWindow", wintypes.WORD), ("cbReserved2", wintypes.WORD),
+        ("lpReserved2", wintypes.LPVOID), ("hStdInput", wintypes.HANDLE),
+        ("hStdOutput", wintypes.HANDLE), ("hStdError", wintypes.HANDLE),
+    ]
+
+
+class StartupInfoEx(ctypes.Structure):
+    _fields_ = [("startup", StartupInfo), ("attributes", wintypes.LPVOID)]
+
+
+class ProcessInformation(ctypes.Structure):
+    _fields_ = [("hProcess", wintypes.HANDLE), ("hThread", wintypes.HANDLE),
+                ("dwProcessId", wintypes.DWORD), ("dwThreadId", wintypes.DWORD)]
+
+
+@contextmanager
+def private_server_desktop():
+    user = ctypes.WinDLL("user32", use_last_error=True)
+    user.CreateDesktopW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPVOID,
+                                    wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID]
+    user.CreateDesktopW.restype = wintypes.HANDLE
+    user.CloseDesktop.argtypes = [wintypes.HANDLE]
+    name = "PREDATE-Server-" + uuid.uuid4().hex
+    maximum_allowed = 0x02000000
+    desktop = user.CreateDesktopW(name, None, None, 0, maximum_allowed, None)
+    if not desktop:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        # Keep a handle until the server has connected to the desktop.
+        yield name
+    finally:
+        user.CloseDesktop(desktop)
+
+
+def start_on_desktop(kernel, arguments, cwd, desktop, stdout):
+    """Start a process on a named desktop and return its PID."""
+    import msvcrt
+
+    extended_startup_info = 0x00080000
+    handle_list_attribute = 0x00020002
+    kernel.InitializeProcThreadAttributeList.argtypes = [
+        wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(ctypes.c_size_t)]
+    kernel.UpdateProcThreadAttribute.argtypes = [
+        wintypes.LPVOID, wintypes.DWORD, ctypes.c_size_t, wintypes.LPVOID,
+        ctypes.c_size_t, wintypes.LPVOID, wintypes.LPVOID]
+    kernel.DeleteProcThreadAttributeList.argtypes = [wintypes.LPVOID]
+    kernel.DeleteProcThreadAttributeList.restype = None
+    kernel.CreateProcessW.argtypes = [
+        wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.LPVOID, wintypes.LPVOID,
+        wintypes.BOOL, wintypes.DWORD, wintypes.LPVOID, wintypes.LPCWSTR,
+        ctypes.POINTER(StartupInfoEx), ctypes.POINTER(ProcessInformation)]
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+
+    with ExitStack() as cleanup:
+        discard = cleanup.enter_context(open(os.devnull, "r+b"))
+        handles = (wintypes.HANDLE * 2)()
+        for index, stream in enumerate((discard, stdout if stdout is not None else discard)):
+            fd = os.dup(stream.fileno())
+            cleanup.callback(os.close, fd)
+            os.set_inheritable(fd, True)
+            handles[index] = msvcrt.get_osfhandle(fd)
+
+        size = ctypes.c_size_t()
+        kernel.InitializeProcThreadAttributeList(None, 1, 0, ctypes.byref(size))
+        attributes = ctypes.create_string_buffer(size.value)
+        if not kernel.InitializeProcThreadAttributeList(attributes, 1, 0, ctypes.byref(size)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        cleanup.callback(kernel.DeleteProcThreadAttributeList, attributes)
+        if not kernel.UpdateProcThreadAttribute(attributes, 0, handle_list_attribute,
+                                                handles, ctypes.sizeof(handles), None, None):
+            raise ctypes.WinError(ctypes.get_last_error())
+
+        startup = StartupInfoEx()
+        startup.startup.cb = ctypes.sizeof(startup)
+        startup.startup.lpDesktop = desktop
+        startup.startup.dwFlags = subprocess.STARTF_USESHOWWINDOW | subprocess.STARTF_USESTDHANDLES
+        startup.startup.wShowWindow = subprocess.SW_HIDE
+        startup.startup.hStdInput = handles[0]
+        startup.startup.hStdOutput = startup.startup.hStdError = handles[1]
+        startup.attributes = ctypes.cast(attributes, wintypes.LPVOID)
+        process = ProcessInformation()
+        command_line = ctypes.create_unicode_buffer(subprocess.list2cmdline(arguments))
+        if not kernel.CreateProcessW(arguments[0], command_line, None, None, True,
+                                     extended_startup_info | subprocess.CREATE_NO_WINDOW, None,
+                                     str(cwd), ctypes.byref(startup), ctypes.byref(process)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        kernel.CloseHandle(process.hThread)
+        kernel.CloseHandle(process.hProcess)
+        return process.dwProcessId
 
 
 class ProcessEntry(ctypes.Structure):
