@@ -83,6 +83,11 @@ modded class PlayerBase
     bool m_PredateSessionQuitRequested;
     bool m_PredateSuicideRequested;
     bool m_PredateStagedForDeployment;
+    int m_PredateScoringLife;
+    string m_PredateScoreKiller;
+    bool m_PredateScoreSuicide;
+    ref array<ref PredateScoredShot> m_PredateScoredShots;
+
     bool m_PredateDeathRecorded;
     bool m_PredateNativeInsertion;
     bool m_PredateSpawnRejected;
@@ -122,7 +127,12 @@ modded class PlayerBase
         bool human = !eAIBase.Cast(this);
         // Set the flag before Expansion processes death and drops the held item.
         if (human) Expansion_SetCanBeLooted(false);
-        if (GetGame().IsServer() && GetIdentity()) PredatePlayerLifeEvents.Death.Invoke(this);
+        if (GetGame().IsServer() && GetIdentity())
+        {
+            eAIBase rival = eAIBase.Cast(PredateOperatorDeaths.Attacker(killer));
+            if (rival && rival.m_PredateOperatorRecord) m_PredateScoreKiller = rival.m_PredateOperatorRecord.Id;
+            PredatePlayerLifeEvents.Death.Invoke(this);
+        }
         super.EEKilled(killer);
         if (human && GetGame().IsServer()) PredateSealCorpseInventory();
     }
@@ -310,6 +320,7 @@ modded class PlayerBase
             ok = ok && ctx.Read(state.HasDeploymentPosition);
             if (ok && state.HasDeploymentPosition)
                 ok = ctx.Read(state.DeploymentPosition) && PredateInformationMath.FiniteVector(state.DeploymentPosition);
+            ok = ok && ctx.Read(state.LifeScore);
             if (ok)
             {
                 if (footprintNotice != "") m_PredateFootprintNotice = footprintNotice;

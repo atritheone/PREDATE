@@ -56,10 +56,7 @@ function validateAction(value: unknown): SessionAction {
     (action.action !== 'new' || !isOpponentCount(action.opponents))
   )
     throw new Error('Enter a whole number from 1 to 100 opponents for a new hunt')
-  if (
-    action.map !== undefined &&
-    (action.action !== 'new' || !isHuntMap(action.map))
-  )
+  if (action.map !== undefined && (action.action !== 'new' || !isHuntMap(action.map)))
     throw new Error('Choose a supported hunt map.')
   if (action.spawn !== undefined) {
     if (action.action !== 'new' || !action.spawn || typeof action.spawn !== 'object')
@@ -143,9 +140,11 @@ async function createWindow(): Promise<void> {
     trusted(event)
     return backend.overview()
   })
-  ipcMain.handle('predate:maps', (event, refresh: unknown) => {
+  ipcMain.handle('predate:scores', (event, profile: unknown) => {
     trusted(event)
-    return backend.request('maps', { refresh: !diagnose && refresh === true })
+    if (typeof profile !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(profile))
+      throw new Error('Select a save to view scores.')
+    return backend.request('scores', { profile })
   })
   ipcMain.handle('predate:perform', (event, value: unknown) => {
     trusted(event)

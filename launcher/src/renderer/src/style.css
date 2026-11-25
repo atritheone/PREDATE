@@ -298,8 +298,12 @@ button.quiet {
   text-overflow: ellipsis;
 }
 
-.hunt-field:has(.hunt-delete) .hunt-trigger span {
+.hunt-field:has(.hunt-scores) .hunt-trigger span {
   margin-inline-end: 32px;
+}
+
+.hunt-field:has(.hunt-delete) .hunt-trigger span {
+  margin-inline-end: 64px;
 }
 
 .hunt-trigger::after {
@@ -347,6 +351,7 @@ button.quiet {
   color: var(--blue);
 }
 
+button.hunt-scores,
 button.hunt-delete {
   flex: 0 0 32px;
   min-height: 34px;
@@ -354,13 +359,49 @@ button.hunt-delete {
   border: 0;
   background: transparent;
   color: var(--muted);
+}
+
+button.hunt-scores {
+  display: grid;
+  place-items: center;
+}
+
+.hunt-scores-glyph {
+  width: 13px;
+  height: 13px;
+  background:
+    linear-gradient(currentColor 0 0) left bottom / 3px 5px no-repeat,
+    linear-gradient(currentColor 0 0) center bottom / 3px 9px no-repeat,
+    linear-gradient(currentColor 0 0) right bottom / 3px 13px no-repeat;
+}
+
+button.hunt-scores:hover {
+  background: #10223a;
+}
+
+button.hunt-delete:disabled,
+button.hunt-scores:has(+ .hunt-delete:disabled) .hunt-scores-glyph {
+  opacity: 0.45;
+}
+
+.hunt-field .hunt-scores {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 30px;
+  width: 32px;
+}
+
+.hunt-field:has(.hunt-delete) .hunt-scores {
+  inset-inline-end: 62px;
+}
+
+button.hunt-delete {
   font-size: 16px;
   font-weight: 400;
 }
 
 button.hunt-delete:hover:not(:disabled) {
   background: #491e2d;
-  color: #ffd1d3;
 }
 
 .hunt-field .hunt-delete {
@@ -534,4 +575,62 @@ button.music-toggle:hover:not(:disabled) {
   .stack {
     gap: 10px;
   }
+}
+
+.scores-dialog {
+  box-sizing: border-box;
+  width: min(520px, 94vw);
+  max-height: 89vh;
+  padding: 20px;
+  border: 1px solid #445778;
+  background: #10192a;
+  color: #e9eef7;
+  overflow: auto;
+}
+
+.scores-dialog::backdrop {
+  background: #050914cc;
+}
+
+.scores-dialog h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.score-life-picker {
+  display: grid;
+  gap: 5px;
+  margin-top: 14px;
+}
+
+.score-digits {
+  margin-top: 14px;
+  font-size: 32px;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(105px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.score-stats dt {
+  color: #abc0d7;
+  font-size: 12px;
+}
+
+.score-stats dd {
+  margin: 3px 0 0;
+}
+
+.score-encounter {
+  border-top: 1px solid #445778;
+  padding: 9px 0;
+}
+
+.score-encounter summary {
+  cursor: pointer;
 }

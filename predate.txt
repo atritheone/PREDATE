@@ -2,6 +2,3 @@
 
 ## todo
 
-server optimisation.
-
-add scoring.

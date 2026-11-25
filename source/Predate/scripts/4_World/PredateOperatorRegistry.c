@@ -143,6 +143,7 @@ modded class eAIBase
 {
     PredateOperatorRecord m_PredateOperatorRecord;
     bool m_PredateBleedingDeath;
+    bool m_PredateScoreHuntingPlayer;
     bool m_PredatePlayerBleedout;
     protected bool m_PredateDeferDeathFiles;
 
@@ -159,10 +160,12 @@ modded class eAIBase
                 {
                     PlayerBase credited = PredateOperatorDeaths.Attacker(killer);
                     bool playerInjury = m_PredateOperatorRecord && m_PredateOperatorRecord.PlayerHealthBeforeInjury > 0;
-                    if ((!credited || credited == this) && (m_PredatePlayerBleedout || (!m_PredateBleedingDeath && playerInjury)))
+                    bool woundKill = (!credited || credited == this) && (m_PredatePlayerBleedout || (!m_PredateBleedingDeath && playerInjury));
+                    if (woundKill)
                         credited = PredateOperatorDeaths.HuntPlayer();
                     if (credited && credited.GetIdentity() && credited.m_PredateKillNotices.Find(slot) < 0)
                         credited.m_PredateKillNotices.Insert(slot);
+                    if (m_PredateOperatorRecord) PredateScoreEvents.Defeated.Invoke(m_PredateOperatorRecord, credited, woundKill);
                     PredateOperatorDeaths.Defeated.Invoke(slot, credited);
                 }
             }

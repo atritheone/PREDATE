@@ -575,7 +575,7 @@ def launch_client(session_id=None, offline=False, extra_args=None, wait_for_serv
     client_logs.mkdir(parents=True, exist_ok=True)
     import presentation
     import session_store as store
-    presentation.write_client_options(client_logs, store.preferences())
+    presentation.write_client_options(client_logs, store.preferences(), store.display_name(PROFILE_NAME))
     if PROFILE_NAME.startswith('validation-') and os.environ.get('PREDATE_PRESENTATION_TEST') == '1' and (client_logs/'PredatePresentationValidation.txt').is_file():
         args.append('-predatePresentationValidation')
     # This is the interactive game; its window is intentionally visible.

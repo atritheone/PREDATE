@@ -1,6 +1,7 @@
 // Session coordinator: simulation lifecycle, services and engine callbacks.
 class PredateSession
 {
+    ref PredateScoreService m_Score;
     static const float CHECKPOINT_INTERVAL = 30;
     static const float CHECKPOINT_MAX_DEFER = 0.1;
     ref PredateConfig m_HuntConfig;
@@ -11,8 +12,11 @@ class PredateSession
     float m_HuntStateTimer;
     float m_HuntSaveTimer;
     int m_CheckpointPeer = -1;
+    int m_CheckpointRosterRow;
     float m_CheckpointWait;
     float m_CheckpointActorMillis;
+    float m_CheckpointRosterMillis;
+    float m_CheckpointPeakRowMillis;
     float m_DiagnosticElapsed;
     float m_DiagnosticWorstFrame;
     int m_DiagnosticFrames;
@@ -69,15 +73,24 @@ class PredateSession
     void PredateSave()
     {
         if (m_SuspendSaved) return;
+        if (m_PeerRoster) m_PeerRoster.CancelStateSave();
         m_CheckpointPeer = -1;
+        m_CheckpointRosterRow = 0;
         m_CheckpointWait = 0;
         m_HuntSaveTimer = 0;
         if (PredatePersistence.Save(this) && m_Suspending) m_SuspendSaved = true;
     }
 
-    void PredateRequestCheckpoint()
+    void PredateRequestCheckpoint(bool restartRoster = false)
     {
         if (m_CheckpointPeer < 0) m_HuntSaveTimer = CHECKPOINT_INTERVAL;
+        // Selection and life changes must not leave conflicting rows in the
+        // same save. Keep the paced native writes and restart the staged JSON.
+        if (restartRoster && m_PeerRoster && m_CheckpointRosterRow > 0)
+        {
+            m_PeerRoster.CancelStateSave();
+            m_CheckpointRosterRow = 0;
+        }
     }
 
     void PredateUpdateCheckpoint(float timeslice, bool updatedHunt)
@@ -90,6 +103,8 @@ class PredateSession
             m_CheckpointPeer = 0;
             m_HuntSaveTimer = 0;
             m_CheckpointActorMillis = 0;
+            m_CheckpointRosterMillis = 0;
+            m_CheckpointPeakRowMillis = 0;
         }
         m_CheckpointWait += timeslice;
         // Give a busy frame room to recover while keeping the checkpoint moving.
@@ -99,28 +114,55 @@ class PredateSession
         if (PredateServerDiagnostics.Enabled) started = TickCount(0);
         int peerCount;
         if (m_PeerRoster) peerCount = m_PeerRoster.m_Bindings.Count();
-        // Limit periodic checkpoints to one native actor per frame. Explicit
-        // saves cancel the pass and capture the complete current world.
-        if (m_CheckpointPeer < peerCount)
+        string error;
+        // Schedule a native actor write or a roster JSON row per frame.
+        if (m_CheckpointPeer <= peerCount)
         {
-            string error;
-            if (!m_PeerRoster.SaveActor(this, m_PeerRoster.m_Bindings[m_CheckpointPeer], error))
+            if (m_CheckpointPeer == peerCount) PredatePersistence.SaveRaven(this);
+            else if (!m_PeerRoster.SaveActor(this, m_PeerRoster.m_Bindings[m_CheckpointPeer], error))
             {
                 PredatePersistence.Fail(this, "Cannot checkpoint operator roster: " + error);
                 return;
             }
-        }
-        else if (m_CheckpointPeer == peerCount) PredatePersistence.SaveRaven(this);
-        else
-        {
-            PredatePersistence.SaveState(this);
-            if (PredateServerDiagnostics.Enabled)
-                Print("[PredatePerf] checkpoint actors_ms=" + m_CheckpointActorMillis + "; state_ms=" + TickCount(started) * 0.0001 + "; roster=" + (peerCount + 1));
-            m_CheckpointPeer = -1;
+            if (PredateServerDiagnostics.Enabled) m_CheckpointActorMillis += TickCount(started) * 0.0001;
+            m_CheckpointPeer++;
             return;
         }
-        if (PredateServerDiagnostics.Enabled) m_CheckpointActorMillis += TickCount(started) * 0.0001;
-        m_CheckpointPeer++;
+        if (m_CheckpointRosterRow < peerCount)
+        {
+            if ((m_CheckpointRosterRow == 0 && !m_PeerRoster.BeginStateSave(error)) || !m_PeerRoster.WriteStateRow(m_CheckpointRosterRow, error))
+            {
+                m_PeerRoster.CancelStateSave();
+                PredatePersistence.Fail(this, "Cannot stage operator roster: " + error);
+                return;
+            }
+            if (PredateServerDiagnostics.Enabled)
+            {
+                float rowMillis = TickCount(started) * 0.0001;
+                m_CheckpointRosterMillis += rowMillis;
+                m_CheckpointPeakRowMillis = Math.Max(m_CheckpointPeakRowMillis, rowMillis);
+            }
+            m_CheckpointRosterRow++;
+            return;
+        }
+        if (!PredatePersistence.SaveWorldState(this))
+        {
+            if (m_PeerRoster) m_PeerRoster.CancelStateSave();
+            return;
+        }
+        int publishStarted;
+        if (PredateServerDiagnostics.Enabled) publishStarted = TickCount(0);
+        if (peerCount > 0 && !m_PeerRoster.FinishStateSave(error))
+        {
+            PredatePersistence.Fail(this, "Cannot publish operator roster: " + error);
+            return;
+        }
+        float publishMillis;
+        if (peerCount > 0 && PredateServerDiagnostics.Enabled) publishMillis = TickCount(publishStarted) * 0.0001;
+        if (PredateServerDiagnostics.Enabled)
+            Print("[PredatePerf] checkpoint actors_ms=" + m_CheckpointActorMillis + "; roster_ms=" + m_CheckpointRosterMillis + "; peak_row_ms=" + m_CheckpointPeakRowMillis + "; publish_ms=" + publishMillis + "; state_ms=" + TickCount(started) * 0.0001 + "; roster=" + (peerCount + 1));
+        m_CheckpointPeer = -1;
+        m_CheckpointRosterRow = 0;
     }
 
     void PredateReportFrames(float timeslice)
@@ -190,6 +232,17 @@ class PredateSession
             foreach (Man actor : players)
             {
                 HoldPauseActor(actor);
+                PlayerBase participant = PlayerBase.Cast(actor);
+                if (participant && participant.GetIdentity() && m_HuntReady && m_Score)
+                {
+                    PredateLifeScore pausedLife = m_Score.Life(m_WorldState.PlayerLife);
+                    if (pausedLife)
+                    {
+                        pausedLife.UpdateTime(m_WorldState.SimulationSeconds);
+                        m_Score.RefreshTracking(participant, pausedLife, true);
+                    }
+                    PredateSend(participant);
+                }
                 if (!m_PhysicsHoldAnchor && actor) m_PhysicsHoldAnchor = actor;
             }
             if (m_PeerRoster) m_PeerRoster.HoldPause(this);
@@ -284,12 +337,12 @@ class PredateSession
             if (defeated || receiverTrack.Reception == PredatePulseReception.UNAVAILABLE)
             {
                 if (PredateSignalService.RetireDefeatedSignal(this, PredateProtocol.OperatorSlot(operatorId), true))
-                    PredateRequestCheckpoint();
+                    PredateRequestCheckpoint(true);
             }
             else if (PredateSignalService.DropOutOfRangeTrack(receiverTrack))
             {
                 if (!chosen) PredateSignalService.SyncReceiverProgress(this);
-                PredateRequestCheckpoint();
+                PredateRequestCheckpoint(true);
             }
         }
         if (m_PeerRoster && receiverReady && m_WorldState.PlayerSignal) availableOperators = m_PeerRoster.AvailableCount(this);
@@ -381,6 +434,11 @@ class PredateSession
         player.m_PredateFootprintNotice = "";
         rpc.Write(player.m_PredateHasDeploymentPosition);
         if (player.m_PredateHasDeploymentPosition) rpc.Write(player.m_PredateDeploymentPosition);
+        PredateLifeScore life;
+        if (m_WorldState && m_Score) life = m_Score.Life(m_WorldState.PlayerLife);
+        int score;
+        if (life) score = life.Score;
+        rpc.Write(score);
         rpc.Send(player, PredateProtocol.STATE, true, player.GetIdentity());
         if (first) Print("[Predate] Sent receiver state; target available=" + available);
     }
@@ -579,6 +637,7 @@ class PredateSession
             }
             PredateSignalService.Tick(this, player, seconds);
             if (m_PeerRoster) m_PeerRoster.SampleForPlayer(this, player);
+            if (m_Score) m_Score.Tick(player);
             PredatePeerBinding chosen;
             if (m_PeerRoster) chosen = m_PeerRoster.PlayerLock();
             PredateSignalTrack selectedTrack = m_WorldState.PlayerSignal;
@@ -664,12 +723,17 @@ class PredateSession
             if (selection != "" && m_WorldState.PlayerSignal.HasLostPlayerReception()) return;
             PredateSignalService.Select(this, selection != "");
         }
+        if (m_Score)
+        {
+            PredateLifeScore trackingLife = m_Score.Life(m_WorldState.PlayerLife, true);
+            if (trackingLife) m_Score.RefreshTracking(player, trackingLife);
+        }
         player.m_PredateTrackingChoice++;
         // Confirm on the next server frame. Routine receiver refreshes and
         // checkpoint writes remain on their existing schedules.
         PredateSend(player);
         m_HuntStateTimer = 0;
-        PredateRequestCheckpoint();
+        PredateRequestCheckpoint(true);
     }
 
     void Update(float timeslice)

@@ -177,6 +177,7 @@ class PredateHuntRuntime
         if (receiver.TargetId != priorTarget) finalApproach = FinalApproach(hunter, live);
         PredateSignalTrack track = receiver.Find(receiver.TargetId);
         string subject = receiver.TargetId;
+        actor.m_PredateScoreHuntingPlayer = subject == "player-01";
         if (subject == "player-01") subject = playerId;
         if (!combat && !recover && hunter.Hunter.HasGoal && hunter.Hunter.WatchUntil > 0 && now >= hunter.Hunter.WatchUntil && hunter.Hunter.GoalRevision == hunter.Hunter.SearchWatchRevision)
         {

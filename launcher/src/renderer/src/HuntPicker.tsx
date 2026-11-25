@@ -9,6 +9,7 @@ export function HuntPicker({
   disabled,
   deleteDisabled,
   select,
+  showScores,
   requestDelete,
 }: {
   hunts: Operation[]
@@ -16,6 +17,7 @@ export function HuntPicker({
   disabled: boolean
   deleteDisabled: boolean
   select: (id: string) => void
+  showScores: (id: string) => void
   requestDelete: (hunt: Operation) => void
 }): ReactNode {
   const trigger = useRef<HTMLButtonElement>(null)
@@ -26,6 +28,21 @@ export function HuntPicker({
     options.current.hidePopover()
     trigger.current?.focus()
   }
+
+  const scoresButton = (hunt: Operation): ReactNode => (
+    <button
+      type="button"
+      className="hunt-scores"
+      aria-label={`Scores for ${huntLabel(hunt)}`}
+      title="Scores"
+      onClick={() => {
+        close()
+        showScores(hunt.id)
+      }}
+    >
+      <span className="hunt-scores-glyph" aria-hidden="true" />
+    </button>
+  )
 
   const deleteButton = (hunt: Operation): ReactNode =>
     hunt.id !== 'main' && (
@@ -83,6 +100,7 @@ export function HuntPicker({
         >
           <span id="hunt-value">{selected ? huntLabel(selected) : 'No Saved Hunts'}</span>
         </button>
+        {selected && scoresButton(selected)}
         {selected && deleteButton(selected)}
       </div>
       <ul
@@ -108,6 +126,7 @@ export function HuntPicker({
             >
               {huntLabel(hunt)}
             </button>
+            {scoresButton(hunt)}
             {deleteButton(hunt)}
           </li>
         ))}

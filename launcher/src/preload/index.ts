@@ -2,8 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { PredateAPI, SessionStatus } from '../shared/types'
 
 const api: PredateAPI = {
+  scores: (profile) => ipcRenderer.invoke('predate:scores', profile),
   overview: () => ipcRenderer.invoke('predate:overview'),
-  maps: (refresh) => ipcRenderer.invoke('predate:maps', refresh),
   perform: (action) => ipcRenderer.invoke('predate:perform', action),
   savePreferences: (values) => ipcRenderer.invoke('predate:preferences', values),
   chooseMod: () => ipcRenderer.invoke('predate:choose-mod'),

@@ -8,7 +8,12 @@ modded class MissionServer
     {
         super.OnInit();
         m_PredateSession = new PredateSession;
+        m_PredateSession.m_Score = new PredateScoreService(m_PredateSession);
         m_PredateSession.Init();
+        PredateScoreEvents.Fired.Insert(m_PredateSession.m_Score.OnFire);
+        PredateScoreEvents.Damage.Insert(m_PredateSession.m_Score.OnDamage);
+        PredateScoreEvents.PlayerDamage.Insert(m_PredateSession.m_Score.OnPlayerDamage);
+        PredateScoreEvents.Defeated.Insert(m_PredateSession.m_Score.OnDefeated);
         PredatePlayerLifeEvents.Death.Insert(PredateRecordPlayerDeath);
         PredateOperatorDeaths.Defeated.Insert(PredateRecordOperatorDeath);
         PredateServerPauseDriver.Poll.Insert(PredatePollPausedServer);
@@ -35,6 +40,13 @@ modded class MissionServer
 
     override void OnMissionFinish()
     {
+        if (m_PredateSession && m_PredateSession.m_Score)
+        {
+            PredateScoreEvents.Fired.Remove(m_PredateSession.m_Score.OnFire);
+            PredateScoreEvents.Damage.Remove(m_PredateSession.m_Score.OnDamage);
+            PredateScoreEvents.PlayerDamage.Remove(m_PredateSession.m_Score.OnPlayerDamage);
+            PredateScoreEvents.Defeated.Remove(m_PredateSession.m_Score.OnDefeated);
+        }
         PredatePlayerLifeEvents.Death.Remove(PredateRecordPlayerDeath);
         PredateOperatorDeaths.Defeated.Remove(PredateRecordOperatorDeath);
         PredateServerPauseDriver.Poll.Remove(PredatePollPausedServer);
@@ -51,9 +63,10 @@ modded class MissionServer
     void PredateRecordOperatorDeath(int slot, PlayerBase credited)
     {
         if (!m_PredateSession || !m_PredateSession.m_HuntReady || !m_PredateSession.m_WorldState) return;
-        if (!PredateSignalService.RetireDefeatedSignal(m_PredateSession, slot, true)) return;
+        bool retired = PredateSignalService.RetireDefeatedSignal(m_PredateSession, slot, true);
+        if (retired || m_PredateSession.m_CheckpointRosterRow > 0) m_PredateSession.PredateRequestCheckpoint(true);
+        if (!retired) return;
         m_PredateSession.m_HuntStateTimer = 1;
-        m_PredateSession.PredateRequestCheckpoint();
         if (m_PredateSession.m_WorldState.PlayerAwaitingRedeploy) return;
 
         array<Man> players = {};

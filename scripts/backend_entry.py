@@ -66,10 +66,18 @@ def dispatch(method, params):
         initialize()
         return overview()
     if method == "overview": return overview()
-    if method == "maps":
-        if params.get("refresh") is True: dlc_access.start_probe()
-        return map_options()
     if method == "status": return session.state()
+    if method == "scores":
+        profile = params.get("profile")
+        if not isinstance(profile, str):
+            raise ValueError("Select a save to view scores.")
+        path = store.existing_world_path(profile)
+        lives = []
+        for score_file in (path / "profile").glob("PredateLifeScore-*.json"):
+            life = store.read_json(score_file)
+            if isinstance(life, dict) and life.get("Version") == 1:
+                lives.append(life)
+        return {"name": store.display_name(profile), "lives": lives}
     if method == "preferences":
         allowed = {"reconnect_grace", "backup_limit", "offline", "extra_mods", "receiver_scale", "receiver_high_contrast"}
         if not isinstance(params, dict) or set(params) - allowed:
@@ -87,7 +95,7 @@ def dispatch(method, params):
         if "map" in values:
             if action != "new": raise ValueError("Choose a map when creating a new hunt.")
             selected_map = maps.terrain(values["map"]).id
-        if action == "new": dlc_access.require(selected_map)
+        if action == "new": dlc_access.require_files(selected_map)
         if action == "delete" and (set(values) != {"profile"} or not isinstance(values["profile"], str)):
             raise ValueError("Select a save to delete.")
         if 'loadout' in values:
@@ -142,7 +150,6 @@ def main():
     elif mode == "process_guard":
         import process_guard
         process_guard.main()
-    elif mode == "dlc_access": dlc_access.main()
     else: raise ValueError("Unknown backend mode")
 
 

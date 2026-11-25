@@ -9,13 +9,24 @@ export interface Preferences {
   receiver_high_contrast: boolean
 }
 
-const huntMaps = { chernarusplus: 'Chernarus', enoch: 'Livonia', sakhal: 'Sakhal', nasdara: 'Nasdara' } as const
+const huntMaps = {
+  chernarusplus: 'Chernarus',
+  enoch: 'Livonia',
+  sakhal: 'Sakhal',
+  nasdara: 'Nasdara',
+} as const
 export type HuntMap = keyof typeof huntMaps
 export function isHuntMap(map: unknown): map is HuntMap {
   return typeof map === 'string' && Object.hasOwn(huntMaps, map)
 }
 export type SpawnPoint = { id: string; name: string; x: number; z: number }
-export type HuntTerrain = { id: HuntMap; name: string; size: number; available: boolean; spawnPoints: SpawnPoint[] }
+export type HuntTerrain = {
+  id: HuntMap
+  name: string
+  size: number
+  available: boolean
+  spawnPoints: SpawnPoint[]
+}
 
 export function huntMapName(map?: HuntMap): string {
   return huntMaps[map ?? 'chernarusplus']
@@ -162,9 +173,55 @@ export type SessionAction =
   | { action: 'backup'; profile: string }
   | { action: 'restore'; backup: string; name: string }
 
+export interface ScoreEncounter {
+  Callsign: string
+  OperatorId: string
+  Deployment: number
+  Tracked: boolean
+  Committed: boolean
+  WoundKill: boolean
+  Outcome: string
+  LockSeconds: number
+  TimeToContact: number
+  ReachedContact: boolean
+  RoundsToFirstHit: number
+  FinalApproachSeconds: number
+  GroundCovered: number
+  UsefulClosure: number
+  ReturnDamage: number
+  Pulses: number
+  PursuitPoints: number
+  EngagementPoints: number
+  CounterPoints: number
+  PrecisionPoints: number
+  RangePoints: number
+  CreditedRange: number
+  KillPoints: number
+}
+
+export interface ScoreLife {
+  Life: number
+  Version: number
+  SurvivedSeconds: number
+  EndReason: string
+  Killer: string
+  Partial: boolean
+  Shots: number
+  Hits: number
+  Kills: number
+  SurvivalScore: number
+  Score: number
+  Encounters: ScoreEncounter[]
+}
+
+export interface ScoreHistory {
+  name: string
+  lives: ScoreLife[]
+}
+
 export interface PredateAPI {
+  scores(profile: string): Promise<ScoreHistory>
   overview(): Promise<Overview>
-  maps(refresh?: boolean): Promise<HuntTerrain[]>
   perform(action: SessionAction): Promise<void>
   savePreferences(values: Omit<Preferences, 'schema' | 'selected_world'>): Promise<Preferences>
   chooseMod(): Promise<string | null>

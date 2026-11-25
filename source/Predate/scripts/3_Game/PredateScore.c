@@ -1,0 +1,94 @@
+class PredatePursuitScore
+{
+    string OperatorId;
+    string Callsign;
+    int Deployment;
+    bool Tracked;
+    bool ReachedContact;
+    bool Committed;
+    bool WoundKill;
+    bool CounterHunt;
+    float CreditedRange;
+    bool MatchedRound;
+    string Outcome;
+    float LockSeconds;
+    float LockStartedAt;
+    float TimeToContact;
+    float FinalApproachSeconds;
+    float GroundCovered;
+    float UsefulClosure;
+    float ReturnDamage;
+    int Pulses;
+    int LastPulseSerial;
+    int RoundsAtLock;
+    int RoundsToFirstHit;
+    int PrecisionRounds;
+    int PrecisionHits;
+    int PursuitPoints;
+    int EngagementPoints;
+    int CounterPoints;
+    int PrecisionPoints;
+    int RangePoints;
+    int KillPoints;
+
+    void Award()
+    {
+        Outcome = "Converted";
+        KillPoints = 1000;
+        float closure = Math.Max(0, UsefulClosure);
+        float route = Math.Min(1, (1.35 * closure + 150) / Math.Max(1, GroundCovered));
+        PursuitPoints = Math.Round(500 * Math.Min(closure / 1000, 1) * route);
+        EngagementPoints = Math.Round(200 * Math.Clamp(1 - ReturnDamage / 60, 0, 1));
+        if (CounterHunt) CounterPoints = 150;
+        RangePoints = Math.Round(Math.Max(0, CreditedRange - 100) * 0.5);
+        if (MatchedRound && PrecisionRounds > 0)
+        {
+            float accuracy = Math.Clamp(1.0 * PrecisionHits / PrecisionRounds, 0, 1);
+            PrecisionPoints = Math.Round(150 * accuracy * accuracy);
+        }
+    }
+
+    int Total()
+    {
+        return KillPoints + PursuitPoints + EngagementPoints + CounterPoints + PrecisionPoints + RangePoints;
+    }
+}
+
+class PredateLifeScore
+{
+    int Version = 1;
+    int Life;
+    float StartedAt;
+    float SurvivedSeconds;
+    string EndReason;
+    string Killer;
+    bool Partial;
+    int Shots;
+    int Hits;
+    int Kills;
+    int KillScore;
+    int SurvivalScore;
+    int Score;
+    ref array<ref PredatePursuitScore> Encounters = new array<ref PredatePursuitScore>;
+
+    void UpdateTime(float now)
+    {
+        if (EndReason != "") return;
+        SurvivedSeconds = Math.Max(0, now - StartedAt);
+        SurvivalScore = Math.Floor(Math.Min(SurvivedSeconds, 600) / 6) + Math.Floor(Math.Clamp(SurvivedSeconds - 600, 0, 1200) / 12);
+        Score = KillScore + SurvivalScore;
+    }
+
+    PredatePursuitScore Find(string id, int deployment, bool create = false)
+    {
+        foreach (PredatePursuitScore entry : Encounters)
+            if (entry.OperatorId == id && entry.Deployment == deployment) return entry;
+        if (!create) return null;
+        PredatePursuitScore encounter = new PredatePursuitScore;
+        encounter.OperatorId = id;
+        encounter.Callsign = PredateProtocol.DisplayName(id);
+        encounter.Deployment = deployment;
+        Encounters.Insert(encounter);
+        return encounter;
+    }
+}

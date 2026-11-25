@@ -432,9 +432,7 @@ class PredateOperatorService
         s.m_HuntBot.m_eAI_MaxFlankingDistance = 200;
         s.m_HuntGroup.SetName(PredateProtocol.SignatureFor(s.m_HuntProgress.Operator.Id));
         s.m_HuntGroup.m_BaseName = s.m_HuntProgress.Operator.StorageKey;
-        s.m_HuntGroup.m_Persist = true;
-        if (eAIGroup.s_PersistentGroups.Find(s.m_HuntGroup) == -1)
-            eAIGroup.s_PersistentGroups.Insert(s.m_HuntGroup);
+        s.m_HuntBot.PredateTakeSaveOwnership(s.m_HuntGroup);
         s.m_HuntGroup.ClearWaypoints();
         vector center = s.m_HuntConfig.BotStart;
         s.m_HuntGroup.AddWaypoint(s.PredateGround(center));

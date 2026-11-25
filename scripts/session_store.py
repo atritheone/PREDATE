@@ -126,6 +126,14 @@ def metadata(profile):
             "kind": "operation" if profile == "main" else "validation"}
 
 
+def display_name(profile):
+    operation = metadata(profile)
+    imported = read_json(ROOT / "session-runtime/original-import.json", {}) or {}
+    if imported.get("profile") == profile and operation["name"] == "Current operation":
+        return "Current Hunt"
+    return operation["name"]
+
+
 def worlds():
     import world
     values = [] if world.stable_fallback() else [metadata("main")]

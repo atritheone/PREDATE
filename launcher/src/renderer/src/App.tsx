@@ -9,6 +9,7 @@ import type {
 import { huntMapName } from '../../shared/types'
 import wordmark from '../../../../flash/predate_wordmark.png'
 import { HuntPicker } from './HuntPicker'
+import { ScoresDialog } from './ScoresDialog'
 import { LauncherMusic } from './LauncherMusic'
 import { OperationSetup, readOperationDraft } from './OperationSetup'
 
@@ -275,6 +276,7 @@ export function App(): ReactNode {
   const [overview, setOverview] = useState<Overview | null>(null)
   const [status, setStatus] = useState<SessionStatus>({ phase: 'idle', message: '' })
   const [selected, setSelected] = useState('')
+  const [scoreProfile, setScoreProfile] = useState('')
   const [pending, setPending] = useState<SessionAction['action'] | null>(null)
   const [quitting, setQuitting] = useState(false)
   const [error, setError] = useState('')
@@ -382,23 +384,11 @@ export function App(): ReactNode {
         )
       : ''
   const onHome = page === 'Continue'
-  const selectedMap = operation?.map
-  useEffect(() => {
-    if (page !== 'New Hunt' && !(page === 'Continue' && (selectedMap === 'sakhal' || selectedMap === 'nasdara'))) return
-    let mounted = true
-    const updateMaps = (refresh = false): void => {
-      void window.predate.maps(refresh).then((maps) => {
-        if (mounted) setOverview((value) => value ? { ...value, maps } : value)
-      }).catch(() => {})
-    }
-    updateMaps(true)
-    const interval = setInterval(() => updateMaps(true), 2000)
-    return () => { mounted = false; clearInterval(interval) }
-  }, [page, selectedMap])
 
   return (
     <div className="app-shell">
       <div className="titlebar" aria-hidden="true" />
+      {scoreProfile && <ScoresDialog profile={scoreProfile} onClose={() => setScoreProfile('')} />}
       <div className="screen">
         {!onHome && (
           <header className="page-header split">
@@ -437,6 +427,7 @@ export function App(): ReactNode {
                     disabled={busy}
                     deleteDisabled={busy || inHunt}
                     select={setSelected}
+                    showScores={setScoreProfile}
                     requestDelete={setDeleteTarget}
                   />
                   <button

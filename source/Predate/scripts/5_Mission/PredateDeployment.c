@@ -38,6 +38,7 @@ class PredateDeployment
         PredateWorldState state = session.m_WorldState;
         RememberCharacter(state, player);
         if (state.PlayerAwaitingRedeploy) return;
+        if (session.m_Score) session.m_Score.EndLife(player);
         state.PlayerAwaitingRedeploy = true;
         state.PlayerLastDeathAt = state.SimulationSeconds;
         state.PlayerDeathPosition = player.GetPosition();
@@ -287,6 +288,7 @@ class PredateDeployment
 
     static void RetireOldContact(PredateHunterState hunter, PredateObservationMemory memory, eAIBase actor, string playerId, float now, bool tracksOldLife)
     {
+        if (actor) actor.m_PredateScoreHuntingPlayer = false;
         bool playerContact;
         if (hunter.Mode == "combat")
         {
@@ -352,6 +354,9 @@ class PredateDeployment
         state.PlayerLifeStartedAt = state.SimulationSeconds;
         state.PlayerSupplies = new PredateSupplyPlan;
         state.PlayerAwaitingRedeploy = false;
+        if (session.m_Score) session.m_Score.Life(state.PlayerLife, true);
+        player.m_PredateScoringLife = state.PlayerLife;
+        player.m_PredateScoredShots = null;
         state.HasPlayerDeathPosition = false;
         player.m_PredateNativeInsertion = false;
         player.m_PredateSpawnRejected = false;

@@ -6,14 +6,22 @@ class PredatePeerBinding
     bool Active;
 }
 
+class PredatePeerRosterCheckpoint
+{
+    int RosterIndex = -1;
+}
+
 // Raven retains the original storage path. Each additional operator owns a
 // stable slot and a separate native group, receiver and observation memory.
 class PredatePeerRoster
 {
     static const string SAVE_PATH = "$profile:PredatePeerRoster.json";
+    static const string CHECKPOINT_PATH = "$profile:PredatePeerRosterCheckpoint.json";
     ref PredatePeerRosterSave m_State = new PredatePeerRosterSave;
     ref array<ref PredatePeerBinding> m_Bindings = new array<ref PredatePeerBinding>;
     float m_LastTick;
+    protected FileHandle m_StateFile;
+    protected int m_CheckpointSlot = -1;
 
     static string StorageKey(int slot, int deployment = 1)
     {
@@ -46,9 +54,22 @@ class PredatePeerRoster
         float now = session.m_WorldState.SimulationSeconds;
         int count = session.m_HuntConfig.OpponentCount;
         if (count == 1) count = 3; // Explicit three-Operator developer fixture.
-        if (FileExist(SAVE_PATH))
+        string rosterPath = SAVE_PATH;
+        if (FileExist(CHECKPOINT_PATH))
         {
-            if (!JsonFileLoader<PredatePeerRosterSave>.LoadFile(SAVE_PATH, m_State, error)) return false;
+            PredatePeerRosterCheckpoint checkpoint;
+            if (!JsonFileLoader<PredatePeerRosterCheckpoint>.LoadFile(CHECKPOINT_PATH, checkpoint, error)) return false;
+            if (!checkpoint || (checkpoint.RosterIndex != 0 && checkpoint.RosterIndex != 1))
+            {
+                error = "Invalid peer roster checkpoint slot";
+                return false;
+            }
+            m_CheckpointSlot = checkpoint.RosterIndex;
+            rosterPath = CheckpointRosterPath(m_CheckpointSlot);
+        }
+        if (m_CheckpointSlot >= 0 || FileExist(rosterPath))
+        {
+            if (!JsonFileLoader<PredatePeerRosterSave>.LoadFile(rosterPath, m_State, error)) return false;
         }
         else
         {
@@ -186,8 +207,6 @@ class PredatePeerRoster
         }
         group.SetName(PredateProtocol.SignatureFor(record.Id));
         group.m_BaseName = record.StorageKey;
-        group.m_Persist = true;
-        if (eAIGroup.s_PersistentGroups.Find(group) == -1) eAIGroup.s_PersistentGroups.Insert(group);
         if (!session.m_Operators.Bind(record.Id, group, actor))
         {
             error = "Registry rejected " + record.Id;
@@ -210,6 +229,7 @@ class PredatePeerRoster
 
     void ConfigureNative(PredateSession session, PredatePeerBinding binding, eAIBase actor, eAIGroup group)
     {
+        actor.PredateTakeSaveOwnership(group);
         PredatePeerState peer = binding.State;
         actor.m_PredateOperatorRecord = peer.Operator;
         PredateOperatorService.UpgradeRivalEquipment(session, actor, peer.Operator);
@@ -356,7 +376,7 @@ class PredatePeerRoster
             // A checkpoint already in progress may have passed this slot.
             // The new deployment must have native storage before publishing it.
             if (!SaveActor(session, binding, error)) return false;
-            session.PredateRequestCheckpoint();
+            session.PredateRequestCheckpoint(true);
         }
         return true;
     }
@@ -494,7 +514,8 @@ class PredatePeerRoster
 
     bool SaveState(out string error)
     {
-        // Keep the existing schema while avoiding millions of padding bytes.
+        CancelStateSave();
+        // Explicit saves continue to produce the standard roster file.
         string data;
         if (!JsonFileLoader<PredatePeerRosterSave>.MakeData(m_State, data, error, false)) return false;
         FileHandle file = OpenFile(SAVE_PATH, FileMode.WRITE);
@@ -505,6 +526,71 @@ class PredatePeerRoster
         }
         FPrint(file, data);
         CloseFile(file);
+        if (FileExist(CHECKPOINT_PATH) && !DeleteFile(CHECKPOINT_PATH))
+        {
+            error = "Cannot clear " + CHECKPOINT_PATH;
+            return false;
+        }
+        m_CheckpointSlot = -1;
+        for (int slot = 0; slot < 2; slot++)
+        {
+            string path = CheckpointRosterPath(slot);
+            if (FileExist(path)) DeleteFile(path);
+        }
         return true;
+    }
+
+    static string CheckpointRosterPath(int slot)
+    {
+        return "$profile:PredatePeerRoster-" + slot + ".json";
+    }
+
+    protected int NextCheckpointSlot()
+    {
+        if (m_CheckpointSlot == 0) return 1;
+        return 0;
+    }
+
+    bool BeginStateSave(out string error)
+    {
+        string path = CheckpointRosterPath(NextCheckpointSlot());
+        m_StateFile = OpenFile(path, FileMode.WRITE);
+        if (!m_StateFile)
+        {
+            error = "Cannot open " + path + " for writing";
+            return false;
+        }
+        FPrint(m_StateFile, "{\"Schema\":" + m_State.Schema + ",\"Peers\":[");
+        return true;
+    }
+
+    bool WriteStateRow(int row, out string error)
+    {
+        string data;
+        if (!JsonFileLoader<PredatePeerState>.MakeData(m_State.Peers[row], data, error, false)) return false;
+        if (row > 0) FPrint(m_StateFile, ",");
+        FPrint(m_StateFile, data);
+        return true;
+    }
+
+    bool FinishStateSave(out string error)
+    {
+        FPrint(m_StateFile, "]}");
+        CloseFile(m_StateFile);
+        m_StateFile = null;
+        // The previous slot stays readable until the new file is complete.
+        PredatePeerRosterCheckpoint checkpoint = new PredatePeerRosterCheckpoint;
+        checkpoint.RosterIndex = NextCheckpointSlot();
+        if (!JsonFileLoader<PredatePeerRosterCheckpoint>.SaveFile(CHECKPOINT_PATH, checkpoint, error)) return false;
+        m_CheckpointSlot = checkpoint.RosterIndex;
+        return true;
+    }
+
+    void CancelStateSave()
+    {
+        if (!m_StateFile) return;
+        CloseFile(m_StateFile);
+        m_StateFile = null;
+        DeleteFile(CheckpointRosterPath(NextCheckpointSlot()));
     }
 }

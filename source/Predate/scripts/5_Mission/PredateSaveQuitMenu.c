@@ -47,6 +47,8 @@ modded class InGameMenu
     Widget m_PredatePauseBrand;
     ImageWidget m_PredatePauseWordmark;
     TextWidget m_PredatePauseSlayer;
+    TextWidget m_PredatePauseScore;
+    int m_PredateShownScore = -1;
     bool m_PredatePauseWordmarkLoaded;
     float m_PredatePauseBrandAspect;
     int m_PredatePauseSlayerSize;
@@ -63,6 +65,9 @@ modded class InGameMenu
         if (m_PredatePauseBrand)
         {
             m_PredatePauseWordmark = ImageWidget.Cast(m_PredatePauseBrand.FindAnyWidget("PredatePauseWordmark"));
+            TextWidget saveName = TextWidget.Cast(m_PredatePauseBrand.FindAnyWidget("PredateSaveName"));
+            if (saveName) saveName.SetText(PredatePresentationOptions.Current().SaveName);
+            m_PredatePauseScore = TextWidget.Cast(m_PredatePauseBrand.FindAnyWidget("PredatePauseScore"));
             m_PredatePauseSlayer = TextWidget.Cast(m_PredatePauseBrand.FindAnyWidget("PredatePauseSlayer"));
             if (m_PredatePauseWordmark && LoadWidgetImageSet("Predate/gui/pause_brand.imageset"))
                 m_PredatePauseWordmarkLoaded = m_PredatePauseWordmark.LoadImageFile(0, "set:PredatePause image:Wordmark") && m_PredatePauseWordmark.SetImage(0);
@@ -192,6 +197,19 @@ modded class InGameMenu
         float width, height;
         m_PredatePauseBrand.GetScreenSize(width, height);
         if (!visible || width <= 0 || height <= 0) return;
+        if (m_PredatePauseScore)
+        {
+            PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+            int score;
+            if (player && player.m_PredateState) score = player.m_PredateState.LifeScore;
+            if (score != m_PredateShownScore)
+            {
+                m_PredateShownScore = score;
+                string digits = score.ToString();
+                while (digits.Length() < 9) digits = "0" + digits;
+                m_PredatePauseScore.SetText(digits);
+            }
+        }
         float aspect = width / height;
         if (m_PredatePauseWordmark && aspect != m_PredatePauseBrandAspect)
         {

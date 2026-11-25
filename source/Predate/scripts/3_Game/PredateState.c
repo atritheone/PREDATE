@@ -1,6 +1,6 @@
 class PredateProtocol
 {
-    static const int VERSION = 21;
+    static const int VERSION = 22;
     static const int MAX_OPERATORS = 100;
     static const int MAX_BEARING_HISTORY = 4;
     static const int REQUEST = 918601;
@@ -104,6 +104,7 @@ class PredateState
     bool Available;
     bool Locked;
     int TrackingChoice;
+    int LifeScore;
     bool HasPulse;
     bool CloseApproach;
     int Bearing;
@@ -209,12 +210,14 @@ class PredateOperatorRecord
     string RifleKit;
     int PlayerWoundBits;
     float PlayerHealthBeforeInjury;
+    int ScoreInjuryLife;
     ref PredateSupplyPlan Supplies = new PredateSupplyPlan;
 
     void ClearPlayerWoundCredit()
     {
         PlayerWoundBits = 0;
         PlayerHealthBeforeInjury = 0;
+        ScoreInjuryLife = 0;
     }
 
     bool RespawnDue(float now, float delay)

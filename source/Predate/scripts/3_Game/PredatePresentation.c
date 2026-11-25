@@ -4,6 +4,7 @@ class PredatePresentationOptions
     int Schema = 1;
     int CompassPercent = 100;
     bool HighContrast;
+    string SaveName;
     static ref PredatePresentationOptions s_Current;
 
     bool Valid() { return Schema == 1 && CompassPercent >= 80 && CompassPercent <= 150; }

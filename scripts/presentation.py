@@ -12,7 +12,9 @@ def validate(preferences):
     return {'Schema':1, 'CompassPercent':scale, 'HighContrast':contrast}
 
 
-def write_client_options(directory, preferences):
+def write_client_options(directory, preferences, save_name=""):
     import session_store as store
     options = validate(preferences)
+    if save_name:
+        options['SaveName'] = save_name
     store.atomic_json(Path(directory)/'PredatePresentation.json', options)

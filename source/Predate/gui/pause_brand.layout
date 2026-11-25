@@ -38,5 +38,48 @@ FrameWidgetClass PredatePauseBrand {
    "text valign" center
    text "slayer"
   }
+  FrameWidgetClass PredatePauseStats {
+   ignorepointer 1
+   position 0.58 0.043
+   size 0.39 78
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 1
+   {
+    TextWidgetClass PredateSaveName {
+     ignorepointer 1
+     position 0 0
+     size 1 36
+     hexactpos 0
+     vexactpos 1
+     hexactsize 0
+     vexactsize 1
+     scaled 0
+     color 0.76 0.84 0.9 1
+     font "gui/fonts/sdf_MetronBook24"
+     "exact text" 1
+     "exact text size" 32
+     "text valign" center
+     "text halign" right
+    }
+    TextWidgetClass PredatePauseScore {
+     ignorepointer 1
+     position 0 32
+     size 1 46
+     hexactpos 0
+     vexactpos 1
+     hexactsize 0
+     vexactsize 1
+     scaled 0
+     color 0.94 0.97 1 1
+     font "gui/fonts/sdf_MetronBook24"
+     "exact text" 1
+     "exact text size" 42
+     "text valign" center
+     "text halign" right
+    }
+   }
+  }
  }
 }

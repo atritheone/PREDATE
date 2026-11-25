@@ -10,7 +10,10 @@ modded class eAIBase
 
         PlayerBase attacker = PredateOperatorDeaths.Attacker(source);
         if (attacker && attacker.GetIdentity())
+        {
             m_PredateOperatorRecord.PlayerHealthBeforeInjury = Math.Max(m_PredateOperatorRecord.PlayerHealthBeforeInjury, previousHealth);
+            PredateScoreEvents.PlayerDamage.Invoke(attacker, this, source, damageType, ammo, ModelToWorld(modelPos));
+        }
         else if ((source && source != this) || ammo == "FallDamageHealth")
             m_PredateOperatorRecord.PlayerHealthBeforeInjury = 0;
         return accepted;

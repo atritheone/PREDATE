@@ -168,8 +168,7 @@ class Supervisor:
 
     def start_operation(self, profile, launcher_pid=None, diagnostics=None):
         store.existing_world_path(profile)
-        dlc_access.wait_for_probe()
-        dlc_access.require(maps.operation_terrain(store.metadata(profile)).id)
+        dlc_access.require_files(maps.operation_terrain(store.metadata(profile)).id)
         if self.profile and self.profile != profile:
             self.save_quit()
         if self.profile == profile and world.running() and self.client_alive():
@@ -383,7 +382,7 @@ class Supervisor:
                                      command.get("launcher_pid"), command.get("diagnostics"))
             elif action == "quit": self.save_quit()
             elif action == "new":
-                dlc_access.require(command.get('map', maps.DEFAULT_MAP))
+                dlc_access.require_files(command.get('map', maps.DEFAULT_MAP))
                 info = store.create_operation(command.get("name", ""), player_loadout=command.get('loadout', 'm4a1'),
                                               opponent_count=command.get('opponents', store.DEFAULT_OPPONENT_COUNT),
                                               footprints=command.get('footprints', True), spawn=command.get('spawn'),
@@ -391,8 +390,7 @@ class Supervisor:
                                               map_id=command.get('map', maps.DEFAULT_MAP))
                 self.start_operation(info["id"], command.get("launcher_pid"), command.get("diagnostics"))
             elif action == "restore":
-                manifest = store.validate_snapshot(ROOT / "backups" / command["backup"])
-                dlc_access.require(maps.operation_terrain(manifest["operation"]).id)
+                store.validate_snapshot(ROOT / "backups" / command["backup"])
                 if self.profile and (self.client_alive() or world.running()): self.save_quit()
                 info = store.restore_snapshot(command["backup"], command["name"])
                 store.save_preferences({"selected_world": info["id"]})

@@ -204,22 +204,21 @@ class PredatePersistence
         if (s.m_HuntGroup && s.m_HuntBot && s.m_HuntBot.IsAlive()) s.m_HuntGroup.Save(true);
     }
 
-    static bool SaveState(PredateSession s, bool saveActors = false)
+    static bool SaveWorldState(PredateSession s)
     {
         PredateSignalService.Capture(s);
         PredateMemoryPersistence.Capture(s);
         string error;
-        if (s.m_PeerRoster)
-        {
-            bool saved;
-            if (saveActors) saved = s.m_PeerRoster.Save(s, error);
-            else saved = s.m_PeerRoster.SaveState(error);
-            if (!saved) return Fail(s, "Cannot save operator roster: " + error);
-        }
-        if (!JsonFileLoader<PredateWorldState>.SaveFile("$profile:PredateWorldState.json", s.m_WorldState, error))
+        string worldData;
+        if (!JsonFileLoader<PredateWorldState>.MakeData(s.m_WorldState, worldData, error, false))
             return Fail(s, "Cannot save session state: " + error);
+        FileHandle file = OpenFile("$profile:PredateWorldState.json", FileMode.WRITE);
+        if (!file) return Fail(s, "Cannot open PredateWorldState.json for writing");
+        FPrint(file, worldData);
+        CloseFile(file);
         if (!JsonFileLoader<PredateProgress>.SaveFile("$profile:PredateProgress.json", s.m_HuntProgress, error))
             return Fail(s, "Cannot save progress: " + error);
+        if (s.m_Score) s.m_Score.Save();
         return true;
     }
 
@@ -227,6 +226,8 @@ class PredatePersistence
     {
         if (!CanSave(s)) return false;
         SaveRaven(s);
-        return SaveState(s, true);
+        string error;
+        if (s.m_PeerRoster && !s.m_PeerRoster.Save(s, error)) return Fail(s, "Cannot save operator roster: " + error);
+        return SaveWorldState(s);
     }
 }

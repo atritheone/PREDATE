@@ -169,8 +169,32 @@ class PredatePeerValidationMission : MissionServer
         string error;
         report.Check(m_Peers.Save(m_PredateSession, error), "native inventories and private state checkpoint");
         report.Error = error;
+        if (file == "$profile:PeerFirst.json") CheckCheckpointWrites(report);
         if (second) report.Check(m_Peers.m_Bindings[0].State.Operator.LifeState == "defeated", "one opponent is marked defeated without changing the others");
         WritePeerTrial(file, report);
+    }
+
+    void CheckCheckpointWrites(PredatePeerTrialReport report)
+    {
+        PredatePeerBinding peer = m_Peers.m_Bindings[1];
+        eAIGroup group = peer.Group;
+        report.Check(group.m_Persist && eAIGroup.s_PersistentGroups.Find(group) == -1, "managed group retains native cleanup and stays off the Expansion save list");
+        string storageKey = group.m_BaseName;
+        group.m_BaseName = "PredateCheckpointProbeManaged";
+        string path = eAIGroup.GetStorageDirectory(group.m_BaseName) + eAIGroup.BASENAME;
+        peer.Actor.OnCEIterate(0, 0);
+        report.Check(!FileExist(path) && group.m_Persist, "Expansion economy tick skips the managed group and restores its persistence flag");
+        group.Save(true);
+        report.Check(FileExist(path), "PREDATE can still save the managed group explicitly");
+        group.m_BaseName = storageKey;
+
+        PredatePeerRosterSave saved;
+        string error;
+        bool staged = m_Peers.BeginStateSave(error) && m_Peers.WriteStateRow(0, error);
+        bool loaded = JsonFileLoader<PredatePeerRosterSave>.LoadFile(PredatePeerRoster.SAVE_PATH, saved, error);
+        report.Check(staged && loaded && saved && saved.Peers.Count() == 2 && !FileExist(PredatePeerRoster.CHECKPOINT_PATH), "a partial checkpoint leaves the complete roster readable");
+        m_Peers.CancelStateSave();
+        report.Check(!FileExist(PredatePeerRoster.CheckpointRosterPath(0)), "discarded roster data is removed");
     }
 
     void WritePeerTrial(string path, PredatePeerTrialReport report)

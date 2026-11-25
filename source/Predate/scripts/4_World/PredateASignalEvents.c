@@ -61,6 +61,7 @@ modded class Weapon_Base
         super.EEFired(muzzleType, mode, ammoType);
         if (!GetGame().IsServer()) return;
         PlayerBase owner = PlayerBase.Cast(GetHierarchyRootPlayer());
+        if (owner && owner.GetIdentity()) PredateScoreEvents.Fired.Invoke(owner, this, ammoType);
         if (owner && owner.m_PredateSignatureRegistered)
             owner.m_PredatePendingShots = Math.Min(32, owner.m_PredatePendingShots + 1);
     }

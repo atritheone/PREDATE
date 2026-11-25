@@ -98,6 +98,7 @@ class PredateServerBridge
                     bool allowedDamage = player.GetAllowDamage();
                     // Accept this deliberate life change while gameplay stays held.
                     player.SetAllowDamage(true);
+                    player.m_PredateScoreSuicide = true;
                     player.SetHealth("", "Health", 0);
                     player.SetAllowDamage(allowedDamage);
                 }
