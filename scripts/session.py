@@ -60,7 +60,8 @@ def request(action, **values):
     ensure_manager()
     required = {}
     if action in {"new", "continue"}:
-        required["battleye_enabled"] = True
+        required["battleye_enabled"] = not world.diagnostic_runtime()
+        if world.diagnostic_runtime(): required["game_runtime"] = world.runtime_name()
     if action == "new" and ("setup" in values or "map" in values):
         required["operation_setup_version"] = OPERATION_SETUP_VERSION
     elif action == "delete":
@@ -120,6 +121,7 @@ class Supervisor:
         self.job = None
         self.cancel = threading.Event()
         self.client = None
+        self.client_start_pid = None
         self.profile = None
         self.session_id = None
         self.seen_connection = False
@@ -130,7 +132,8 @@ class Supervisor:
         self.last_activity = time.monotonic()
         self.data = {"phase": "idle", "message": "Ready to continue", "profile": None, "error": "",
                      "operation_setup_version": OPERATION_SETUP_VERSION, "can_delete_saves": True,
-                     "delete_save_version": DELETE_SAVE_VERSION, "battleye_enabled": True}
+                     "delete_save_version": DELETE_SAVE_VERSION, "battleye_enabled": not world.diagnostic_runtime(),
+                     "game_runtime": world.runtime_name()}
         self.quit_waiters = []
         self.pause_preparing = None
         self.pause_resume_sequence = None
@@ -187,7 +190,7 @@ class Supervisor:
             self.publish("connecting", "Reconnecting to your saved operation...", error="")
             self.disconnected_at = None
             return
-        if any(platform_win.find_processes(name) for name in ("DayZ_x64.exe", world.CLIENT_BOOTSTRAP)):
+        if world.dayz_client_open():
             raise RuntimeError("DayZ is already open outside this session. Close it before continuing here.")
         self.configure(profile)
         if profile == "main" and world.stable_fallback():
@@ -205,6 +208,7 @@ class Supervisor:
         self.session_id = uuid.uuid4().hex
         self.play_time_checkpoint = 0
         self.client = None
+        self.client_start_pid = None
         self.client_launch_focus = ClientLaunchFocus(launcher_pid) if launcher_pid else None
         self.command_sequence = 0
         self.seen_connection = False
@@ -230,7 +234,8 @@ class Supervisor:
                 return
             launched_at = time.time()
             startup_args = ["-predateStartupFocus"] if self.client_launch_focus else None
-            world.launch_client(self.session_id, extra_args=startup_args, wait_for_server=True)
+            process = world.launch_client(self.session_id, extra_args=startup_args, wait_for_server=True)
+            self.client_start_pid = process.pid
 
         def loading_progress(_):
             if launched_at is not None:
@@ -271,14 +276,20 @@ class Supervisor:
         failure = read_native(store.world_path(self.profile) / "client/PredateFailure.json")
         failed_process = failure.get("process", {})
         created = failed_process.get("created", 0) / 10_000_000 - 11_644_473_600
-        if created >= launched_at - 0.1 and failed_process.get("executable", "").casefold() == str(world.CLIENT / "DayZ_x64.exe").casefold():
+        executable = world.client_executable()
+        if created >= launched_at - 0.1 and failed_process.get("executable", "").casefold() == str(executable).casefold():
             raise RuntimeError("DayZ failed to start: " + failure.get("message", "Unknown client error"))
         if self.client and not self.client_alive():
             raise RuntimeError("DayZ closed before the world was ready.")
         if not self.client:
-            for pid in platform_win.find_processes("DayZ_x64.exe"):
+            if world.diagnostic_runtime():
+                if self.client_start_pid is None: return False
+                candidates = (self.client_start_pid,)
+            else:
+                candidates = platform_win.find_processes(executable.name)
+            for pid in candidates:
                 identity = world.process_identity(pid)
-                if not identity: continue
+                if not identity or identity["executable"].casefold() != str(executable).casefold(): continue
                 self.client = identity
                 store.atomic_json(RUNTIME / "active-session.json", {
                     "profile": self.profile, "session_id": self.session_id, "client": identity,

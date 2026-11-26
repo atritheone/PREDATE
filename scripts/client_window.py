@@ -1,6 +1,8 @@
 """Win32 focus handoff for a freshly launched DayZ window."""
 import ctypes
 from ctypes import wintypes
+import subprocess
+import threading
 import time
 
 
@@ -190,3 +192,73 @@ class ClientLaunchFocus:
             print(f"DayZ received foreground and keyboard focus during {phase}.", flush=True)
             self.focused_handle = handle
         return connected
+
+
+def hide_diagnostic_startup_dialog(process):
+    """Suppress the diagnostic client's native checklist during initialization."""
+    threading.Thread(target=_watch_diagnostic_startup, args=(process,), daemon=True).start()
+
+
+def _watch_diagnostic_startup(process):
+    window = ClientWindow()
+    user = window.user
+    user.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user.GetDlgItem.argtypes = [wintypes.HWND, ctypes.c_int]
+    user.GetDlgItem.restype = wintypes.HWND
+    user.MsgWaitForMultipleObjects.argtypes = [wintypes.DWORD, ctypes.c_void_p, wintypes.BOOL,
+                                             wintypes.DWORD, wintypes.DWORD]
+    user.DispatchMessageW.argtypes = [ctypes.POINTER(wintypes.MSG)]
+    compositor = ctypes.WinDLL('dwmapi')
+    compositor.DwmSetWindowAttribute.argtypes = [wintypes.HWND, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD]
+    cloak = wintypes.BOOL(True)
+    main_window_seen = False
+
+    def inspect(handle):
+        nonlocal main_window_seen
+        if window.owner_pid(handle) != process.pid:
+            return
+        class_name = ctypes.create_unicode_buffer(32)
+        user.GetClassNameW(handle, class_name, len(class_name))
+        if class_name.value == 'DayZ':
+            main_window_seen = True
+            return
+        if class_name.value != '#32770':
+            return
+        title = ctypes.create_unicode_buffer(32)
+        user.GetWindowTextW(handle, title, len(title))
+        # Only the startup checklist has all ten indicator controls. Preserve error dialogs.
+        if title.value == 'DayZ' and all(user.GetDlgItem(handle, control) for control in range(1002, 1012)):
+            compositor.DwmSetWindowAttribute(handle, 13, ctypes.byref(cloak), ctypes.sizeof(cloak))  # DWMWA_CLOAK
+            user.ShowWindowAsync(handle, subprocess.SW_HIDE)
+
+    callback_type = ctypes.WINFUNCTYPE(None, wintypes.HANDLE, wintypes.DWORD, wintypes.HWND,
+                                        wintypes.LONG, wintypes.LONG, wintypes.DWORD, wintypes.DWORD)
+    user.SetWinEventHook.argtypes = [wintypes.DWORD, wintypes.DWORD, wintypes.HMODULE, callback_type,
+                                   wintypes.DWORD, wintypes.DWORD, wintypes.DWORD]
+    user.SetWinEventHook.restype = wintypes.HANDLE
+    user.UnhookWinEvent.argtypes = [wintypes.HANDLE]
+
+    @callback_type
+    def on_window_event(_hook, _event, handle, object_id, child_id, _thread, _time):
+        if handle and not object_id and not child_id:
+            inspect(handle)
+
+    @window.callback_type
+    def existing_window(handle, _):
+        inspect(handle)
+        return True
+
+    # EVENT_OBJECT_SHOW and EVENT_OBJECT_CREATE catch both the checklist and the main window.
+    hook = user.SetWinEventHook(0x8000, 0x8002, None, on_window_event, process.pid, 0, 0)
+    try:
+        user.EnumWindows(existing_window, 0)
+        if not hook: return
+        message = wintypes.MSG()
+        deadline = time.monotonic() + 20
+        while not main_window_seen and time.monotonic() < deadline and process.poll() is None:
+            user.MsgWaitForMultipleObjects(0, None, False, 100, 0x04FF)  # QS_ALLINPUT
+            while user.PeekMessageW(ctypes.byref(message), None, 0, 0, 1):
+                user.DispatchMessageW(ctypes.byref(message))
+    finally:
+        if hook: user.UnhookWinEvent(hook)

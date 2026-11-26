@@ -37,6 +37,7 @@ STATE = WORLD / "server-process.json"
 SERVER = ROOT / "runtime"
 CLIENT = Path(r"C:\Program Files (x86)\Steam\steamapps\common\DayZ")
 CLIENT_BOOTSTRAP = "DayZ_BE.exe"
+DIAGNOSTIC_EXE = "DayZDiag_x64.exe"
 PORT, QUERY_PORT, RCON_PORT = 2402, 2405, 2406
 
 TEST_CLIENT = False
@@ -44,6 +45,31 @@ PROFILE_NAME = "main"
 SCENARIO = None
 CONFIG = ROOT / "serverDZ.cfg"
 MODS = [ROOT / "mods" / name for name in (*DEPENDENCIES, "@Predate")]
+
+
+def diagnostic_runtime():
+    return os.environ.get("PREDATE_DIAGNOSTIC_RUNTIME", "1") == "1"
+
+
+def runtime_name():
+    return "dayz-diagnostic" if diagnostic_runtime() else "dayz-retail"
+
+
+def client_executable():
+    return CLIENT / (DIAGNOSTIC_EXE if diagnostic_runtime() else "DayZ_x64.exe")
+
+
+def server_executable():
+    return CLIENT / DIAGNOSTIC_EXE if diagnostic_runtime() else SERVER / "DayZServer_x64.exe"
+
+
+def dayz_client_open():
+    import platform_win
+
+    # The official diagnostic server and client share the same executable.
+    owned_server = json.loads(STATE.read_text())["pid"] if running() else None
+    return any(pid != owned_server for name in ("DayZ_x64.exe", CLIENT_BOOTSTRAP, DIAGNOSTIC_EXE)
+               for pid in platform_win.find_processes(name))
 
 
 def select_profile(name, map_id=None):
@@ -236,7 +262,8 @@ def setup():
     if SETTINGS.exists():
         print("Existing world retained. Setup already complete.", flush=True)
         return
-    for path in (SERVER / "DayZServer_x64.exe", CLIENT / "DayZ_x64.exe", CLIENT / CLIENT_BOOTSTRAP):
+    inputs = (client_executable(),) if diagnostic_runtime() else (server_executable(), client_executable(), CLIENT / CLIENT_BOOTSTRAP)
+    for path in inputs:
         if not path.is_file():
             raise RuntimeError(f"Missing installation: {path}")
     if MISSION.exists() and any(STORAGE.rglob("players.db")):
@@ -283,7 +310,7 @@ class Missions
 };
 '''.replace("JOIN_PASSWORD", private["join_password"]).replace("QUERY_PORT", str(QUERY_PORT)).replace(
         "MISSION_TEMPLATE", TERRAIN.mission).replace("MISSION_DATE", TERRAIN.start_date)
-    CONFIG.write_text(config, encoding="ascii")
+    CONFIG.write_text(managed_server_config(config), encoding="ascii")
     if PROFILE_NAME == "development":
         (PROFILE / "PredateDevelopment.txt").write_text("Isolated development world; tests may change actors.\n")
     # Private operations have no login or server-hopping countdown.
@@ -373,7 +400,11 @@ def process_failure(identity, logdir=None):
 
 
 def managed_server_config(config):
-    for name, value in (("BattlEye", 1), ("disable3rdPerson", 1), ("thirdPersonView", 0),
+    use_diagnostic = diagnostic_runtime()
+    # The diagnostic server rejects a stock PBO with its signature handshake.
+    # Only the password-protected loopback launch uses this configuration.
+    for name, value in (("BattlEye", int(not use_diagnostic)), ("verifySignatures", 0 if use_diagnostic else 2),
+                        ("allowFilePatching", 0), ("disable3rdPerson", 1), ("thirdPersonView", 0),
                         ("disableVoN", 1), ("adminLogPlayerList", 0)):
         config, count = re.subn(rf"(?im)^[ \t]*{name}\s*=\s*[^;\r\n]+;", f"{name} = {value};", config)
         if not count:
@@ -412,7 +443,11 @@ def start(session_id=None, progress=None, cancelled=None, on_started=None,
             probe.bind(("127.0.0.1", port))
     if diagnostics is None:
         diagnostics = PROFILE_NAME == "development" or PROFILE_NAME.startswith("validation-")
-    args = [str(SERVER / "DayZServer_x64.exe"), f"-config={CONFIG}",
+    binary = server_executable()
+    if not binary.is_file(): raise RuntimeError(f"Missing DayZ server executable: {binary}")
+    args = [str(binary)]
+    if diagnostic_runtime(): args += ["-server", "-extrace=0"]
+    args += [f"-config={CONFIG}",
             "-ip=127.0.0.1", f"-port={PORT}", f"-profiles={PROFILE}",
             f"-mission={MISSION}", f"-storage={STORAGE}",
             "-freezeCheck", "-limitFPS=60"]
@@ -427,11 +462,11 @@ def start(session_id=None, progress=None, cancelled=None, on_started=None,
     log_hint = str(log or PROFILE)
     with private_server_desktop() as desktop:
         with (log.open("wb") if log else nullcontext()) as output:
-            pid = spawn_server(args, SERVER, desktop, output)
+            pid = spawn_server(args, binary.parent, desktop, output)
         identity = process_identity(pid)
         if identity is None:
             raise RuntimeError(f"Server exited during startup. Inspect {log_hint}")
-        identity.update(session_id=session_id, battleye=True, rcon_enabled=False)
+        identity.update(session_id=session_id, battleye=not diagnostic_runtime(), rcon_enabled=False)
         from session_store import atomic_json
         atomic_json(STATE, identity)
         process_identity_only = {key: identity[key] for key in ("pid", "created", "executable")}
@@ -531,18 +566,21 @@ def stop(make_backup=True):
 
 
 def launch_client(session_id=None, extra_args=None, wait_for_server=False):
-    import platform_win
     import workshop_lasers
     mods = launch_mods()
     workshop_lasers.verify_launch(mods)
     # Avoid launching another client over an existing DayZ session.
-    if any(platform_win.find_processes(name) for name in ("DayZ_x64.exe", CLIENT_BOOTSTRAP)):
+    if dayz_client_open():
         raise RuntimeError("DayZ is already open. Close it before using scripts/Play PREDATE.cmd.")
-    bootstrap = CLIENT / CLIENT_BOOTSTRAP
+    binary = client_executable()
+    bootstrap = binary if diagnostic_runtime() else CLIENT / CLIENT_BOOTSTRAP
     if not bootstrap.is_file():
-        raise RuntimeError(f"Missing DayZ BattlEye launcher: {bootstrap}")
+        raise RuntimeError(f"Missing DayZ client launcher: {bootstrap}")
     private = settings()
-    args = [str(bootstrap), "0", "1", "-exe", "DayZ_x64.exe", "-noSplash", "-noPause"]
+    args = [str(bootstrap)]
+    if diagnostic_runtime(): args.append("-extrace=0")
+    else: args.extend(["0", "1", "-exe", binary.name])
+    args.extend(["-noSplash", "-noPause"])
     if not wait_for_server:
         args += [f"-connect=127.0.0.1:{PORT}:{QUERY_PORT}", f"-port={PORT}",
                  f"-password={private['join_password']}"]
@@ -568,11 +606,17 @@ def launch_client(session_id=None, extra_args=None, wait_for_server=False):
     # This is the interactive game; its window is intentionally visible.
     launched_at = time.time()
     child = spawn(args, cwd=CLIENT)
-    guard_arguments = helper_command("process_guard", "--discover-client",
-                       "--since", str(launched_at), "--exe", str(CLIENT / "DayZ_x64.exe"),
-                       "--logdir", str(client_logs), "--failure", str(client_logs / "PredateFailure.json"), windowless=True)
-    with (client_logs / "guard-client.log").open("ab") as output:
-        launch_hidden(guard_arguments, ROOT, output)
+    if diagnostic_runtime():
+        from client_window import hide_diagnostic_startup_dialog
+        hide_diagnostic_startup_dialog(child)
+        identity = process_identity(child.pid)
+        if identity: guard_process(identity, client_logs, client_logs / "PredateFailure.json")
+    else:
+        guard_arguments = helper_command("process_guard", "--discover-client",
+                           "--since", str(launched_at), "--exe", str(binary),
+                           "--logdir", str(client_logs), "--failure", str(client_logs / "PredateFailure.json"), windowless=True)
+        with (client_logs / "guard-client.log").open("ab") as output:
+            launch_hidden(guard_arguments, ROOT, output)
     print("Launching DayZ and connecting to your local world.", flush=True)
     return child
 

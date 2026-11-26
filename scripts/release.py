@@ -108,6 +108,7 @@ def mod_version(folder):
 
 def collect():
     server = STEAM / "common/DayZServer"
+    client = STEAM / "common/DayZ"
     tools = STEAM / "common/DayZ Tools/Bin"
     version = subprocess.run(["powershell", "-NoProfile", "-Command",
         f"(Get-Item -LiteralPath '{server / 'DayZServer_x64.exe'}').VersionInfo.FileVersion"],
@@ -121,7 +122,7 @@ def collect():
             native[p.name] = digest(p)
     return {"schema": 1, "dayz_version": version,
             "server": native,
-            "client": {"DayZ_x64.exe": digest(STEAM / "common/DayZ/DayZ_x64.exe")},
+            "client": {name: digest(client / name) for name in ("DayZ_x64.exe", "DayZDiag_x64.exe")},
             "tools": {name: digest(tools / name) for name in
                       ("PboUtils/FileBank.exe", "DsUtils/DSSignFile.exe", "DsUtils/DSCreateKey.exe")},
             "dependencies": {name: {"workshop_id": item, "version": mod_version(ROOT / "mods" / name),

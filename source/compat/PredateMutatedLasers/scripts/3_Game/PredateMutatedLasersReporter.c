@@ -5,7 +5,7 @@ modded class MutatedWatchlistReporter_MutatedLaser
     {
     }
 
-    override void MWL_ML_SendWebhook(string webhook, string serverName, string modName, string tag)
+    override void MWL_ML_SendWebhook(string mwl_ml_webhook, string mwl_ml_serverName, string mwl_ml_modName, string mwl_ml_tag)
     {
     }
 }

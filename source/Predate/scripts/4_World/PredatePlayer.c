@@ -201,14 +201,14 @@ modded class PlayerBase
     override void OnRPC(PlayerIdentity sender, int rpc_type, ParamsReadContext ctx)
     {
         super.OnRPC(sender, rpc_type, ctx);
-        if (rpc_type == PredateProtocol.SIGNAL_LOST && GetGame().IsClient() && this == GetGame().GetPlayer())
+        if (rpc_type == PredateProtocol.SIGNAL_LOST && GetGame().IsClient() && GetGame().GetPlayer() == this)
         {
             int lostSlot;
             if (ctx.Read(lostSlot) && PredateProtocol.OperatorAt(lostSlot) != "" && m_PredateLostSignalNotices.Find(lostSlot) < 0)
                 m_PredateLostSignalNotices.Insert(lostSlot);
             return;
         }
-        if (rpc_type == PredateProtocol.WEAPON_MODULE_LOG && GetGame().IsClient() && this == GetGame().GetPlayer())
+        if (rpc_type == PredateProtocol.WEAPON_MODULE_LOG && GetGame().IsClient() && GetGame().GetPlayer() == this)
         {
             string message;
             if (ctx.Read(message)) PredateWeaponModuleMessage(message);

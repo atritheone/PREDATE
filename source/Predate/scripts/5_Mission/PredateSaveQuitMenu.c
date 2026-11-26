@@ -45,13 +45,17 @@ modded class InGameMenu
     bool m_PredateDeploymentTest;
     Widget m_PredateDeathOptions;
     Widget m_PredatePauseBrand;
+    Widget m_PredatePauseStats;
     ImageWidget m_PredatePauseWordmark;
     TextWidget m_PredatePauseSlayer;
+    TextWidget m_PredateSaveName;
     TextWidget m_PredatePauseScore;
     int m_PredateShownScore = -1;
     bool m_PredatePauseWordmarkLoaded;
     float m_PredatePauseBrandAspect;
     int m_PredatePauseSlayerSize;
+    float m_PredatePauseStatsWidth;
+    float m_PredatePauseStatsHeight;
 
     static bool PredateNeedsRedeploy(PlayerBase player)
     {
@@ -65,8 +69,8 @@ modded class InGameMenu
         if (m_PredatePauseBrand)
         {
             m_PredatePauseWordmark = ImageWidget.Cast(m_PredatePauseBrand.FindAnyWidget("PredatePauseWordmark"));
-            TextWidget saveName = TextWidget.Cast(m_PredatePauseBrand.FindAnyWidget("PredateSaveName"));
-            if (saveName) saveName.SetText(PredatePresentationOptions.Current().SaveName);
+            m_PredatePauseStats = m_PredatePauseBrand.FindAnyWidget("PredatePauseStats");
+            m_PredateSaveName = TextWidget.Cast(m_PredatePauseBrand.FindAnyWidget("PredateSaveName"));
             m_PredatePauseScore = TextWidget.Cast(m_PredatePauseBrand.FindAnyWidget("PredatePauseScore"));
             m_PredatePauseSlayer = TextWidget.Cast(m_PredatePauseBrand.FindAnyWidget("PredatePauseSlayer"));
             if (m_PredatePauseWordmark && LoadWidgetImageSet("Predate/gui/pause_brand.imageset"))
@@ -210,6 +214,12 @@ modded class InGameMenu
                 m_PredatePauseScore.SetText(digits);
             }
         }
+        if (m_PredatePauseStats && m_PredateSaveName && m_PredatePauseScore && (width != m_PredatePauseStatsWidth || height != m_PredatePauseStatsHeight))
+        {
+            m_PredatePauseStatsWidth = width;
+            m_PredatePauseStatsHeight = height;
+            FitPredatePauseStats(height);
+        }
         float aspect = width / height;
         if (m_PredatePauseWordmark && aspect != m_PredatePauseBrandAspect)
         {
@@ -222,6 +232,36 @@ modded class InGameMenu
             m_PredatePauseSlayerSize = size;
             m_PredatePauseSlayer.SetTextExactSize(size);
         }
+    }
+
+    void FitPredatePauseStats(float height)
+    {
+        float x, y, width, unusedHeight;
+        m_PredatePauseStats.GetScreenPos(x, y);
+        m_PredatePauseStats.GetScreenSize(width, unusedHeight);
+        float scale = Math.Clamp(height / 1080.0, 0.4, 1.0);
+        m_PredateSaveName.SetTextExactSize(Math.Round(32 * scale));
+        m_PredatePauseScore.SetTextExactSize(Math.Round(42 * scale));
+        string name = PredatePresentationOptions.Current().SaveName;
+        m_PredateSaveName.SetText(name);
+        int nameWidth, nameHeight, scoreWidth, scoreHeight;
+        m_PredateSaveName.GetTextSize(nameWidth, nameHeight);
+        int nameLength = name.LengthUtf8();
+        while (nameWidth > width && nameLength > 1)
+        {
+            nameLength--;
+            name = name.SubstringUtf8(0, nameLength);
+            m_PredateSaveName.SetText(name + "…");
+            m_PredateSaveName.GetTextSize(nameWidth, nameHeight);
+        }
+        m_PredatePauseScore.GetTextSize(scoreWidth, scoreHeight);
+        float nameRow = Math.Max(Math.Round(36 * scale), nameHeight + 2);
+        float scoreRow = Math.Max(Math.Round(46 * scale), scoreHeight + 2);
+        float gap = Math.Max(1, Math.Round(scale));
+        m_PredatePauseStats.SetScreenSize(width, nameRow + gap + scoreRow);
+        m_PredateSaveName.SetScreenSize(width, nameRow);
+        m_PredatePauseScore.SetScreenSize(width, scoreRow);
+        m_PredatePauseScore.SetScreenPos(x, y + nameRow + gap);
     }
 
     override protected void OnClick_Respawn()

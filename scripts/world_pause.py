@@ -57,7 +57,7 @@ def pause(session_id):
     if not identity or identity.get('session_id') != session_id:
         raise RuntimeError('Pause requires this operation\'s owned server')
     expected = {k: identity[k] for k in ('pid', 'created', 'executable')}
-    if Path(expected['executable']).resolve() != (world.SERVER/'DayZServer_x64.exe').resolve() or world.process_identity(expected['pid']) != expected:
+    if Path(expected['executable']).resolve() != world.server_executable().resolve() or world.process_identity(expected['pid']) != expected:
         raise RuntimeError('The owned server changed; pause was refused')
     native = world.native_status()
     if native.get('SessionId') != session_id or not native.get('Paused') or not native.get('PauseReady'):
