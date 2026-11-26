@@ -1,13 +1,3 @@
-class PredateScoredShot
-{
-    Weapon_Base FirearmEntity;
-    int RoundNumber;
-    string Ammo;
-    int At;
-    vector Origin;
-    bool Hit;
-}
-
 class PredateScoreEvents
 {
     static ref ScriptInvoker Fired = new ScriptInvoker;

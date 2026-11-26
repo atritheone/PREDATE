@@ -53,7 +53,8 @@ def overview():
     operation_options = {"opponents": store.OPPONENT_COUNTS, "randomRegion": True}
     if workshop_lasers.preview_available(ROOT, loadouts.WORKSHOP):
         operation_options["weaponModule"] = {"className": "MM_ANPEQ15", "name": "AN/PEQ-15 Laser / Light Module"}
-    return {"operations": operations, "preferences": preferences, "loadouts": loadouts.options(preferences["extra_mods"]),
+    return {"operations": operations, "preferences": preferences, "callsign": store.callsign(),
+            "loadouts": loadouts.options(preferences["extra_mods"]),
             "spawnPoints": spawn_points.options(),
             "maps": map_options(),
             "operationOptions": operation_options,
@@ -67,17 +68,17 @@ def dispatch(method, params):
         return overview()
     if method == "overview": return overview()
     if method == "status": return session.state()
+    if method == "profile-stats": return store.profile_stats()
+    if method == "save-callsign":
+        if not isinstance(params, dict) or set(params) != {"callsign"}:
+            raise ValueError("Enter a callsign.")
+        return store.save_callsign(params["callsign"])
     if method == "scores":
         profile = params.get("profile")
         if not isinstance(profile, str):
             raise ValueError("Select a save to view scores.")
         path = store.existing_world_path(profile)
-        lives = []
-        for score_file in (path / "profile").glob("PredateLifeScore-*.json"):
-            life = store.read_json(score_file)
-            if isinstance(life, dict) and life.get("Version") == 1:
-                lives.append(life)
-        return {"name": store.display_name(profile), "lives": lives}
+        return {"name": store.display_name(profile), "lives": list(store.life_scores(path / "profile"))}
     if method == "preferences":
         allowed = {"reconnect_grace", "backup_limit", "offline", "extra_mods", "receiver_scale", "receiver_high_contrast"}
         if not isinstance(params, dict) or set(params) - allowed:

@@ -54,6 +54,7 @@ class PredateSession
         m_Development = GetGame().CommandlineGetParam("predateDevelopment", flag) && FileExist("$profile:PredateDevelopment.txt");
         PredateServerDiagnostics.Enabled = GetGame().CommandlineGetParam("predateServerDiagnostics", flag);
         PredateServerDiagnostics.TraceOperators = FileExist("$profile:PredateAITrace.txt");
+        PredateServerDiagnostics.TraceShots = GetGame().CommandlineGetParam("predateShotTrace", flag) || (PredateServerDiagnostics.Enabled && FileExist("$profile:PredateShotTrace.txt"));
         PredateInit();
     }
 

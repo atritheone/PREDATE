@@ -44,6 +44,7 @@ class PredateServerBridge
         if (m_Closing) return;
         m_Closing = true;
         m_Session.BeginSuspend();
+        if (m_Session.m_Score) m_Session.m_Score.FinishRounds();
         SaveAll();
         m_Status.Phase = "stopping";
         Publish();

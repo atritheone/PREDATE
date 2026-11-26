@@ -13,6 +13,25 @@ INSTALL = Path(r"C:\Program Files (x86)\Steam\steamapps\common\DayZServer")
 TOOLS = Path(r"C:\Program Files (x86)\Steam\steamapps\common\DayZ Tools\Bin")
 WORKSHOP = release.WORKSHOP
 
+# Match PredateProjectileRounds.SLOT_COUNT.
+ROUND_SLOTS = 192
+ROUND_AMMO = {
+    "PredateStockPrecision": (
+        "Bullet_12GaugePellets", "Bullet_12GaugeSlug", "Bullet_12GaugeRubberSlug",
+        "Bullet_12GaugeBeanbag", "Bullet_556x45", "Bullet_556x45Tracer",
+        "Bullet_545x39", "Bullet_545x39Tracer", "Bullet_762x54", "Bullet_762x54Tracer",
+        "Bullet_308Win", "Bullet_308WinTracer", "Bullet_762x39", "Bullet_762x39Tracer",
+        "Bullet_45ACP", "Bullet_357", "Bullet_9x19", "Bullet_380", "Bullet_22",
+        "Bullet_9x39AP", "Bullet_9x39",
+    ),
+    "PredateBucaPrecision": tuple(
+        "BC_Bullet_" + caliber for caliber in (
+            "127x55", "20mm", "300BO", "338", "408", "408AP", "46x30mm",
+            "50Beowulf", "50Cal", "FN57x28mm", "Rail",
+        )
+    ),
+}
+
 
 def require_closed_runtime():
     """Protect loaded addons and missions even when a build helper is imported."""
@@ -369,6 +388,19 @@ def pack(candidate=False):
         packages = [(staged_signature, signature), (staged_pbo, pbo)]
         for name, folder in precision_sources.items():
             addon = ROOT / "source" / "compat" / name
+            if (addon / "config.cpp").is_file():
+                deployed_source = staging / name
+                shutil.copytree(addon, deployed_source)
+                aliases = []
+                for ammo in ROUND_AMMO[name]:
+                    if name != "PredateStockPrecision" or ammo not in (
+                        "Bullet_12GaugeSlug", "Bullet_12GaugeBeanbag", "Bullet_12GaugePellets",
+                    ):
+                        aliases.append(f"class {ammo};\n")
+                    for slot in range(ROUND_SLOTS):
+                        aliases.append(f"class PR_{slot}_{ammo}: {ammo} {{}};\n")
+                (deployed_source / "predate-rounds.hpp").write_text("".join(aliases), encoding="ascii")
+                addon = deployed_source
             addon_pbo, addon_signature = stage_signed_addon(addon, staging, authority)
             packages.extend((path, folder / path.name) for path in (addon_signature, addon_pbo))
         require_closed_runtime()

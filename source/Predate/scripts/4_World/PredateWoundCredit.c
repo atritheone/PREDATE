@@ -3,20 +3,45 @@ modded class eAIBase
     override bool EEOnDamageCalculated(TotalDamageResult damageResult, int damageType, EntityAI source, int component, string dmgZone, string ammo, vector modelPos, float speedCoef)
     {
         float previousHealth;
-        if (GetGame().IsServer() && m_PredateOperatorRecord && damageResult && damageResult.GetDamage("", "Health") > 0)
-            previousHealth = GetHealth("", "Health");
+        vector impact;
+        bool tagged;
+        if (GetGame().IsServer() && m_PredateOperatorRecord && damageResult)
+        {
+            if (damageResult.GetDamage("", "Health") > 0) previousHealth = GetHealth("", "Health");
+            tagged = damageType == DT_FIRE_ARM && ammo.IndexOf(PredateProjectileRounds.PREFIX) == 0;
+            if (tagged)
+            {
+                impact = PredateWorldImpact(modelPos);
+                PredateProjectileRounds.ReportContact(ammo, this, impact, true);
+            }
+        }
+        if (PredateServerDiagnostics.TraceShots && damageType == DT_FIRE_ARM && m_PredateOperatorRecord && PredateServerDiagnostics.TraceShotSource(source))
+            Print("[PredateShot] damage " + GetGame().GetTime() + " " + ammo + " source=" + source + " target=" + GetPosition() + " raw=" + modelPos + " converted=" + ModelToWorld(modelPos));
         bool accepted = super.EEOnDamageCalculated(damageResult, damageType, source, component, dmgZone, ammo, modelPos, speedCoef);
         if (!accepted || previousHealth <= 0) return accepted;
 
         PlayerBase attacker = PredateOperatorDeaths.Attacker(source);
-        if (attacker && attacker.GetIdentity())
+        PredateProjectileRound round;
+        if (damageType == DT_FIRE_ARM) round = PredateProjectileRounds.Find(ammo);
+        if ((attacker && attacker.GetIdentity()) || (round && round.Number > 0))
         {
             m_PredateOperatorRecord.PlayerHealthBeforeInjury = Math.Max(m_PredateOperatorRecord.PlayerHealthBeforeInjury, previousHealth);
-            PredateScoreEvents.PlayerDamage.Invoke(attacker, this, source, damageType, ammo, ModelToWorld(modelPos));
+            if (!tagged) impact = PredateWorldImpact(modelPos);
+            PredateScoreEvents.PlayerDamage.Invoke(attacker, this, source, damageType, ammo, impact);
         }
         else if ((source && source != this) || ammo == "FallDamageHealth")
             m_PredateOperatorRecord.PlayerHealthBeforeInjury = 0;
         return accepted;
+    }
+
+    vector PredateWorldImpact(vector modelPos)
+    {
+        // Native damage can report model coordinates. Expansion's
+        // replacement damage can retain the world-space impact.
+        vector impact = ModelToWorld(modelPos);
+        vector target = GetPosition();
+        if (vector.DistanceSq(modelPos, target) < vector.DistanceSq(impact, target)) return modelPos;
+        return impact;
     }
 }
 

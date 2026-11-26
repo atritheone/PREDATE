@@ -56,13 +56,38 @@ modded class Grenade_Base
 
 modded class Weapon_Base
 {
+    string m_PredateFiredAmmo;
+    ref map<int, string> m_PredateArmedAmmo;
+
     override void EEFired(int muzzleType, int mode, string ammoType)
     {
         super.EEFired(muzzleType, mode, ammoType);
         if (!GetGame().IsServer()) return;
         PlayerBase owner = PlayerBase.Cast(GetHierarchyRootPlayer());
-        if (owner && owner.GetIdentity()) PredateScoreEvents.Fired.Invoke(owner, this, ammoType);
+        if (owner && owner.GetIdentity()) m_PredateFiredAmmo = ammoType;
         if (owner && owner.m_PredateSignatureRegistered)
             owner.m_PredatePendingShots = Math.Min(32, owner.m_PredatePendingShots + 1);
+    }
+
+    override void OnFire(int muzzle_index)
+    {
+        super.OnFire(muzzle_index);
+        if (!GetGame().IsServer()) return;
+        string ammo = m_PredateFiredAmmo;
+        m_PredateFiredAmmo = "";
+        PlayerBase owner = PlayerBase.Cast(GetHierarchyRootPlayer());
+        if (!owner || !owner.GetIdentity()) return;
+        // TryFireWeapon succeeded. Remember the tag even for fire states
+        // that eject the spent cartridge before this callback.
+        if (ammo == "" && m_PredateArmedAmmo) m_PredateArmedAmmo.Find(muzzle_index, ammo);
+        if (ammo == "")
+        {
+            float damage;
+            if (!GetCartridgeInfo(muzzle_index, damage, ammo)) return;
+        }
+        PredateProjectileRound round;
+        if (PredateProjectileRounds.Active.Find(ammo, round) && round.Weapon == this)
+            round.Fired = true;
+        PredateScoreEvents.Fired.Invoke(owner, this, ammo);
     }
 }

@@ -11,6 +11,9 @@ class PredateScoreService
     vector m_TargetPosition;
     float m_SampledAt;
     PredateSignalTrack m_TrackSignal;
+    ref array<ref PredateProjectileRound> m_FlightRounds = new array<ref PredateProjectileRound>;
+    float m_RoundClock;
+    float m_NextRoundExpiry;
 
     void PredateScoreService(PredateSession session)
     {
@@ -51,8 +54,15 @@ class PredateScoreService
             {
                 string error;
                 life = new PredateLifeScore;
-                if (JsonFileLoader<PredateLifeScore>.LoadFile(path, life, error) && life && life.Life == number && life.Version == 1 && life.Encounters)
+                if (JsonFileLoader<PredateLifeScore>.LoadFile(path, life, error) && life && life.Life == number && (life.Version == 1 || life.Version == 2) && life.Encounters)
+                {
+                    if (life.PendingRounds > 0)
+                    {
+                        life.RecoverInterruptedRounds();
+                        m_DirtyLives.Insert(number);
+                    }
                     m_Lives.Set(number, life);
+                }
                 else
                 {
                     m_Lives.Set(number, null);
@@ -169,55 +179,143 @@ class PredateScoreService
 
     void OnFire(PlayerBase player, Weapon_Base weapon, string ammo)
     {
-        if (!m_Session.m_HuntReady || m_Session.m_Paused || !player.IsAlive()) return;
+        if (!m_Session.m_HuntReady || m_Session.m_Suspending) return;
         PredateWorldState state = m_Session.m_WorldState;
-        if (state.PlayerAwaitingRedeploy) return;
-        PredateLifeScore life = Life(state.PlayerLife, true);
+        int deployment = player.m_PredateScoringLife;
+        if (!deployment && player.IsAlive() && !state.PlayerAwaitingRedeploy) deployment = state.PlayerLife;
+        PredateLifeScore life = Life(deployment, true);
         if (!life) return;
+        PredateProjectileRound round = PredateProjectileRounds.Find(ammo);
+        if (!round)
+        {
+            string simulation = GetGame().ConfigGetTextOut("CfgAmmo " + ammo + " simulation");
+            if (simulation == "shotArrow" || simulation == "shotIlluminating" || simulation == "shotShell") return;
+        }
+        else if (round.Number > 0) return;
         player.m_PredateScoringLife = life.Life;
+        life.BeginExactScoring();
         life.Shots++;
         m_DirtyLives.Insert(life.Life);
-        int now = GetGame().GetTime();
-        if (!player.m_PredateScoredShots) player.m_PredateScoredShots = new array<ref PredateScoredShot>;
-        array<ref PredateScoredShot> shots = player.m_PredateScoredShots;
-        while (shots.Count() > 0 && (shots.Count() >= 64 || now - shots[0].At > 4000))
-            shots.RemoveOrdered(0);
-        PredateScoredShot shot = new PredateScoredShot;
-        shot.FirearmEntity = weapon;
-        shot.RoundNumber = life.Shots;
-        shot.Ammo = ammo;
-        shot.At = now;
-        shot.Origin = player.GetPosition();
-        shots.Insert(shot);
+        if (round)
+        {
+            round.Deployment = life.Life;
+            round.Number = life.Shots;
+            life.PendingRounds++;
+            TrackFlight(round);
+            if (round.EarlyContacts)
+            {
+                foreach (PredateProjectileContact contact : round.EarlyContacts)
+                    OnProjectileContact(round, contact.Target, contact.Position, true);
+                round.EarlyContacts = null;
+            }
+        }
+        else life.UnverifiedRounds++;
+        if (PredateServerDiagnostics.TraceShots)
+        {
+            PredateServerDiagnostics.RememberShotSource(weapon);
+            Print("[PredateShot] fired " + GetGame().GetTime() + " " + ammo + " weapon=" + weapon + " deployment=" + life.Life + " round=" + life.Shots);
+            if (round)
+                Print("[PredateShot] ammo config " + ammo + " simulation=" + GetGame().ConfigGetTextOut("CfgAmmo " + ammo + " simulation") + " speed=" + GetGame().ConfigGetFloat("CfgAmmo " + ammo + " initSpeed") + " lifetime=" + GetGame().ConfigGetFloat("CfgAmmo " + ammo + " timeToLive"));
+            else Print("[PredateShot] confirmed discharge has no round tag: " + ammo);
+        }
     }
 
-    int MatchShot(PlayerBase player, EntityAI source, string ammo, vector impact, PredateLifeScore life)
+    void TrackFlight(PredateProjectileRound round)
     {
-        // Human hit callbacks carry no projectile ID. Match a bounded window
-        // by weapon, ammo and flight time. Reusing a matched round is free.
-        if (!player.m_PredateScoredShots) return 0;
-        Weapon_Base weapon = Weapon_Base.Cast(source);
-        int now = GetGame().GetTime();
-        float speed = GetGame().ConfigGetFloat("CfgAmmo " + ammo + " typicalSpeed");
-        speed = Math.Max(speed, 180);
-        PredateScoredShot nearest;
-        float best = 260;
-        foreach (PredateScoredShot shot : player.m_PredateScoredShots)
+        // Contacts can penetrate, and some runs never receive a stop event.
+        // Retain the tag until the native projectile lifetime and event drain end.
+        round.ExpiresAt = m_RoundClock + round.Lifetime + 0.5;
+        if (m_FlightRounds.Count() == 0 || round.ExpiresAt < m_NextRoundExpiry)
+            m_NextRoundExpiry = round.ExpiresAt;
+        m_FlightRounds.Insert(round);
+    }
+
+    void ResolveRound(PredateLifeScore life, PredateProjectileRound round, bool hit)
+    {
+        life.PendingRounds--;
+        if (hit)
         {
-            if (shot.Ammo != ammo || (weapon && shot.FirearmEntity != weapon) || now - shot.At > 4000) continue;
-            float flight = vector.Distance(shot.Origin, impact) * 1000 / speed;
-            float error = Math.AbsFloat(now - shot.At - flight);
-            if (error >= best) continue;
-            nearest = shot;
-            best = error;
-        }
-        if (!nearest) return 0;
-        if (!nearest.Hit)
-        {
-            nearest.Hit = true;
+            round.Hit = true;
             life.Hits++;
         }
-        return nearest.RoundNumber;
+        else life.Misses++;
+        m_DirtyLives.Insert(life.Life);
+        foreach (PredatePursuitScore entry : life.Encounters)
+        {
+            if (entry.PrecisionPending == 0 || round.Number > entry.PrecisionThrough) continue;
+            entry.PrecisionPending--;
+            if (hit) entry.PrecisionHits++;
+            if (entry.KillPoints == 0 || entry.PrecisionPending != 0) continue;
+            int previous = entry.PrecisionPoints;
+            entry.UpdatePrecision();
+            life.KillScore += entry.PrecisionPoints - previous;
+            life.Score = life.KillScore + life.SurvivalScore;
+        }
+    }
+
+    void TickRounds(float timeslice)
+    {
+        m_RoundClock += Math.Min(timeslice, 0.1);
+        if (m_FlightRounds.Count() == 0 || m_RoundClock < m_NextRoundExpiry) return;
+        m_NextRoundExpiry = 1.0e20;
+        for (int i = m_FlightRounds.Count() - 1; i >= 0; i--)
+        {
+            PredateProjectileRound round = m_FlightRounds[i];
+            if (m_RoundClock < round.ExpiresAt)
+            {
+                m_NextRoundExpiry = Math.Min(m_NextRoundExpiry, round.ExpiresAt);
+                continue;
+            }
+            CloseRound(round);
+            m_FlightRounds.Remove(i);
+        }
+    }
+
+    void FinishRounds()
+    {
+        foreach (PredateProjectileRound round : m_FlightRounds)
+            CloseRound(round);
+        m_FlightRounds.Clear();
+    }
+
+    void CloseRound(PredateProjectileRound round)
+    {
+        if (round.Number > 0 && !round.Hit)
+            ResolveRound(Life(round.Deployment), round, false);
+        round.Closed = true;
+        PredateProjectileRounds.Active.Remove(round.Tag);
+    }
+
+    void OnProjectileContact(PredateProjectileRound round, Object hitObject, vector point, bool aliveBeforeConfirmation)
+    {
+        if (round.Number == 0) return;
+        eAIBase actor = eAIBase.Cast(hitObject);
+        Clothing worn = Clothing.Cast(hitObject);
+        if (!actor && worn) actor = eAIBase.Cast(worn.GetHierarchyRootPlayer());
+        if (!actor || !actor.m_PredateOperatorRecord || (!aliveBeforeConfirmation && !actor.IsAlive())) return;
+        PredateLifeScore life = Life(round.Deployment);
+        if (!life) return;
+        if (round.Hit && round.ContactTarget == actor && round.ContactPosition == point) return;
+        round.ContactTarget = actor;
+        round.ContactPosition = point;
+        if (!round.Hit) ResolveRound(life, round, true);
+        RecordContact(life, actor.m_PredateOperatorRecord, round);
+    }
+
+    PredatePursuitScore RecordContact(PredateLifeScore life, PredateOperatorRecord record, PredateProjectileRound round)
+    {
+        PredatePursuitScore entry = life.Find(record.Id, record.Deployment, true);
+        if (entry.ReachedContact) return entry;
+        if (entry == m_Tracked && m_Player) RefreshTracking(m_Player, life, true);
+        entry.ReachedContact = true;
+        entry.Committed = entry.Tracked;
+        if (entry.Tracked)
+        {
+            entry.TimeToContact = Math.Max(0, m_Session.m_WorldState.SimulationSeconds - entry.LockStartedAt);
+            if (round) entry.RoundsToFirstHit = Math.Max(0, round.Number - entry.RoundsAtLock);
+        }
+        m_DirtyLives.Insert(life.Life);
+        return entry;
     }
 
     void OnDamage(PlayerBase player, eAIBase actor, EntityAI source, int damageType, string ammo, float health)
@@ -240,34 +338,40 @@ class PredateScoreService
     {
         if (!m_Session.m_HuntReady || m_Session.m_Paused || !actor || !actor.m_PredateOperatorRecord) return;
         PredateWorldState state = m_Session.m_WorldState;
-        int number = player.m_PredateScoringLife;
-        if (!number && player.IsAlive() && !state.PlayerAwaitingRedeploy) number = state.PlayerLife;
+        PredateProjectileRound round;
+        if (damageType == DT_FIRE_ARM)
+        {
+            round = PredateProjectileRounds.Find(ammo);
+            if (round && round.Number == 0) round = null;
+        }
+        int number;
+        if (round) number = round.Deployment;
+        else if (player)
+        {
+            number = player.m_PredateScoringLife;
+            if (!number && player.IsAlive() && !state.PlayerAwaitingRedeploy) number = state.PlayerLife;
+        }
         PredateLifeScore life = Life(number, number == state.PlayerLife);
         if (!life) return;
         PredateOperatorRecord record = actor.m_PredateOperatorRecord;
-        PredatePursuitScore entry = life.Find(record.Id, record.Deployment, true);
-        bool firstHit = !entry.ReachedContact;
-        if (firstHit)
-        {
-            if (entry == m_Tracked) RefreshTracking(player, life, true);
-            entry.ReachedContact = true;
-            entry.Committed = entry.Tracked;
-            if (entry.Tracked) entry.TimeToContact = Math.Max(0, state.SimulationSeconds - entry.LockStartedAt);
-        }
+        if (round && !round.Hit) ResolveRound(life, round, true);
+        PredatePursuitScore entry = RecordContact(life, record, round);
         record.ScoreInjuryLife = life.Life;
         m_DirtyLives.Insert(life.Life);
-        int roundNumber;
         entry.CreditedRange = 0;
-        if (damageType == DT_FIRE_ARM)
+        if (round)
         {
-            entry.CreditedRange = vector.Distance(player.GetPosition(), impact);
-            roundNumber = MatchShot(player, source, ammo, impact, life);
+            if (round.ContactTarget == actor) impact = round.ContactPosition;
+            entry.CreditedRange = vector.Distance(round.Origin, impact);
+            if (PredateServerDiagnostics.TraceShots)
+                Print("[PredateShot] credited " + GetGame().GetTime() + " " + ammo + " range=" + entry.CreditedRange + " matched=" + (round != null));
         }
-        entry.MatchedRound = roundNumber > 0;
-        if (firstHit && entry.Tracked && entry.MatchedRound)
-            entry.RoundsToFirstHit = Math.Max(0, roundNumber - entry.RoundsAtLock);
-        entry.PrecisionRounds = life.Shots;
-        entry.PrecisionHits = life.Hits;
+        entry.MatchedRound = round != null;
+        entry.PrecisionThrough = life.Shots;
+        entry.PrecisionRounds = life.Shots - life.LegacyShots;
+        entry.PrecisionHits = life.Hits - life.LegacyHits;
+        entry.PrecisionPending = life.PendingRounds;
+        entry.PrecisionUnknown = life.UnverifiedRounds > 0;
         entry.CounterHunt = actor.m_PredateScoreHuntingPlayer;
     }
 

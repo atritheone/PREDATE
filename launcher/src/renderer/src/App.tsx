@@ -12,11 +12,12 @@ import { HuntPicker } from './HuntPicker'
 import { ScoresDialog } from './ScoresDialog'
 import { LauncherMusic } from './LauncherMusic'
 import { OperationSetup, readOperationDraft } from './OperationSetup'
+import { ProfilePage } from './ProfilePage'
 
-type Page = 'Continue' | 'New Hunt' | 'Settings' | 'Backups'
+type Page = 'Continue' | 'New Hunt' | 'Profile' | 'Settings' | 'Backups'
 type SettingsValues = Omit<Preferences, 'schema' | 'selected_world'>
 
-const menu = ['New Hunt', 'Settings', 'Backups'] as const
+const menu = ['New Hunt', 'Profile', 'Settings', 'Backups'] as const
 const busyPhases = new Set([
   'starting',
   'loading',
@@ -139,7 +140,6 @@ function Settings({
       await save({
         reconnect_grace: preferences.reconnect_grace,
         backup_limit: Number(limit),
-        offline: false,
         extra_mods: mods,
         receiver_scale: Number(scale),
         receiver_high_contrast: contrast,
@@ -364,6 +364,12 @@ export function App(): ReactNode {
     await refresh()
   }
 
+  const saveCallsign = async (name: string): Promise<string> => {
+    const callsign = await window.predate.saveCallsign(name)
+    setOverview((current) => current && { ...current, callsign })
+    return callsign
+  }
+
   const busy = pending !== null || quitting || busyPhases.has(status.phase)
   const active = !['idle', 'suspended'].includes(status.phase)
   const operation = overview?.operations.find((item) => item.id === selected)
@@ -443,7 +449,11 @@ export function App(): ReactNode {
                   </button>
                   <nav aria-label="Launcher Menu">
                     {menu.map((item) => (
-                      <button key={item} onClick={() => openPage(item)}>
+                      <button
+                        key={item}
+                        className={item === 'Profile' && !overview.callsign ? 'profile-missing' : undefined}
+                        onClick={() => openPage(item)}
+                      >
                         {item}
                       </button>
                     ))}
@@ -485,6 +495,9 @@ export function App(): ReactNode {
               save={savePreferences}
               showError={setError}
             />
+          )}
+          {overview && page === 'Profile' && (
+            <ProfilePage callsign={overview.callsign} save={saveCallsign} />
           )}
           {overview && page === 'Backups' && (
             <div className="stack">
@@ -565,6 +578,11 @@ export function App(): ReactNode {
             </button>
           )}
         </footer>
+        {onHome && overview?.callsign && (
+          <p className="home-callsign" title={overview.callsign}>
+            {overview.callsign}
+          </p>
+        )}
       </div>
       {deleteTarget && (
         <DeleteSaveDialog

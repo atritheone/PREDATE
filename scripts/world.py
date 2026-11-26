@@ -235,7 +235,7 @@ def setup():
     if SETTINGS.exists():
         print("Existing world retained. Setup already complete.", flush=True)
         return
-    for path in [SERVER / "DayZServer_x64.exe", CLIENT / "DayZ_BE.exe"]:
+    for path in [SERVER / "DayZServer_x64.exe", CLIENT / "DayZ_x64.exe"]:
         if not path.is_file():
             raise RuntimeError(f"Missing installation: {path}")
     if MISSION.exists() and any(STORAGE.rglob("players.db")):
@@ -243,15 +243,9 @@ def setup():
     PROFILE.mkdir(parents=True, exist_ok=True)
     STORAGE.mkdir(parents=True, exist_ok=True)
     install_mission()
-    be = WORLD / "battleye"
-    be.mkdir(exist_ok=True)
-    shutil.copy2(SERVER / "battleye" / "BEServer_x64.dll", be)
-    private = {"join_password": secrets.token_hex(12), "rcon_password": secrets.token_hex(16)}
+    private = {"join_password": secrets.token_hex(12)}
     SETTINGS.parent.mkdir(parents=True, exist_ok=True)
     SETTINGS.write_text(json.dumps(private, indent=2), encoding="utf-8")
-    (be / "BEServer_x64.cfg").write_text(
-        f"RConPassword {private['rcon_password']}\nRConPort {RCON_PORT}\n"
-        "RConIP 127.0.0.1\nRestrictRCon 0\n", encoding="ascii")
     config = '''hostname = "PREDATE - First Hunt";
 description = "Private local persistence prototype";
 password = "JOIN_PASSWORD";
@@ -259,7 +253,7 @@ passwordAdmin = "";
 maxPlayers = 1;
 verifySignatures = 2;
 forceSameBuild = 1;
-BattlEye = 1;
+BattlEye = 0;
 disableVoN = 1;
 disable3rdPerson = 1;
 thirdPersonView = 0;
@@ -378,7 +372,7 @@ def process_failure(identity, logdir=None):
 
 
 def managed_server_config(config):
-    for name, value in (("disable3rdPerson", 1), ("thirdPersonView", 0),
+    for name, value in (("BattlEye", 0), ("disable3rdPerson", 1), ("thirdPersonView", 0),
                         ("disableVoN", 1), ("adminLogPlayerList", 0)):
         config, count = re.subn(rf"(?im)^[ \t]*{name}\s*=\s*[^;\r\n]+;", f"{name} = {value};", config)
         if not count:
@@ -386,7 +380,7 @@ def managed_server_config(config):
     return config
 
 
-def start(session_id=None, offline=False, progress=None, cancelled=None, on_started=None,
+def start(session_id=None, progress=None, cancelled=None, on_started=None,
           diagnostics=None):
     import release
     import workshop_lasers
@@ -401,31 +395,30 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
     if running():
         print("Local world is already running.", flush=True)
         return
-    if not (PROFILE_NAME == "main" and stable_fallback()):
-        session_id = session_id or uuid.uuid4().hex
-    # Offline operation uses the ordinary local executable and omits BattlEye.
+    if PROFILE_NAME == "main" and stable_fallback():
+        raise RuntimeError("The original hunt is protected. Open the launcher to play its imported copy.")
+    session_id = session_id or uuid.uuid4().hex
     config = CONFIG.read_text(encoding="utf-8")
     expected_template = re.escape(TERRAIN.mission)
     if not MISSION.is_dir() or not re.search(rf'(?im)^\s*template\s*=\s*"{expected_template}"\s*;', config):
         raise RuntimeError(f"The server configuration does not select {TERRAIN.name}.")
-    updated_config = re.sub(r"BattlEye\s*=\s*\d+;", f"BattlEye = {0 if offline else 1};", config)
-    updated_config = managed_server_config(updated_config)
+    updated_config = managed_server_config(config)
     if updated_config != config:
         CONFIG.write_text(updated_config, encoding="utf-8")
     # Refuse occupied ports instead of starting against another instance.
-    for port in [PORT, QUERY_PORT, RCON_PORT]:
+    for port in (PORT, QUERY_PORT):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
             probe.bind(("127.0.0.1", port))
     if diagnostics is None:
         diagnostics = PROFILE_NAME == "development" or PROFILE_NAME.startswith("validation-")
     args = [str(SERVER / "DayZServer_x64.exe"), f"-config={CONFIG}",
             "-ip=127.0.0.1", f"-port={PORT}", f"-profiles={PROFILE}",
-            f"-mission={MISSION}", f"-storage={STORAGE}", f"-BEpath={WORLD / 'battleye'}",
+            f"-mission={MISSION}", f"-storage={STORAGE}",
             "-freezeCheck", "-limitFPS=60"]
     if diagnostics:
         args += ["-doLogs", "-adminLog", "-predateServerDiagnostics"]
     args.append("-mod=" + ";".join(str(p) for p in mods))
-    if session_id: args.append("-predateSessionId=" + session_id)
+    args.append("-predateSessionId=" + session_id)
     if PROFILE_NAME == "development":
         args.append("-predateDevelopment")
         if SCENARIO: args.append("-predateScenario=" + SCENARIO)
@@ -437,7 +430,7 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
         identity = process_identity(pid)
         if identity is None:
             raise RuntimeError(f"Server exited during startup. Inspect {log_hint}")
-        if session_id: identity["session_id"] = session_id
+        identity.update(session_id=session_id, battleye=False)
         from session_store import atomic_json
         atomic_json(STATE, identity)
         process_identity_only = {key: identity[key] for key in ("pid", "created", "executable")}
@@ -454,25 +447,17 @@ def start(session_id=None, offline=False, progress=None, cancelled=None, on_star
             if cancelled and cancelled():
                 stop()
                 raise RuntimeError("Launch cancelled; the server was stopped")
-            if session_id:
-                status = native_status()
-                if status.get("SessionId") == session_id:
-                    if status.get("Error"): raise RuntimeError(status["Error"])
-                    if status.get("Ready") and status.get("Phase") == "ready":
-                        actual_map = status.get("WorldName", maps.DEFAULT_MAP).lower()
-                        if actual_map != TERRAIN.id:
-                            raise RuntimeError(f"DayZ opened {actual_map} instead of {TERRAIN.name}.")
-                        print(f"PREDATE mission and operator are ready ({PROFILE_NAME}).", flush=True)
-                        return
-                if progress: progress("Loading the world and restoring its operator...")
-                time.sleep(0.5)
-                continue
-            try:
-                rcon("players", timeout=1)
-                print(f"Local world ({PROFILE_NAME}) is accepting connections at 127.0.0.1:{PORT}.", flush=True)
-                return
-            except (OSError, RuntimeError, TimeoutError):
-                time.sleep(2)
+            status = native_status()
+            if status.get("SessionId") == session_id:
+                if status.get("Error"): raise RuntimeError(status["Error"])
+                if status.get("Ready") and status.get("Phase") == "ready":
+                    actual_map = status.get("WorldName", maps.DEFAULT_MAP).lower()
+                    if actual_map != TERRAIN.id:
+                        raise RuntimeError(f"DayZ opened {actual_map} instead of {TERRAIN.name}.")
+                    print(f"PREDATE mission and operator are ready ({PROFILE_NAME}).", flush=True)
+                    return
+            if progress: progress("Loading the world and restoring its operator...")
+            time.sleep(0.5)
         raise RuntimeError("Server is still running but readiness timed out. Inspect world/profile logs.")
 
 
@@ -508,10 +493,12 @@ def stop(make_backup=True):
         return
     print("Requesting a clean server shutdown and save...", flush=True)
     identity = json.loads(STATE.read_text())
+    # Process records from older launchers can belong to a protected server.
+    legacy_rcon = identity.get("battleye", True)
     stop_sequence = None
     if identity.get("session_id"):
         stop_sequence = control("stop")
-    else:
+    elif legacy_rcon:
         try:
             reply = rcon("#shutdown", timeout=5)
             if reply.strip(): print(reply, flush=True)
@@ -521,7 +508,7 @@ def stop(make_backup=True):
     deadline = started + 120
     fallback_sent = False
     while time.monotonic() < deadline and running():
-        if stop_sequence is not None and not fallback_sent and time.monotonic() - started >= 15:
+        if legacy_rcon and stop_sequence is not None and not fallback_sent and time.monotonic() - started >= 15:
             status = native_status()
             saved = status.get("SessionId") == identity["session_id"]
             saved = saved and status.get("Acknowledged", 0) >= stop_sequence and status.get("Phase") == "stopping"
@@ -542,7 +529,7 @@ def stop(make_backup=True):
     if make_backup: backup()
 
 
-def launch_client(session_id=None, offline=False, extra_args=None, wait_for_server=False):
+def launch_client(session_id=None, extra_args=None, wait_for_server=False):
     import platform_win
     import workshop_lasers
     mods = launch_mods()
@@ -551,11 +538,7 @@ def launch_client(session_id=None, offline=False, extra_args=None, wait_for_serv
     if platform_win.find_processes("DayZ_x64.exe"):
         raise RuntimeError("DayZ is already open. Close it before using scripts/Play PREDATE.cmd.")
     private = settings()
-    if offline:
-        args = [str(CLIENT / "DayZ_x64.exe")]
-    else:
-        args = [str(CLIENT / "DayZ_BE.exe"), "0", "1", "-exe", "DayZ_x64.exe"]
-    args += ["-noSplash", "-noPause"]
+    args = [str(CLIENT / "DayZ_x64.exe"), "-noSplash", "-noPause"]
     if not wait_for_server:
         args += [f"-connect=127.0.0.1:{PORT}:{QUERY_PORT}", f"-port={PORT}",
                  f"-password={private['join_password']}"]
@@ -605,10 +588,15 @@ def status():
     report = {"running": running(), "address": f"127.0.0.1:{PORT}", "profile": PROFILE_NAME, "world": str(WORLD),
               "persistence_files": len(files), "persistence_bytes": sum(p.stat().st_size for p in files)}
     if report["running"]:
-        try:
-            report["players"] = rcon("players")
-        except (OSError, RuntimeError, TimeoutError) as error:
-            report["rcon"] = str(error)
+        identity = json.loads(STATE.read_text())
+        status = native_status()
+        if identity.get("session_id") and status.get("SessionId") == identity["session_id"]:
+            report["players"] = status.get("Players", 0)
+        elif identity.get("battleye", True):
+            try:
+                report["players"] = rcon("players")
+            except (OSError, RuntimeError, TimeoutError) as error:
+                report["rcon"] = str(error)
     print(json.dumps(report, indent=2), flush=True)
 
 

@@ -146,6 +146,14 @@ async function createWindow(): Promise<void> {
       throw new Error('Select a save to view scores.')
     return backend.request('scores', { profile })
   })
+  ipcMain.handle('predate:profile-stats', (event) => {
+    trusted(event)
+    return backend.request('profile-stats')
+  })
+  ipcMain.handle('predate:save-callsign', (event, callsign: unknown) => {
+    trusted(event)
+    return backend.request('save-callsign', { callsign })
+  })
   ipcMain.handle('predate:perform', (event, value: unknown) => {
     trusted(event)
     return backend.perform(validateAction(value), serverDiagnostics)
@@ -271,7 +279,7 @@ async function createWindow(): Promise<void> {
       setupFits?: boolean
       displayControls?: boolean
     }> = []
-    const launcherPages = ['Continue', 'Settings', 'Backups']
+    const launcherPages = ['Continue', 'Profile', 'Settings', 'Backups']
     const mapAccess = (await backend.overview()).maps
       .filter(({ id }) => id === 'sakhal' || id === 'nasdara')
       .map(({ id, available }) => ({ id, disabled: !available }))
@@ -437,7 +445,7 @@ async function createWindow(): Promise<void> {
     }
     const passed =
       result.bridge &&
-      result.navigation.join(',') === 'New Hunt,Settings,Backups' &&
+      result.navigation.join(',') === 'New Hunt,Profile,Settings,Backups' &&
       result.operationCount > 0 &&
       result.huntLabel === 'Hunt' &&
       / - (Chernarus|Livonia|Sakhal|Nasdara)$/.test(result.huntValue ?? '') &&

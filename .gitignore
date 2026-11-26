@@ -14,6 +14,7 @@
 /active-release.local.json
 /launcher-settings.local.json
 /config/*.local.json*
+/config/play-time.local.sqlite3*
 /session-runtime/
 __pycache__/
 *.pyc

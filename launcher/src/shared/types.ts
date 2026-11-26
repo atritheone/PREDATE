@@ -2,7 +2,6 @@ export interface Preferences {
   schema: number
   selected_world: string
   reconnect_grace: number
-  offline: boolean
   extra_mods: string[]
   backup_limit: number
   receiver_scale: number
@@ -73,9 +72,18 @@ export interface Overview {
   }
   operations: Operation[]
   preferences: Preferences
+  callsign: string
   backups: Backup[]
   status: SessionStatus
 }
+
+export interface ProfileStat {
+  label: string
+  value: number | null
+  format: 'count' | 'decimal' | 'duration' | 'distance' | 'percent'
+}
+
+export type ProfileStats = { title: string; rows: ProfileStat[] }[]
 
 export type SpawnSelection = { preset: string } | { x: number; z: number }
 export interface InventoryItem {
@@ -208,6 +216,11 @@ export interface ScoreLife {
   Partial: boolean
   Shots: number
   Hits: number
+  Misses?: number
+  PendingRounds?: number
+  UnverifiedRounds?: number
+  LegacyShots?: number
+  LegacyHits?: number
   Kills: number
   SurvivalScore: number
   Score: number
@@ -221,6 +234,8 @@ export interface ScoreHistory {
 
 export interface PredateAPI {
   scores(profile: string): Promise<ScoreHistory>
+  profileStats(): Promise<ProfileStats>
+  saveCallsign(callsign: string): Promise<string>
   overview(): Promise<Overview>
   perform(action: SessionAction): Promise<void>
   savePreferences(values: Omit<Preferences, 'schema' | 'selected_world'>): Promise<Preferences>

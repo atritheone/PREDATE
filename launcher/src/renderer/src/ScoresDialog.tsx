@@ -7,6 +7,8 @@ const duration = (seconds: number): string => {
 }
 
 const scoreText = (points: number): string => String(points).padStart(9, '0')
+const accuracyText = (hits: number, shots: number): string =>
+  shots ? `${Math.round((1000 * hits) / shots) / 10}%` : '—'
 const encounterPoints = (entry: ScoreEncounter): number =>
   entry.KillPoints +
   entry.PursuitPoints +
@@ -41,7 +43,12 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
   const encounters = life?.Encounters ?? []
   const pursuits = encounters.filter((entry) => entry.Tracked && entry.Committed)
   const converted = pursuits.filter((entry) => entry.KillPoints > 0).length
-  const accuracy = life?.Shots ? `${Math.round((1000 * life.Hits) / life.Shots) / 10}%` : '—'
+  const legacyShots = life?.Version === 1 ? life.Shots : (life?.LegacyShots ?? 0)
+  const legacyHits = life?.Version === 1 ? life.Hits : (life?.LegacyHits ?? 0)
+  const hits = (life?.Hits ?? 0) - legacyHits
+  const misses = life?.Misses ?? 0
+  const pending = life?.PendingRounds ?? 0
+  const unverified = life?.UnverifiedRounds ?? 0
   return (
     <dialog
       ref={dialog}
@@ -76,12 +83,21 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
               <dt>Kills</dt>
               <dd>{life.Kills}</dd>
             </div>
-            <div>
-              <dt>Estimated accuracy</dt>
-              <dd>
-                {accuracy} ({life.Hits}/{life.Shots})
-              </dd>
-            </div>
+            {life.Version >= 2 && (
+              <div>
+                <dt>Accuracy</dt>
+                <dd>{pending || unverified ? '—' : accuracyText(hits, hits + misses)}</dd>
+                <dd>{hits} hits · {misses} misses</dd>
+                {pending > 0 && <dd>{pending} pending</dd>}
+                {unverified > 0 && <dd>{unverified} unverified</dd>}
+              </div>
+            )}
+            {(legacyShots > 0 || life.Version === 1) && (
+              <div>
+                <dt>Earlier Accuracy Estimate</dt>
+                <dd>{accuracyText(legacyHits, legacyShots)} ({legacyHits}/{legacyShots})</dd>
+              </div>
+            )}
             <div>
               <dt>Survived</dt>
               <dd>{duration(life.SurvivedSeconds)}</dd>

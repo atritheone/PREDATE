@@ -13,18 +13,20 @@ import time
 import uuid
 import zipfile
 import mod_presets
+import lifetime_play_time
 import loadouts
 import maps
 import spawn_points
 import presentation
 import release
+import score_statistics
 import workshop_lasers
 from contextlib import closing
 
 from app_runtime import ROOT, saves_directory
 SCHEMA = 1
 DEFAULTS = {"schema": SCHEMA, "selected_world": "main", "reconnect_grace": 30,
-            "offline": False, "extra_mods": [], "backup_limit": 20,
+            "extra_mods": [], "backup_limit": 20,
             "receiver_scale": 100, "receiver_high_contrast": False}
 
 
@@ -56,11 +58,31 @@ def read_json(path, default=None):
         return default
 
 
+def callsign():
+    try:
+        profile = read_json(ROOT / "config/player-profile.local.json", {})
+    except (OSError, ValueError):
+        return ""
+    name = profile.get("callsign") if isinstance(profile, dict) else None
+    return name.strip() if isinstance(name, str) else ""
+
+
+def save_callsign(value):
+    if not isinstance(value, str):
+        raise ValueError("Enter a callsign of up to 32 characters.")
+    name = value.strip()
+    if len(name) > 32 or any(char in name for char in "\r\n\0"):
+        raise ValueError("Enter a single-line callsign of up to 32 characters.")
+    atomic_json(ROOT / "config/player-profile.local.json", {"callsign": name})
+    return name
+
+
 def preferences():
     saved = read_json(ROOT / "config/launcher-settings.local.json", {})
     if saved.get("schema", 1) != SCHEMA:
         raise ValueError("Unsupported launcher settings version")
     result = DEFAULTS | saved
+    result.pop("offline", None)
     result["extra_mods"] = mod_presets.optional_paths(result["extra_mods"])
     return result
 
@@ -86,6 +108,7 @@ def verify_operation_mods(profile):
 
 def save_preferences(values):
     result = preferences() | values
+    result.pop("offline", None)
     result["reconnect_grace"] = int(result["reconnect_grace"])
     if not 0 <= result["reconnect_grace"] <= 120:
         raise ValueError("Reconnect grace must be between 0 and 120 seconds")
@@ -143,6 +166,71 @@ def worlds():
     return values
 
 
+def life_scores(profile_dir):
+    for path in profile_dir.glob("PredateLifeScore-*.json"):
+        try:
+            life = read_json(path)
+        except (OSError, ValueError):
+            continue
+        if isinstance(life, dict) and life.get("Version") in (1, 2):
+            yield life
+
+
+def profile_stats():
+    saves = list(saved_scores())
+    play_times = [(operation, score_statistics.played_seconds(state, lives))
+                  for operation, state, lives in saves]
+    if not any(operation["id"] == "main" for operation, _, _ in saves) and world_path("main").is_dir():
+        play_times.append((metadata("main"), saved_play_seconds(world_path("main"))))
+    lifetime = lifetime_play_time.total(ROOT, play_times, is_player_operation)
+    return score_statistics.summarize(((state, lives) for _, state, lives in saves), lifetime_seconds=lifetime)
+
+
+def is_player_operation(operation):
+    profile = operation.get("id")
+    if (operation.get("kind", "operation") != "operation" or not isinstance(profile, str)
+            or not re.fullmatch(r"[a-z][a-z0-9-]{0,31}", profile)
+            or profile.startswith(("validation-", "crashlab-", "op-recording-", "op-inputcheck-"))):
+        return False
+    try:
+        current = read_json(world_path(profile) / "operation.json", {})
+    except (OSError, ValueError):
+        return False
+    return isinstance(current, dict) and current.get("kind", "operation") == "operation"
+
+
+def read_saved_scores(save):
+    profile = save / "profile"
+    try:
+        state = read_json(profile / "PredateWorldState.json", {})
+    except (OSError, ValueError):
+        state = {}
+    return state if isinstance(state, dict) else {}, list(life_scores(profile))
+
+
+def saved_play_seconds(save):
+    return score_statistics.played_seconds(*read_saved_scores(save))
+
+
+def remember_checkpoint(operation, seconds):
+    if not is_player_operation(operation):
+        return True
+    try:
+        lifetime_play_time.remember(ROOT, operation, seconds)
+        return True
+    except (OSError, sqlite3.Error) as error:
+        print(f"Could not update lifetime play time: {error}", flush=True)
+        return False
+
+
+def saved_scores():
+    for operation in worlds():
+        save = world_path(operation["id"])
+        if not save.is_dir():
+            continue
+        yield operation, *read_saved_scores(save)
+
+
 def delete_operation(profile):
     if profile == "main":
         raise ValueError("The original hunt is protected.")
@@ -153,6 +241,7 @@ def delete_operation(profile):
     if info.get("id") != profile or info.get("kind") != "operation":
         raise ValueError("That hunt no longer exists.")
 
+    lifetime_play_time.remember(ROOT, info, saved_play_seconds(path))
     selected = preferences()["selected_world"] == profile
     fallback = next((item["id"] for item in worlds() if item["id"] != profile), "") if selected else ""
     staging = Path(tempfile.mkdtemp(prefix=".deleted-", dir=path.parent))
@@ -288,6 +377,8 @@ def snapshot(profile, session_id="", reason="manual"):
         archive.writestr("manifest.json", json.dumps(manifest, indent=2))
     validate_snapshot(staging)
     os.replace(staging, target)
+    if not remember_checkpoint(manifest["operation"], saved_play_seconds(world_path(profile))):
+        return target
     # Retention applies only to this tool's validated session snapshots of this world.
     older = sorted(folder.glob(f"{profile}-session-*.zip"), reverse=True)
     for old in older[preferences()["backup_limit"]:]: old.unlink()
@@ -372,5 +463,8 @@ def restore_snapshot(filename, name):
     info["extra_mods"] = manifest["operation"]["extra_mods"]
     info['mod_lock'] = restored_mod_lock
     info["restored_from"] = filename
+    inherited = saved_play_seconds(base)
+    info["play_time_offset"] = inherited
+    remember_checkpoint(manifest["operation"], inherited)
     atomic_json(base / "operation.json", info)
     return info

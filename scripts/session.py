@@ -15,6 +15,7 @@ import mod_presets
 import maps
 import dlc_access
 import session_store as store
+from score_statistics import measurement
 import world
 import world_pause
 from client_window import ClientLaunchFocus
@@ -24,6 +25,8 @@ RUNTIME = ROOT / "session-runtime"
 STATUS = RUNTIME / "status.json"
 MANAGER = RUNTIME / "manager.json"
 OPERATION_SETUP_VERSION = 10
+DELETE_SAVE_VERSION = 1
+PLAY_TIME_CHECKPOINT_SECONDS = 30
 _status_cache = None
 
 
@@ -55,15 +58,19 @@ def request(action, **values):
     if action in {"new", "continue"} and not platform_win.find_processes("steam.exe"):
         raise RuntimeError("Steam is not running. Open Steam, then try again.")
     ensure_manager()
-    required = None
+    required = {}
+    if action in {"new", "continue"}:
+        required["battleye_free_launch"] = True
     if action == "new" and ("setup" in values or "map" in values):
-        required = ("operation_setup_version", OPERATION_SETUP_VERSION)
+        required["operation_setup_version"] = OPERATION_SETUP_VERSION
     elif action == "delete":
-        required = ("can_delete_saves", True)
+        required["delete_save_version"] = DELETE_SAVE_VERSION
     if required:
-        capability, expected = required
         deadline = time.monotonic() + 2
-        while state().get(capability) != expected:
+        while True:
+            current = state()
+            if all(current.get(key) == value for key, value in required.items()):
+                break
             if time.monotonic() >= deadline:
                 raise RuntimeError("An older PREDATE session is still running. Restart the session supervisor and try again.")
             time.sleep(0.1)
@@ -122,7 +129,8 @@ class Supervisor:
         self.last_backup = None
         self.last_activity = time.monotonic()
         self.data = {"phase": "idle", "message": "Ready to continue", "profile": None, "error": "",
-                     "operation_setup_version": OPERATION_SETUP_VERSION, "can_delete_saves": True}
+                     "operation_setup_version": OPERATION_SETUP_VERSION, "can_delete_saves": True,
+                     "delete_save_version": DELETE_SAVE_VERSION, "battleye_free_launch": True}
         self.quit_waiters = []
         self.pause_preparing = None
         self.pause_resume_sequence = None
@@ -131,6 +139,7 @@ class Supervisor:
         self.pause_retry_at = 0
         self.failed_server_exit_sent = False
         self.client_launch_focus = None
+        self.play_time_checkpoint = 0
 
     def publish(self, phase=None, message=None, **values):
         with self.lock:
@@ -194,6 +203,7 @@ class Supervisor:
             self.configure(profile)
         self.profile = profile
         self.session_id = uuid.uuid4().hex
+        self.play_time_checkpoint = 0
         self.client = None
         self.client_launch_focus = ClientLaunchFocus(launcher_pid) if launcher_pid else None
         self.command_sequence = 0
@@ -211,7 +221,7 @@ class Supervisor:
         store.atomic_json(store.world_path(profile) / "last-session.json", {
             "schema": 1, "session_id": self.session_id, "clean": False,
             "backup": self.last_backup.name, "started": time.time()})
-        prefs = store.save_preferences({"selected_world": profile})
+        store.save_preferences({"selected_world": profile})
         launched_at = None
 
         def open_client():
@@ -220,7 +230,7 @@ class Supervisor:
                 return
             launched_at = time.time()
             startup_args = ["-predateStartupFocus"] if self.client_launch_focus else None
-            world.launch_client(self.session_id, prefs["offline"], extra_args=startup_args, wait_for_server=True)
+            world.launch_client(self.session_id, extra_args=startup_args, wait_for_server=True)
 
         def loading_progress(_):
             if launched_at is not None:
@@ -229,7 +239,7 @@ class Supervisor:
                 self.publish("loading", "Opening DayZ and loading the world...")
 
         try:
-            world.start(self.session_id, prefs["offline"], progress=loading_progress,
+            world.start(self.session_id, progress=loading_progress,
                         cancelled=self.cancel.is_set, on_started=open_client, diagnostics=diagnostics)
             if self.cancel.is_set():
                 return
@@ -296,6 +306,7 @@ class Supervisor:
         identity = read_native(world.STATE)
         failed = identity.get('session_id') == self.session_id and world.process_failure(identity)
         native = world.native_status()
+        self.record_play_time(native, final=True)
         acknowledged_stop = native.get("SessionId") == self.session_id and native.get("Phase") == "stopping"
         if self.session_id and (failed or not acknowledged_stop):
             self.client = None
@@ -485,6 +496,20 @@ class Supervisor:
         self.publish('connecting', 'Resuming your paused operation...', grace_remaining=None)
         return True
 
+    def record_play_time(self, native, final=False):
+        if not self.session_id or native.get("SessionId") != self.session_id:
+            return
+        elapsed = measurement(native, "SimulationSeconds")
+        if not final and elapsed - self.play_time_checkpoint < PLAY_TIME_CHECKPOINT_SECONDS:
+            return
+        self.play_time_checkpoint = elapsed
+        try:
+            operation = store.metadata(self.profile)
+        except (OSError, ValueError) as error:
+            print(f"Could not read the hunt for the lifetime play time checkpoint: {error}", flush=True)
+            return
+        store.remember_checkpoint(operation, elapsed)
+
     def monitor(self):
         if not self.profile or not self.session_id: return
         if self.job and self.job.is_alive(): return
@@ -509,6 +534,7 @@ class Supervisor:
             return
         native = world.native_status()
         if native.get("SessionId") != self.session_id: return
+        self.record_play_time(native)
         client = self.client_status()
         self.handoff_client_focus(client.get("Phase") == "connected" and native.get("Players", 0) > 0)
         client_error = client.get("Error")

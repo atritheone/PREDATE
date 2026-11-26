@@ -356,7 +356,6 @@ class PredateDeployment
         state.PlayerAwaitingRedeploy = false;
         if (session.m_Score) session.m_Score.Life(state.PlayerLife, true);
         player.m_PredateScoringLife = state.PlayerLife;
-        player.m_PredateScoredShots = null;
         state.HasPlayerDeathPosition = false;
         player.m_PredateNativeInsertion = false;
         player.m_PredateSpawnRejected = false;

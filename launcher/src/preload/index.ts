@@ -3,6 +3,8 @@ import type { PredateAPI, SessionStatus } from '../shared/types'
 
 const api: PredateAPI = {
   scores: (profile) => ipcRenderer.invoke('predate:scores', profile),
+  profileStats: () => ipcRenderer.invoke('predate:profile-stats'),
+  saveCallsign: (callsign) => ipcRenderer.invoke('predate:save-callsign', callsign),
   overview: () => ipcRenderer.invoke('predate:overview'),
   perform: (action) => ipcRenderer.invoke('predate:perform', action),
   savePreferences: (values) => ipcRenderer.invoke('predate:preferences', values),

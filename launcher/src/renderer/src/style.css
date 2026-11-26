@@ -223,7 +223,7 @@ button.play {
 
 nav {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
   margin-top: 20px;
   border: 1px solid var(--edge);
@@ -234,6 +234,75 @@ nav button {
   border-color: transparent;
   background: #0a1628;
   padding-inline: 4px;
+}
+
+nav button.profile-missing {
+  border-color: #a75c32;
+  background: #351e15;
+  color: #ffb477;
+}
+
+nav button.profile-missing:hover {
+  border-color: #ffb477;
+  background: #502917;
+}
+
+.profile-callsign-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.profile-callsign-form button {
+  min-height: 39px;
+}
+
+.profile-callsign-form p {
+  grid-column: 1 / -1;
+}
+
+.profile-page h2 {
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--rule);
+  color: var(--gold);
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.profile-stat-group {
+  padding-block: 12px;
+}
+
+.profile-stat-group + .profile-stat-group {
+  border-top: 1px solid var(--rule);
+}
+
+.profile-stat-group h3 {
+  margin: 0;
+  color: var(--blue);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.profile-stats.score-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 12px;
+  margin: 8px 0 0;
+}
+
+.profile-stats.score-stats dd {
+  margin-top: 0;
+}
+
+.home-callsign {
+  margin: 0 12px;
+  padding-block: 4px;
+  overflow: hidden;
+  color: var(--muted);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .split {

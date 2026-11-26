@@ -128,4 +128,4 @@ The AN/PEQ-15 Laser / Light Module comes from [MutatedMods Lasers](https://steam
 
 Launch `PREDATE.exe --server-diagnostics`, then start or continue a hunt to capture server FPS, memory, checkpoint timings, and console and admin logs. The flag applies the next time a server starts. Logs are under the operation's `profile` directory. For per-Operator route and perception traces, add `PredateAITrace.txt` to that profile before starting the server. Regular play uses DayZ's built-in crash and error files for recovery.
 
-Once setup is complete, keep Steam signed in online and open `PREDATE.exe` or `scripts/Play PREDATE.cmd`. Choose **New Hunt** to start fresh or **Continue** to resume an existing save. The portable launcher bundles its Python backend.
+Once setup is complete, keep Steam signed in online and open `PREDATE.exe` or `scripts/Play PREDATE.cmd`. Choose **New Hunt** to start fresh or **Continue** to resume an existing save. PREDATE launches the DayZ client and its localhost server with BattlEye disabled. The portable launcher bundles its Python backend.

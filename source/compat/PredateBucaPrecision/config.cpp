@@ -8,6 +8,17 @@ class CfgPatches
         requiredVersion = 0.1;
         requiredAddons[] =
         {
+            "BC_Ammo_127x55",
+            "BC_Ammo_20mm",
+            "BC_Ammo_300BO",
+            "BC_Ammo_338",
+            "BC_Ammo_408",
+            "BC_Ammo_408AP",
+            "BC_Ammo_46x30mm",
+            "BC_Ammo_50Beowulf",
+            "BC_Ammo_50Cal",
+            "BC_Ammo_FN57x28mm",
+            "BC_Ammo_Rail",
             "A2CHEY_Suppressor",
             "BC_338_Suppressor",
             "BC_408_Suppressor",
@@ -140,6 +151,11 @@ class CfgPatches
             "BC_Zafir"
         };
     };
+};
+
+class CfgAmmo
+{
+#include "predate-rounds.hpp"
 };
 
 class Mode_FullAuto;

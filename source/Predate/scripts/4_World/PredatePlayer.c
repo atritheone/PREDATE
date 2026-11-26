@@ -86,7 +86,6 @@ modded class PlayerBase
     int m_PredateScoringLife;
     string m_PredateScoreKiller;
     bool m_PredateScoreSuicide;
-    ref array<ref PredateScoredShot> m_PredateScoredShots;
 
     bool m_PredateDeathRecorded;
     bool m_PredateNativeInsertion;

@@ -456,6 +456,7 @@ class CfgAmmo
     class Shotgun_Base: ShotgunCore { coefGravity = 0; };
     class Bullet_12GaugePellets: Shotgun_Base { dispersion = 0; };
     class Bullet_Base: BulletCore { coefGravity = 0; };
+#include "predate-rounds.hpp"
 };
 
 class CfgVehicles

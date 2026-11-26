@@ -3,4 +3,10 @@
 ## todo
 
 
-fix accuracy scoring.
+add rivals.
+
+consistent ai characters.
+
+random ai spawns.
+
+decrease enemy respawn timer to seven seconds.

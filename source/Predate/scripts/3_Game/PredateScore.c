@@ -24,6 +24,9 @@ class PredatePursuitScore
     int RoundsToFirstHit;
     int PrecisionRounds;
     int PrecisionHits;
+    int PrecisionThrough;
+    int PrecisionPending;
+    bool PrecisionUnknown;
     int PursuitPoints;
     int EngagementPoints;
     int CounterPoints;
@@ -49,7 +52,12 @@ class PredatePursuitScore
         EngagementPoints = Math.Round(200 * Math.Clamp(1 - ReturnDamage / 60, 0, 1));
         if (CounterHunt) CounterPoints = 150;
         RangePoints = Math.Round(Math.Max(0, CreditedRange - 100) * 0.5);
-        if (MatchedRound && PrecisionRounds > 0)
+        UpdatePrecision();
+    }
+
+    void UpdatePrecision()
+    {
+        if (MatchedRound && PrecisionRounds > 0 && PrecisionPending == 0 && !PrecisionUnknown)
         {
             float accuracy = Math.Clamp(1.0 * PrecisionHits / PrecisionRounds, 0, 1);
             PrecisionPoints = Math.Round(150 * accuracy * accuracy);
@@ -64,7 +72,7 @@ class PredatePursuitScore
 
 class PredateLifeScore
 {
-    int Version = 1;
+    int Version = 2;
     int Life;
     float StartedAt;
     float SurvivedSeconds;
@@ -73,11 +81,43 @@ class PredateLifeScore
     bool Partial;
     int Shots;
     int Hits;
+    int Misses;
+    int PendingRounds;
+    int UnverifiedRounds;
+    int LegacyShots;
+    int LegacyHits;
     int Kills;
     int KillScore;
     int SurvivalScore;
     int Score;
     ref array<ref PredatePursuitScore> Encounters = new array<ref PredatePursuitScore>;
+
+    void BeginExactScoring()
+    {
+        if (Version != 1) return;
+        LegacyShots = Shots;
+        LegacyHits = Hits;
+        Version = 2;
+    }
+
+    void RecoverInterruptedRounds()
+    {
+        if (PendingRounds <= 0) return;
+        // Native projectiles are transient. A resumed checkpoint has no way
+        // for its remaining in-flight rounds to reach an operator.
+        Misses += PendingRounds;
+        PendingRounds = 0;
+        foreach (PredatePursuitScore entry : Encounters)
+        {
+            if (entry.PrecisionPending <= 0) continue;
+            entry.PrecisionPending = 0;
+            if (entry.KillPoints == 0) continue;
+            int previous = entry.PrecisionPoints;
+            entry.UpdatePrecision();
+            KillScore += entry.PrecisionPoints - previous;
+        }
+        Score = KillScore + SurvivalScore;
+    }
 
     void UpdateTime(float now)
     {

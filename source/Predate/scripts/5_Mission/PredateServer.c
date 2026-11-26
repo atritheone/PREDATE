@@ -10,6 +10,9 @@ modded class MissionServer
         m_PredateSession = new PredateSession;
         m_PredateSession.m_Score = new PredateScoreService(m_PredateSession);
         m_PredateSession.Init();
+        PredateProjectileRounds.Enabled = true;
+        PredateProjectileRounds.OperatorContact.Insert(m_PredateSession.m_Score.OnProjectileContact);
+        PredateProjectileRounds.RejectedLaunch.Insert(m_PredateSession.m_Score.TrackFlight);
         PredateScoreEvents.Fired.Insert(m_PredateSession.m_Score.OnFire);
         PredateScoreEvents.Damage.Insert(m_PredateSession.m_Score.OnDamage);
         PredateScoreEvents.PlayerDamage.Insert(m_PredateSession.m_Score.OnPlayerDamage);
@@ -23,7 +26,11 @@ modded class MissionServer
     {
         if (m_PredateSession && m_PredateSession.m_Paused) return;
         super.OnUpdate(timeslice);
-        if (m_PredateSession) m_PredateSession.Update(timeslice);
+        if (m_PredateSession)
+        {
+            m_PredateSession.m_Score.TickRounds(timeslice);
+            m_PredateSession.Update(timeslice);
+        }
     }
 
     override bool IsPaused()
@@ -42,11 +49,16 @@ modded class MissionServer
     {
         if (m_PredateSession && m_PredateSession.m_Score)
         {
+            PredateProjectileRounds.OperatorContact.Remove(m_PredateSession.m_Score.OnProjectileContact);
+            PredateProjectileRounds.RejectedLaunch.Remove(m_PredateSession.m_Score.TrackFlight);
+            m_PredateSession.m_Score.FinishRounds();
             PredateScoreEvents.Fired.Remove(m_PredateSession.m_Score.OnFire);
             PredateScoreEvents.Damage.Remove(m_PredateSession.m_Score.OnDamage);
             PredateScoreEvents.PlayerDamage.Remove(m_PredateSession.m_Score.OnPlayerDamage);
             PredateScoreEvents.Defeated.Remove(m_PredateSession.m_Score.OnDefeated);
         }
+        PredateProjectileRounds.Enabled = false;
+        PredateProjectileRounds.Active.Clear();
         PredatePlayerLifeEvents.Death.Remove(PredateRecordPlayerDeath);
         PredateOperatorDeaths.Defeated.Remove(PredateRecordOperatorDeath);
         PredateServerPauseDriver.Poll.Remove(PredatePollPausedServer);
