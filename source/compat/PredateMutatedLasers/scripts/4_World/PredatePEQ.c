@@ -26,6 +26,30 @@ modded class MM_LaserSight_Base
         return control >= PredateWeaponControl.WHITE_LIGHT && control <= PredateWeaponControl.INFRARED_LIGHT;
     }
 
+#ifdef SERVER
+    override protected int PredatePackWeaponModuleState()
+    {
+        int state = super.PredatePackWeaponModuleState();
+        if (m_MM_FlashModeSynch) state |= 2;
+        if (m_MM_LaserModeSynch) state |= 4;
+        if (m_PredateLaserIR) state |= 8;
+        if (m_PredateIRLight) state |= 16;
+        if (m_MM_FlashStrobeSynch) state |= 32;
+        return state;
+    }
+
+    override protected void PredateApplyWeaponModuleState(int state, bool drawn)
+    {
+        m_MM_FlashModeSynch = (state & 2) != 0;
+        m_MM_LaserModeSynch = (state & 4) != 0;
+        m_PredateLaserIR = (state & 8) != 0;
+        m_PredateIRLight = (state & 16) != 0;
+        m_MM_FlashStrobeSynch = (state & 32) != 0;
+        m_MM_VisibleBeamsEnabledSynch = !m_PredateLaserIR;
+        super.PredateApplyWeaponModuleState(state, drawn);
+    }
+#endif
+
     override void PredateUseWeaponControl(PlayerBase player, int control)
     {
         ComponentEnergyManager energy = GetCompEM();

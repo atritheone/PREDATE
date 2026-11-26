@@ -3,6 +3,56 @@ modded class ItemBase
 {
     protected bool m_PredateStoredLightOn;
     protected bool m_PredateLightStowed;
+    protected int m_PredateLoadedWeaponModuleState = -1;
+
+    override void CF_OnStoreSave(CF_ModStorageMap storage)
+    {
+        super.CF_OnStoreSave(storage);
+        if (!GetCompEM() || !PredateSupportsWeaponControl(PredateWeaponControl.WHITE_LIGHT) || !Weapon_Base.Cast(GetHierarchyParent())) return;
+        Man holder = GetHierarchyRootPlayer();
+        if (!holder || eAIBase.Cast(holder)) return;
+        CF_ModStorage data;
+        if (storage.Find("Predate", data)) data.Write(PredatePackWeaponModuleState());
+    }
+
+    override bool CF_OnStoreLoad(CF_ModStorageMap storage)
+    {
+        if (!super.CF_OnStoreLoad(storage)) return false;
+        CF_ModStorage data;
+        int state;
+        if (storage.Find("Predate", data) && data.Read(state)) m_PredateLoadedWeaponModuleState = state;
+        return true;
+    }
+
+    protected int PredatePackWeaponModuleState()
+    {
+        // The low bit is power intent. Device-specific settings use the remaining bits.
+        bool powered = m_PredateStoredLightOn;
+        if (!m_PredateLightStowed) powered = GetCompEM().IsSwitchedOn();
+        if (powered) return 1;
+        return 0;
+    }
+
+    void PredateRestoreLoadedWeaponModule(PlayerBase player)
+    {
+        if (m_PredateLoadedWeaponModuleState < 0) return;
+        Weapon_Base weapon = Weapon_Base.Cast(GetHierarchyParent());
+        if (weapon && GetCompEM()) PredateApplyWeaponModuleState(m_PredateLoadedWeaponModuleState, player.GetItemInHands() == weapon);
+        m_PredateLoadedWeaponModuleState = -1;
+    }
+
+    protected void PredateApplyWeaponModuleState(int state, bool drawn)
+    {
+        ComponentEnergyManager energy = GetCompEM();
+        m_PredateLightStowed = !drawn;
+        m_PredateStoredLightOn = (state & 1) != 0;
+        if (drawn && m_PredateStoredLightOn && energy.CanWork())
+        {
+            if (!energy.IsSwitchedOn()) energy.SwitchOn();
+        }
+        else if (energy.IsSwitchedOn()) energy.SwitchOff();
+        SetSynchDirty();
+    }
 
     void PredateSetWeaponLightDrawn(bool drawn)
     {
@@ -24,6 +74,20 @@ modded class ItemBase
 
 modded class PlayerBase
 {
+    override void OnSelectPlayer()
+    {
+        super.OnSelectPlayer();
+        if (!IsAlive() || eAIBase.Cast(this)) return;
+        // The native store has attached the weapons and their batteries by now.
+        array<EntityAI> inventory = {};
+        GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
+        foreach (EntityAI entity : inventory)
+        {
+            ItemBase item = ItemBase.Cast(entity);
+            if (item) item.PredateRestoreLoadedWeaponModule(this);
+        }
+    }
+
     override void EEItemOutOfHands(EntityAI item)
     {
         PredateUpdateStowedWeaponLights(item, false);
@@ -39,10 +103,12 @@ modded class PlayerBase
     protected void PredateUpdateStowedWeaponLights(EntityAI item, bool drawn)
     {
         if (eAIBase.Cast(this) || !Weapon_Base.Cast(item)) return;
-        ItemBase rifleLight = ItemBase.Cast(item.FindAttachmentBySlotName("weaponFlashlight"));
-        ItemBase pistolLight = ItemBase.Cast(item.FindAttachmentBySlotName("pistolFlashlight"));
-        if (rifleLight) rifleLight.PredateSetWeaponLightDrawn(drawn);
-        if (pistolLight && pistolLight != rifleLight) pistolLight.PredateSetWeaponLightDrawn(drawn);
+        GameInventory inventory = item.GetInventory();
+        for (int index = 0; index < inventory.AttachmentCount(); index++)
+        {
+            ItemBase attachment = ItemBase.Cast(inventory.GetAttachmentFromIndex(index));
+            if (attachment && attachment.PredateSupportsWeaponControl(PredateWeaponControl.WHITE_LIGHT)) attachment.PredateSetWeaponLightDrawn(drawn);
+        }
     }
 }
 #endif

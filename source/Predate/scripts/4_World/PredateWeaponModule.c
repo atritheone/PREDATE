@@ -126,6 +126,22 @@ class PredateWeaponModule extends UniversalLight
         return true;
     }
 
+#ifdef SERVER
+    override protected int PredatePackWeaponModuleState()
+    {
+        int state = super.PredatePackWeaponModuleState() | (m_PredateMode << 1);
+        if (m_PredateSelectedInfraredLaser) state |= 8;
+        return state;
+    }
+
+    override protected void PredateApplyWeaponModuleState(int state, bool drawn)
+    {
+        m_PredateMode = (state >> 1) & 3;
+        m_PredateSelectedInfraredLaser = (state & 8) != 0;
+        super.PredateApplyWeaponModuleState(state, drawn);
+    }
+#endif
+
     override void OnWorkStart()
     {
 #ifndef SERVER

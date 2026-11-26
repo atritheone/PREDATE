@@ -306,6 +306,7 @@ class CfgMods
     {
         dir="Predate"; name="PREDATE - First Hunt"; author="PREDATE contributors";
         type="mod"; inputs="Predate/inputs.xml";
+        storageVersion=1;
         dependencies[]={"Game","World","Mission"};
         class defs
         {
