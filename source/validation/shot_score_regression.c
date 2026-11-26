@@ -5,7 +5,12 @@ class PredateShotScoreRegression : MissionServer
     eAIBase m_ShotTarget;
     eAIBase m_ShotPeer;
     float m_ExpectedRange;
+    float m_TargetHealthAfterHit;
+    float m_CreditedRangeAfterHit;
     int m_FiringDeployment;
+    int m_HitPointsAfterFirstKill;
+    int m_BonusAfterFirstKill;
+    int m_KillsAfterFirstKill;
 
     override void OnUpdate(float timeslice)
     {
@@ -98,15 +103,47 @@ class PredateShotScoreRegression : MissionServer
         PredateLifeScore nextLife = score.Life(m_FiringDeployment + 1);
         int nextHits;
         if (nextLife) nextHits = nextLife.Hits;
-        bool expiryReleased = !PredateProjectileRounds.Active.Contains("PR_0_Bullet_556x45");
+        m_TargetHealthAfterHit = m_ShotTarget.GetHealth("", "Health");
+        foreach (PredatePursuitScore encounter : life.Encounters)
+            if (encounter.OperatorId == m_ShotTarget.m_PredateOperatorRecord.Id) m_CreditedRangeAfterHit = encounter.CreditedRange;
         m_ShotPlayer.m_PredateScoringLife = m_FiringDeployment;
         SeedRound(weapon, "PR_2_Bullet_556x45", m_ShotTarget, impact);
         SeedRound(weapon, "PR_3_Bullet_556x45");
         if (m_ShotPeer)
         {
             PredateProjectileRound spread = SeedRound(weapon, "PR_4_Bullet_12GaugePellets", m_ShotTarget, impact);
-            PredateProjectileRounds.ReportContact(spread.Tag, m_ShotPeer, m_ShotPeer.GetPosition() + "0 1.2 0");
+            vector peerImpact = m_ShotPeer.GetPosition() + "0 1.2 0";
+            PredateProjectileRounds.ReportContact(spread.Tag, m_ShotPeer, peerImpact);
+            PredateProjectileRounds.ReportContact(spread.Tag, m_ShotTarget, impact + "0 0.1 0");
+            PredateProjectileRounds.ReportContact(spread.Tag, m_ShotPeer, peerImpact + "0 0.1 0");
+            int hitPointsBeforeKill = life.NonLethalHitPoints;
+            m_ShotPeer.SetHealth("", "Health", 0.1);
+            m_ShotPeer.ProcessDirectDamage(DT_FIRE_ARM, weapon, "Torso", spread.Tag, peerImpact, 0.2);
+            // Native damage can deliver EEKilled on a later frame.
+            GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(ApplySecondKill, 250, false, weapon, spread.Tag, impact, hitPointsBeforeKill, nextHits);
+            return;
         }
+        SaveRegressionResult(0, nextHits);
+    }
+
+    void ApplySecondKill(Weapon_Base weapon, string ammo, vector impact, int hitPointsBeforeKill, int nextHits)
+    {
+        PredateLifeScore life = m_PredateSession.m_Score.Life(m_FiringDeployment);
+        if (!life) return;
+        m_HitPointsAfterFirstKill = life.NonLethalHitPoints;
+        m_BonusAfterFirstKill = life.MultiKillBonusPoints;
+        m_KillsAfterFirstKill = life.Kills;
+        m_ShotTarget.SetHealth("", "Health", 0.1);
+        m_ShotTarget.ProcessDirectDamage(DT_FIRE_ARM, weapon, "Torso", ammo, impact, 0.2);
+        GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(SaveRegressionResult, 250, false, hitPointsBeforeKill, nextHits);
+    }
+
+    void SaveRegressionResult(int hitPointsBeforeKill, int nextHits)
+    {
+        PredateScoreService score = m_PredateSession.m_Score;
+        PredateLifeScore life = score.Life(m_FiringDeployment);
+        if (!life) return;
+        bool expiryReleased = !PredateProjectileRounds.Active.Contains("PR_0_Bullet_556x45");
         score.FinishRounds();
         bool quitReleased = !PredateProjectileRounds.Active.Contains("PR_3_Bullet_556x45");
         PredateLifeScore resumed = new PredateLifeScore;
@@ -115,15 +152,20 @@ class PredateShotScoreRegression : MissionServer
         resumed.RecoverInterruptedRounds();
         resumed.RecoverInterruptedRounds();
         score.Save();
-        float range;
-        foreach (PredatePursuitScore encounter : life.Encounters)
-            if (encounter.OperatorId == m_ShotTarget.m_PredateOperatorRecord.Id) range = encounter.CreditedRange;
         FileHandle report = OpenFile("$profile:ShotScoreRegression.json", FileMode.WRITE);
         if (!report) return;
         FPrintln(report, "{");
         FPrintln(report, "\"Shots\":" + life.Shots + ",");
         FPrintln(report, "\"Hits\":" + life.Hits + ",");
         FPrintln(report, "\"ExtraOperatorHits\":" + life.ExtraOperatorHits + ",");
+        FPrintln(report, "\"HitPointsBeforeKill\":" + hitPointsBeforeKill + ",");
+        FPrintln(report, "\"HitPointsAfterFirstKill\":" + m_HitPointsAfterFirstKill + ",");
+        FPrintln(report, "\"BonusAfterFirstKill\":" + m_BonusAfterFirstKill + ",");
+        FPrintln(report, "\"KillsAfterFirstKill\":" + m_KillsAfterFirstKill + ",");
+        FPrintln(report, "\"NonLethalHitPoints\":" + life.NonLethalHitPoints + ",");
+        FPrintln(report, "\"MultiHitBonusPoints\":" + life.MultiHitBonusPoints + ",");
+        FPrintln(report, "\"MultiKillBonusPoints\":" + life.MultiKillBonusPoints + ",");
+        FPrintln(report, "\"Kills\":" + life.Kills + ",");
         FPrintln(report, "\"Misses\":" + life.Misses + ",");
         FPrintln(report, "\"Unverified\":" + life.UnverifiedRounds + ",");
         FPrintln(report, "\"Pending\":" + life.PendingRounds + ",");
@@ -133,9 +175,9 @@ class PredateShotScoreRegression : MissionServer
         FPrintln(report, "\"LaterDeploymentHits\":" + nextHits + ",");
         FPrintln(report, "\"BuckshotLifetime\":" + GetGame().ConfigGetFloat("CfgAmmo PR_0_Bullet_12GaugePellets timeToLive") + ",");
         FPrintln(report, "\"BucaLifetime\":" + GetGame().ConfigGetFloat("CfgAmmo PR_0_BC_Bullet_FN57x28mm timeToLive") + ",");
-        FPrintln(report, "\"TargetHealth\":" + m_ShotTarget.GetHealth("", "Health") + ",");
+        FPrintln(report, "\"TargetHealth\":" + m_TargetHealthAfterHit + ",");
         FPrintln(report, "\"ExpectedRange\":" + m_ExpectedRange + ",");
-        FPrintln(report, "\"CreditedRange\":" + range + "}");
+        FPrintln(report, "\"CreditedRange\":" + m_CreditedRangeAfterHit + "}");
         CloseFile(report);
     }
 }

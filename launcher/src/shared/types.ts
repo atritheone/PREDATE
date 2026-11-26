@@ -227,6 +227,9 @@ export interface ScoreLife {
   LegacyShots?: number
   LegacyHits?: number
   Kills: number
+  NonLethalHitPoints?: number
+  MultiHitBonusPoints?: number
+  MultiKillBonusPoints?: number
   SurvivalScore: number
   Score: number
   Encounters: ScoreEncounter[]

@@ -119,6 +119,18 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
               </dd>
             </div>
             <div>
+              <dt>Non-lethal hit points</dt>
+              <dd>{life.NonLethalHitPoints ?? 0}</dd>
+            </div>
+            <div>
+              <dt>Multi-hit bonus points</dt>
+              <dd>{life.MultiHitBonusPoints ?? 0}</dd>
+            </div>
+            <div>
+              <dt>Multi-kill bonus points</dt>
+              <dd>{life.MultiKillBonusPoints ?? 0}</dd>
+            </div>
+            <div>
               <dt>Survival points</dt>
               <dd>{life.SurvivalScore}</dd>
             </div>

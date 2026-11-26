@@ -122,6 +122,8 @@ New hunts also require both gear packs for the modern AI rifle roster, even if t
 | [Buca Weapons](https://steamcommunity.com/sharedfiles/filedetails/?id=3092251597) | `3092251597` | Rifles, magazines, and weapon attachments |
 | [Forward Operator Gear](https://steamcommunity.com/sharedfiles/filedetails/?id=2931560672) | `2931560672` | GPNVG-18 goggles |
 
+Setup uses DayZ Tools to build and sign the quad NOD shadow addon locally once Steam has downloaded Forward Operator Gear. It downloads a pinned model converter on the first build. After a Workshop update, rerun setup to rebuild if the goggle models changed. Hunts load the addon automatically when it matches the installed FOG models. Hunts without a matching addon use the original FOG models.
+
 The AN/PEQ-15 Laser / Light Module comes from [MutatedMods Lasers](https://steamcommunity.com/sharedfiles/filedetails/?id=3704871552) (item `3704871552`) and requires PREDATE's signed local compatibility addon. The companion supplies the controls above and disables the Workshop pack's automatic Discord usage report. PREDATE verifies the pair before starting a hunt.
 
 ### Developer server diagnostics

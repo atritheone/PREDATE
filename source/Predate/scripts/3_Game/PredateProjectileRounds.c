@@ -22,8 +22,8 @@ class PredateProjectileRound
     vector Origin;
     Object ContactTarget;
     vector ContactPosition;
-    Object FirstOperator;
-    ref set<Object> AdditionalOperators;
+    ref set<string> HitOperators;
+    ref set<string> FatalHits;
     int Deployment;
     int Number;
     bool Fired;

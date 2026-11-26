@@ -1,5 +1,9 @@
 class PredateScoreService
 {
+    static const int NON_LETHAL_HIT_POINTS = 50;
+    static const int ADDITIONAL_OPERATOR_POINTS = 100;
+    static const int ADDITIONAL_KILL_POINTS = 500;
+
     PredateSession m_Session;
     ref map<int, ref PredateLifeScore> m_Lives = new map<int, ref PredateLifeScore>;
     ref set<int> m_CheckedLives = new set<int>;
@@ -200,6 +204,11 @@ class PredateScoreService
         {
             round.Deployment = life.Life;
             round.Number = life.Shots;
+            if (round.FatalHits && round.FatalHits.Count() > 1)
+            {
+                life.MultiKillBonusPoints += (round.FatalHits.Count() - 1) * ADDITIONAL_KILL_POINTS;
+                life.UpdateScore();
+            }
             life.PendingRounds++;
             TrackFlight(round);
             if (round.EarlyContacts)
@@ -249,7 +258,7 @@ class PredateScoreService
             int previous = entry.PrecisionPoints;
             entry.UpdatePrecision();
             life.KillScore += entry.PrecisionPoints - previous;
-            life.Score = life.KillScore + life.SurvivalScore;
+            life.UpdateScore();
         }
     }
 
@@ -286,25 +295,43 @@ class PredateScoreService
         PredateProjectileRounds.Active.Remove(round.Tag);
     }
 
-    void RecordRoundHit(PredateLifeScore life, PredateProjectileRound round, eAIBase actor)
+    void RecordRoundHit(PredateLifeScore life, PredateProjectileRound round, PredateOperatorRecord record)
     {
-        if (!round.Hit)
+        string key = record.Id;
+        if (!round.HitOperators) round.HitOperators = new set<string>;
+        if (round.HitOperators.Find(key) >= 0) return;
+        round.HitOperators.Insert(key);
+
+        if (!round.FatalHits || round.FatalHits.Find(key) < 0)
+            life.NonLethalHitPoints += NON_LETHAL_HIT_POINTS;
+        if (!round.Hit) ResolveRound(life, round, true);
+        else
         {
-            round.FirstOperator = actor;
-            ResolveRound(life, round, true);
-            return;
+            life.MultiHitBonusPoints += ADDITIONAL_OPERATOR_POINTS;
+            // Preserve the existing extra accuracy credit for single-projectile rounds.
+            if (GetGame().ConfigGetTextOut("CfgAmmo " + round.Tag + " simulation") == "shotBullet")
+                life.ExtraOperatorHits++;
         }
-        if (round.FirstOperator == actor) return;
-        if (!round.AdditionalOperators)
-        {
-            // Spread ammunition shares a tag across its pellets. Only a
-            // single projectile can establish that both impacts came from it.
-            if (GetGame().ConfigGetTextOut("CfgAmmo " + round.Tag + " simulation") != "shotBullet") return;
-            round.AdditionalOperators = new set<Object>;
-        }
-        if (round.AdditionalOperators.Find(actor) >= 0) return;
-        round.AdditionalOperators.Insert(actor);
-        life.ExtraOperatorHits++;
+        life.UpdateScore();
+        m_DirtyLives.Insert(life.Life);
+    }
+
+    void RecordFatalRoundHit(PredateProjectileRound round, PredateOperatorRecord record)
+    {
+        if (!round) return;
+        string key = record.Id;
+        if (!round.FatalHits) round.FatalHits = new set<string>;
+        if (round.FatalHits.Find(key) >= 0) return;
+        round.FatalHits.Insert(key);
+
+        // A close-range defeat can arrive before OnFire assigns the round's deployment.
+        PredateLifeScore life = Life(round.Deployment);
+        if (!life) return;
+        // A contact can be recorded before the damage callback declares it lethal.
+        if (round.HitOperators && round.HitOperators.Find(key) >= 0)
+            life.NonLethalHitPoints -= NON_LETHAL_HIT_POINTS;
+        if (round.FatalHits.Count() > 1) life.MultiKillBonusPoints += ADDITIONAL_KILL_POINTS;
+        life.UpdateScore();
         m_DirtyLives.Insert(life.Life);
     }
 
@@ -320,7 +347,7 @@ class PredateScoreService
         if (round.Hit && round.ContactTarget == actor && round.ContactPosition == point) return;
         round.ContactTarget = actor;
         round.ContactPosition = point;
-        RecordRoundHit(life, round, actor);
+        RecordRoundHit(life, round, actor.m_PredateOperatorRecord);
         RecordContact(life, actor.m_PredateOperatorRecord, round);
     }
 
@@ -376,7 +403,7 @@ class PredateScoreService
         PredateLifeScore life = Life(number, number == state.PlayerLife);
         if (!life) return;
         PredateOperatorRecord record = actor.m_PredateOperatorRecord;
-        if (round) RecordRoundHit(life, round, actor);
+        if (round) RecordRoundHit(life, round, record);
         PredatePursuitScore entry = RecordContact(life, record, round);
         record.ScoreInjuryLife = life.Life;
         m_DirtyLives.Insert(life.Life);
@@ -397,9 +424,10 @@ class PredateScoreService
         entry.CounterHunt = actor.m_PredateScoreHuntingPlayer;
     }
 
-    void OnDefeated(PredateOperatorRecord record, PlayerBase credited, bool woundKill)
+    void OnDefeated(PredateOperatorRecord record, PlayerBase credited, bool woundKill, PredateProjectileRound damageRound)
     {
         if (!m_Session.m_HuntReady || !record) return;
+        if (!woundKill && credited && credited.GetIdentity()) RecordFatalRoundHit(damageRound, record);
         PredateWorldState state = m_Session.m_WorldState;
         int number = record.ScoreInjuryLife;
         if (credited && !woundKill && !number) number = credited.m_PredateScoringLife;
@@ -415,7 +443,7 @@ class PredateScoreService
                 life.Kills++;
                 m_DirtyLives.Insert(life.Life);
                 life.KillScore += entry.Total();
-                life.Score = life.KillScore + life.SurvivalScore;
+                life.UpdateScore();
             }
         }
         PredateLifeScore current = Life(state.PlayerLife);

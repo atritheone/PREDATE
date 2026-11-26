@@ -145,6 +145,7 @@ modded class eAIBase
     bool m_PredateBleedingDeath;
     bool m_PredateScoreHuntingPlayer;
     bool m_PredatePlayerBleedout;
+    ref PredateProjectileRound m_PredateLastDamageRound;
     protected bool m_PredateDeferDeathFiles;
 
     override void EEKilled(Object killer)
@@ -169,7 +170,8 @@ modded class eAIBase
                     {
                         m_PredateOperatorRecord.DeathPosition = GetPosition();
                         m_PredateOperatorRecord.HasDeathPosition = PredateInformationMath.FiniteVector(m_PredateOperatorRecord.DeathPosition);
-                        PredateScoreEvents.Defeated.Invoke(m_PredateOperatorRecord, credited, woundKill);
+                        PredateScoreEvents.Defeated.Invoke(m_PredateOperatorRecord, credited, woundKill, m_PredateLastDamageRound);
+                        m_PredateLastDamageRound = null;
                     }
                     PredateOperatorDeaths.Defeated.Invoke(slot, credited);
                 }

@@ -110,6 +110,8 @@ def stable_fallback():
 
 
 def launch_mods():
+    import quad_nod_shadows
+
     mods = list(MODS)
     buca_addons = {
         "buca_essentials.pbo", "buca_weapons.pbo", "buca_weapons2.pbo",
@@ -121,6 +123,9 @@ def launch_mods():
             if (companion / "addons/PredateBucaPrecision.pbo").is_file():
                 mods.append(companion)
                 break
+    quad_nods = quad_nod_shadows.companion(ROOT, mods)
+    if quad_nods and quad_nods not in mods:
+        mods.append(quad_nods)
     return mods
 
 

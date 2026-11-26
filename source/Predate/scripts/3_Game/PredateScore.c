@@ -90,6 +90,9 @@ class PredateLifeScore
     int LegacyHits;
     int Kills;
     int KillScore;
+    int NonLethalHitPoints;
+    int MultiHitBonusPoints;
+    int MultiKillBonusPoints;
     int SurvivalScore;
     int Score;
     ref array<ref PredatePursuitScore> Encounters = new array<ref PredatePursuitScore>;
@@ -118,7 +121,12 @@ class PredateLifeScore
             entry.UpdatePrecision();
             KillScore += entry.PrecisionPoints - previous;
         }
-        Score = KillScore + SurvivalScore;
+        UpdateScore();
+    }
+
+    void UpdateScore()
+    {
+        Score = KillScore + NonLethalHitPoints + MultiHitBonusPoints + MultiKillBonusPoints + SurvivalScore;
     }
 
     void UpdateTime(float now)
@@ -126,7 +134,7 @@ class PredateLifeScore
         if (EndReason != "") return;
         SurvivedSeconds = Math.Max(0, now - StartedAt);
         SurvivalScore = Math.Floor(Math.Min(SurvivedSeconds, 600) / 6) + Math.Floor(Math.Clamp(SurvivedSeconds - 600, 0, 1200) / 12);
-        Score = KillScore + SurvivalScore;
+        UpdateScore();
     }
 
     PredatePursuitScore Find(string id, int deployment, bool create = false)

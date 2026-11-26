@@ -301,6 +301,38 @@ def stage_signed_addon(source, staging, authority):
     return pbo, signature
 
 
+def local_signing_authority():
+    private = ROOT / "private-signing"
+    private.mkdir(exist_ok=True)
+    authority = "PredateLocal"
+    if not (private / (authority + ".biprivatekey")).exists():
+        run([TOOLS / "DsUtils/DSCreateKey.exe", authority], cwd=private)
+    return authority, private / (authority + ".bikey")
+
+
+def publish_packages(packages, staging):
+    require_closed_runtime()
+    previous_files = {}
+    for index, (_, target) in enumerate(packages):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.is_file():
+            previous_file = staging / f"previous-{index}"
+            shutil.copy2(target, previous_file)
+            previous_files[target] = previous_file
+    published = []
+    try:
+        for staged, target in packages:
+            os.replace(staged, target)
+            published.append(target)
+    except OSError:
+        for target in reversed(published):
+            if target in previous_files:
+                os.replace(previous_files[target], target)
+            else:
+                target.unlink()
+        raise
+
+
 def pack_workshop_laser_companion():
     import workshop_lasers
 
@@ -371,11 +403,7 @@ def pack(candidate=False):
                 and previous.get("precision_sha256") == precision_digests()):
             print("PREDATE package already matches these release inputs.", flush=True)
             return
-    private=ROOT/"private-signing"
-    private.mkdir(exist_ok=True)
-    authority="PredateLocal"
-    if not (private/(authority+".biprivatekey")).exists():
-        run([TOOLS/"DsUtils/DSCreateKey.exe",authority],cwd=private)
+    authority, public_key = local_signing_authority()
     # FileBank can exit successfully without replacing an existing package.
     # Build the package and signature from scratch before touching the live pair.
     with TemporaryDirectory(prefix=".pack-", dir=mod_root.resolve()) as staging:
@@ -405,36 +433,17 @@ def pack(candidate=False):
                 addon = deployed_source
             addon_pbo, addon_signature = stage_signed_addon(addon, staging, authority)
             packages.extend((path, folder / path.name) for path in (addon_signature, addon_pbo))
-        require_closed_runtime()
-        previous_files = {}
-        for index, (_, target) in enumerate(packages):
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if target.is_file():
-                previous_file = staging / f"previous-{index}"
-                shutil.copy2(target, previous_file)
-                previous_files[target] = previous_file
-        published = []
-        try:
-            for staged, target in packages:
-                os.replace(staged, target)
-                published.append(target)
-        except OSError:
-            for target in reversed(published):
-                if target in previous_files:
-                    os.replace(previous_files[target], target)
-                else:
-                    target.unlink()
-            raise
+        publish_packages(packages, staging)
     for folder in [ROOT/"runtime/keys", mod_root/"keys"]:
         folder.mkdir(exist_ok=True)
-        shutil.copy2(private/(authority+".bikey"),folder/(authority+".bikey"))
+        shutil.copy2(public_key, folder / public_key.name)
     print("Built and signed the PREDATE client/server mod.",flush=True)
     release.write_changed(manifest, json.dumps({"schema": 1, "inputs": inputs,
         "pbo_sha256": release.digest(pbo), "signature_sha256": release.digest(signature),
         "precision_sha256": precision_digests()}, indent=2, sort_keys=True) + "\n")
 
 
-if __name__=='__main__':
+def main():
     import world
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--accept-dependency-update", action="store_true",
@@ -454,5 +463,12 @@ if __name__=='__main__':
         release.verify()
     if not args.candidate: mission()
     pack(candidate=args.candidate)
-    if not args.candidate: pack_workshop_laser_companion()
+    if not args.candidate:
+        pack_workshop_laser_companion()
+        from build_quad_nod_shadows import install_if_available
+        install_if_available()
     print("Build complete. Use scripts/Play PREDATE.cmd.",flush=True)
+
+
+if __name__ == "__main__":
+    main()

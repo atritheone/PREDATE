@@ -37,7 +37,8 @@ def summarize(saves, *, lifetime_seconds=None):
         totals["recorded_survival"] += recorded_survival
 
         for life in lives:
-            for field in ("Kills", "Shots", "Hits", "Score", "KillScore", "SurvivalScore"):
+            for field in ("Kills", "Shots", "Hits", "Score", "KillScore", "SurvivalScore",
+                          "NonLethalHitPoints", "MultiHitBonusPoints", "MultiKillBonusPoints"):
                 totals[field] += count(life, field)
             if life.get("Version") == 2:
                 legacy_hits = count(life, "LegacyHits")
@@ -213,6 +214,9 @@ def sections(totals, deployments, encounters, deaths_by_operator, kills_by_opera
             ("Best Score", totals["best_score"]),
             ("Average Deployment Score", ratio(totals["Score"], totals["recorded_deployments"]), "decimal"),
             ("Kill Score", totals["KillScore"]),
+            ("Non-Lethal Hit Points", totals["NonLethalHitPoints"]),
+            ("Multi-Hit Bonus Points", totals["MultiHitBonusPoints"]),
+            ("Multi-Kill Bonus Points", totals["MultiKillBonusPoints"]),
             ("Survival Points", totals["SurvivalScore"]),
             ("Base Kill Points", totals["KillPoints"]),
             ("Pursuit Points", totals["PursuitPoints"]),

@@ -22,7 +22,9 @@ modded class eAIBase
 
         PlayerBase attacker = PredateOperatorDeaths.Attacker(source);
         PredateProjectileRound round;
-        if (damageType == DT_FIRE_ARM) round = PredateProjectileRounds.Find(ammo);
+        // The damage callback can precede discharge confirmation for close targets.
+        if (tagged) PredateProjectileRounds.Active.Find(ammo, round);
+        m_PredateLastDamageRound = round;
         if ((attacker && attacker.GetIdentity()) || (round && round.Number > 0))
         {
             m_PredateOperatorRecord.PlayerHealthBeforeInjury = Math.Max(m_PredateOperatorRecord.PlayerHealthBeforeInjury, previousHealth);
