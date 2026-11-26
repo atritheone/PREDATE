@@ -565,7 +565,7 @@ def stop(make_backup=True):
     if make_backup: backup()
 
 
-def launch_client(session_id=None, extra_args=None, wait_for_server=False):
+def launch_client(session_id=None, extra_args=None, wait_for_server=False, launcher_pid=None):
     import workshop_lasers
     mods = launch_mods()
     workshop_lasers.verify_launch(mods)
@@ -607,8 +607,8 @@ def launch_client(session_id=None, extra_args=None, wait_for_server=False):
     launched_at = time.time()
     child = spawn(args, cwd=CLIENT)
     if diagnostic_runtime():
-        from client_window import hide_diagnostic_startup_dialog
-        hide_diagnostic_startup_dialog(child)
+        from client_window import watch_diagnostic_client
+        watch_diagnostic_client(child, launcher_pid)
         identity = process_identity(child.pid)
         if identity: guard_process(identity, client_logs, client_logs / "PredateFailure.json")
     else:

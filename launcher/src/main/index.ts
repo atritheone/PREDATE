@@ -112,7 +112,7 @@ async function createWindow(): Promise<void> {
   await backend.initialize()
   const iconPath = join(app.getAppPath(), 'resources/icon.png')
   window = new BrowserWindow({
-    title: 'PREDATE',
+    title: 'PREDATE Launcher',
     ...windowSize,
     backgroundColor: '#080d1a',
     titleBarStyle: 'hidden',
@@ -432,6 +432,7 @@ async function createWindow(): Promise<void> {
       horizontalOverflow: document.documentElement.scrollWidth > innerWidth
       };
     })()`)) as {
+      title: string
       bridge: boolean
       navigation: string[]
       operationCount: number
@@ -444,6 +445,8 @@ async function createWindow(): Promise<void> {
       horizontalOverflow: boolean
     }
     const passed =
+      result.title === 'PREDATE Launcher' &&
+      window.getTitle() === result.title &&
       result.bridge &&
       result.navigation.join(',') === 'New Hunt,Profile,Settings,Backups' &&
       result.operationCount > 0 &&

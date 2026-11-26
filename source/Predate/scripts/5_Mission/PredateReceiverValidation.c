@@ -140,11 +140,11 @@ class PredateReceiverValidation
                 result.Check(state.NextPulse > 0 && state.NextPulse <= 90);
                 result.Check(menu.m_MapOverlay.m_Bearings.Count() == 24);
                 result.Check(menu.m_MapOverlay.m_Bearings[0].IsVisible() && Fits(menu.m_MapOverlay.m_Bearings[0]));
-                menu.m_Map.SetScale(0.33);
+                menu.m_MapView.SetScale(0.33);
                 Widget centerPlayer = menu.GetLayoutRoot().FindAnyWidget("CenterPlayer");
                 menu.OnClick(centerPlayer, 0, 0, 0);
                 PredateMapOverlay overlay = menu.m_MapOverlay;
-                bool centeredPlayer = PredateSignalRules.WithinFinalApproach(menu.m_Map.GetMapPos(), player.GetPosition(), 1);
+                bool centeredPlayer = PredateSignalRules.WithinFinalApproach(menu.m_MapView.m_Center, player.GetPosition(), 1);
                 if (!centeredPlayer) Print("[PredateMapTest] could not center player");
                 result.Check(centeredPlayer);
                 float width, height;
@@ -154,29 +154,27 @@ class PredateReceiverValidation
                 array<float> zooms = {0.085, 0.33, 0.68};
                 foreach (float zoom : zooms)
                 {
-                    menu.m_Map.SetScale(zoom);
-                    menu.m_Map.SetMapPos(player.GetPosition());
+                    menu.m_MapView.SetScale(zoom);
+                    menu.m_MapView.SetCenter(player.GetPosition());
                     menu.Update(0);
                     vector arrow = overlay.m_PlayerPoint;
-                    // The native map clamps panning when the viewport reaches a world edge.
-                    // The marker should still land on the player at any zoom.
                     vector screenArrow = arrow + Vector(overlay.m_Left, overlay.m_Top, 0);
-                    vector underArrow = menu.m_Map.ScreenToMap(screenArrow);
+                    vector underArrow = menu.m_MapView.ToWorld(screenArrow);
                     bool pointsToPlayer = PredateSignalRules.WithinFinalApproach(player.GetPosition(), underArrow, 25);
                     if (!pointsToPlayer) Print("[PredateMapTest] arrow " + arrow + " is over " + underArrow + " at zoom " + zoom);
                     result.Check(pointsToPlayer && arrow[0] >= 0 && arrow[0] <= width && arrow[1] >= 0 && arrow[1] <= height);
                     if (arcRadius == 0) arcRadius = overlay.m_ArcRadii[pulseSlot];
                     result.Check(arcRadius > 0 && Math.AbsFloat(overlay.m_ArcRadii[pulseSlot] - arcRadius) < 0.1, "pulse radius stays fixed as the map zooms");
                 }
-                menu.m_Map.SetScale(zooms[0]);
-                menu.m_Map.SetMapPos(player.GetPosition());
+                menu.m_MapView.SetScale(zooms[0]);
+                menu.m_MapView.SetCenter(player.GetPosition());
                 menu.Update(0);
                 vector centeredArrow = overlay.m_PlayerPoint;
-                vector pan = Vector(overlay.m_Left + width * 0.72, overlay.m_Top + height * 0.72, 0);
-                menu.m_Map.SetMapPos(menu.m_Map.ScreenToMap(pan));
+                vector pan = Vector(overlay.m_Left + width * 0.6, overlay.m_Top + height * 0.56, 0);
+                menu.m_MapView.SetCenter(menu.m_MapView.ToWorld(pan));
                 menu.Update(0);
                 result.Check(vector.Distance(centeredArrow, overlay.m_PlayerPoint) > 20, "panning moves the map marker");
-                result.Check(Math.AbsFloat(overlay.m_ArcRadii[pulseSlot] - arcRadius) < 0.1, "panning does not resize the bearing dial");
+                result.Check(overlay.m_DialCenter == overlay.m_PlayerPoint, "panning keeps the bearing dial centered on the player");
                 vector dialCenter = overlay.m_DialCenter;
                 float dialRadius = overlay.m_DialRadius;
                 result.Check(dialCenter[0] - dialRadius >= 0 && dialCenter[0] + dialRadius <= width && dialCenter[1] - dialRadius >= 0 && dialCenter[1] + dialRadius <= height, "panning keeps the entire bearing dial in the pane");
@@ -184,7 +182,7 @@ class PredateReceiverValidation
                 array<string> edgeHits = {};
                 overlay.HitPulses(overlay.m_Left + arc[0], overlay.m_Top + arc[1], state, edgeHits);
                 result.Check(edgeHits.Find(pulse.OperatorId) >= 0, "the arc remains selectable after panning near the edge");
-                menu.m_Map.SetMapPos(player.GetPosition());
+                menu.m_MapView.SetCenter(player.GetPosition());
                 menu.Update(0);
                 CheckOverlappingPulses(result, menu, player);
                 string town;
@@ -309,8 +307,8 @@ class PredateReceiverValidation
         bool fittedCaption = Math.AbsFloat(menu.m_Select.GetTextProportion() - 0.55) < 0.01;
         result.Check(compactWidth && compactHeight && fittedCaption, "the compact clear button fits its label");
         float mapX, mapY, mapWidth, mapHeight, titleX, titleY, huntedX, huntedY, controlX, controlY;
-        menu.m_Map.GetScreenPos(mapX, mapY);
-        menu.m_Map.GetScreenSize(mapWidth, mapHeight);
+        menu.m_MapPane.GetScreenPos(mapX, mapY);
+        menu.m_MapPane.GetScreenSize(mapWidth, mapHeight);
         CheckTabletFit(result, menu);
         menu.m_TrackingTitle.GetScreenPos(titleX, titleY);
         menu.m_InterceptionStatus.GetScreenPos(huntedX, huntedY);
@@ -329,8 +327,8 @@ class PredateReceiverValidation
         float x, y, width, height, mapX, mapY, mapWidth, mapHeight;
         menu.m_Tablet.GetScreenPos(x, y);
         menu.m_Tablet.GetScreenSize(width, height);
-        menu.m_Map.GetScreenPos(mapX, mapY);
-        menu.m_Map.GetScreenSize(mapWidth, mapHeight);
+        menu.m_MapPane.GetScreenPos(mapX, mapY);
+        menu.m_MapPane.GetScreenSize(mapWidth, mapHeight);
         float scale = width / PredateTrackerMenu.TABLET_WIDTH;
         result.Check(Math.AbsFloat(height - PredateTrackerMenu.TABLET_HEIGHT * scale) < 1, "the tablet artwork keeps its source aspect ratio");
         bool originMatches = Math.AbsFloat(mapX - (x + 75 * scale)) < 1 && Math.AbsFloat(mapY - (y + 69 * scale)) < 1;

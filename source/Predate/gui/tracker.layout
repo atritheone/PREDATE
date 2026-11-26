@@ -14,7 +14,7 @@ FrameWidgetClass PredateTracker {
  hexactsize 0
  vexactsize 0
  ignorepointer 1
- { MapWidgetClass Terrain {
+ { PanelWidgetClass MapPane {
  position 0.04485645933014354 0.07332624867162593
  size 0.6148325358851675 0.8554729011689692
  hexactpos 0
@@ -22,7 +22,19 @@ FrameWidgetClass PredateTracker {
  hexactsize 0
  vexactsize 0
  clipchildren 1
- { CanvasWidgetClass MapHistoryGuides {
+color 1 1 1 1
+style rover_sim_colorable
+ { MapWidgetClass Terrain {
+ position 0 0
+ size 1 1
+ hexactpos 0
+ vexactpos 0
+ hexactsize 0
+ vexactsize 0
+ ignorepointer 1
+ {  }
+}
+CanvasWidgetClass MapHistoryGuides {
  position 0 0
  size 1 1
  hexactpos 0

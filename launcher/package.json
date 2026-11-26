@@ -1,7 +1,7 @@
 {
   "name": "predate-launcher",
   "version": "0.3.0",
-  "description": "PREDATE",
+  "description": "PREDATE Launcher",
   "author": "PREDATE contributors",
   "private": true,
   "type": "commonjs",
@@ -32,7 +32,7 @@
   },
   "build": {
     "appId": "com.predate.launcher",
-    "productName": "PREDATE",
+    "productName": "PREDATE Launcher",
     "copyright": "",
     "asar": true,
     "directories": {
@@ -54,6 +54,7 @@
       }
     ],
     "win": {
+      "executableName": "PREDATE",
       "target": [
         "portable"
       ],

@@ -11,7 +11,10 @@ class PredateReceiverEvents : ScriptedWidgetEventHandler
     override bool OnMouseButtonDown(Widget w, int x, int y, int button)
     {
         if (m_Menu && button == MouseState.LEFT && m_Menu.IsMapSurface(w))
+        {
             m_Menu.BeginMapPress(x, y);
+            return true;
+        }
         return false;
     }
 
@@ -20,6 +23,13 @@ class PredateReceiverEvents : ScriptedWidgetEventHandler
         if (m_Menu && button == MouseState.LEFT)
             m_Menu.EndMapPress(m_Menu.IsMapSurface(w), x, y);
         return false;
+    }
+
+    override bool OnMouseWheel(Widget w, int x, int y, int wheel)
+    {
+        if (!m_Menu || !m_Menu.IsMapSurface(w)) return false;
+        m_Menu.ZoomMap(x, y, wheel);
+        return true;
     }
 
     override bool OnItemSelected(Widget w, int x, int y, int row, int column, int oldRow, int oldColumn)
@@ -54,10 +64,13 @@ class PredateTrackerMenu : UIScriptedMenu
     Widget m_CenterPlayer;
     Widget m_Tablet;
     MapWidget m_Map;
+    Widget m_MapPane;
+    ref PredateMapViewport m_MapView;
     CanvasWidget m_MapCanvas;
     ref PredateMapOverlay m_MapOverlay;
     bool m_ConfirmReplacement;
     bool m_MapPressed;
+    bool m_MapDragged;
     vector m_MapPress;
     vector m_MapPressCenter;
     float m_MapScale = 1;
@@ -100,9 +113,11 @@ class PredateTrackerMenu : UIScriptedMenu
         m_ConfirmDeploy = ButtonWidget.Cast(layoutRoot.FindAnyWidget("ConfirmDeploy"));
         m_ConfirmDeploy.SetHandler(m_Events);
         m_Map = MapWidget.Cast(layoutRoot.FindAnyWidget("Terrain"));
-        if (m_Map) m_Map.SetHandler(m_Events);
+        m_MapPane = layoutRoot.FindAnyWidget("MapPane");
+        m_MapPane.SetHandler(m_Events);
+        m_MapView = new PredateMapViewport(m_Map, m_MapPane);
         m_MapCanvas = CanvasWidget.Cast(layoutRoot.FindAnyWidget("MapOverlay"));
-        if (m_Map && m_MapCanvas) m_MapOverlay = new PredateMapOverlay(m_Map, m_MapCanvas);
+        if (m_MapCanvas) m_MapOverlay = new PredateMapOverlay(m_MapView, m_MapPane, m_MapCanvas);
         m_Overview = layoutRoot.FindAnyWidget("Overview");
         m_CenterPlayer = layoutRoot.FindAnyWidget("CenterPlayer");
         m_Overview.SetHandler(m_Events);
@@ -150,6 +165,8 @@ class PredateTrackerMenu : UIScriptedMenu
         if (!player) return;
         PredateState state = player.m_PredateState;
         UpdateMapScale();
+        if (m_MapPressed) UpdateMapDrag();
+        m_MapView.Update(m_MapViewportHeight);
         if (m_MapOverlay) m_MapOverlay.Draw(player, state, m_MapScale, !m_MapPressed);
         if (!state) return;
         if (!state.CanDeploy) m_ConfirmReplacement = false;
@@ -173,7 +190,11 @@ class PredateTrackerMenu : UIScriptedMenu
         else if (state.Pulses.Count() == 0) m_Bearing.SetText("No pulse");
         else m_Bearing.SetText("");
         if (state.Locked && !state.CanDeploy)
-            m_Timing.SetText("Sample age " + Math.Floor(state.Age).ToString() + "s    |    Next Pulse " + Math.Ceil(state.NextPulse).ToString() + "s");
+        {
+            float nextPulse = state.NextPulse;
+            if (player.m_PredatePulseCountdown) nextPulse = player.m_PredatePulseCountdown.Remaining();
+            m_Timing.SetText("Sample age " + Math.Floor(state.Age).ToString() + "s    |    Next Pulse " + Math.Ceil(nextPulse).ToString() + "s");
+        }
         else if (m_ConfirmReplacement) m_Timing.SetText("Keep your gear for the next hunt?");
         else if (state.CanDeploy) m_Timing.SetText("Start another hunt to bring in an Operator.");
         else m_Timing.SetText("");
@@ -262,8 +283,8 @@ class PredateTrackerMenu : UIScriptedMenu
         }
 
         float mapX, mapY, mapWidth, mapHeight;
-        m_Map.GetScreenPos(mapX, mapY);
-        m_Map.GetScreenSize(mapWidth, mapHeight);
+        m_MapPane.GetScreenPos(mapX, mapY);
+        m_MapPane.GetScreenSize(mapWidth, mapHeight);
         float buttonSize = Math.Round(34 * m_MapScale);
         float inset = Math.Round(9 * m_MapScale);
         float buttonX = mapX + mapWidth - inset - buttonSize;
@@ -276,24 +297,22 @@ class PredateTrackerMenu : UIScriptedMenu
 
     void ShowOverview()
     {
-        if (!m_Map) return;
         float center = GetGame().GetWorld().GetWorldSize() / 2;
-        m_Map.SetScale(1);
-        m_Map.SetMapPos(Vector(center, 0, center));
+        m_MapView.SetScale(1);
+        m_MapView.SetCenter(Vector(center, 0, center));
     }
 
     void CenterOn(vector position)
     {
-        if (!m_Map) return;
-        if (m_Map.GetScale() > 0.22) m_Map.SetScale(0.22);
-        m_Map.SetMapPos(position);
+        if (m_MapView.m_Scale > 0.22) m_MapView.SetScale(0.22);
+        m_MapView.SetCenter(position);
     }
 
     bool IsMapSurface(Widget widget)
     {
         while (widget)
         {
-            if (widget == m_Map) return true;
+            if (widget == m_MapPane) return true;
             widget = widget.GetParent();
         }
         return false;
@@ -302,20 +321,46 @@ class PredateTrackerMenu : UIScriptedMenu
     void BeginMapPress(int x, int y)
     {
         m_MapPressed = true;
+        m_MapDragged = false;
         m_MapPress = Vector(x, y, 0);
-        m_MapPressCenter = m_Map.GetMapPos();
+        m_MapPressCenter = m_MapView.m_Center;
+    }
+
+    void UpdateMapDrag()
+    {
+        int x, y;
+        GetMousePos(x, y);
+        vector displacement = Vector(x, y, 0) - m_MapPress;
+        float slop = 5 * m_MapScale;
+        if (!m_MapDragged && displacement.LengthSq() <= slop * slop) return;
+        if (m_MapView.m_PixelsPerMetre <= 0) return;
+        if (!m_MapDragged) HidePulsePicker();
+        m_MapDragged = true;
+        vector worldOffset = Vector(-displacement[0], 0, displacement[1]) * (1 / m_MapView.m_PixelsPerMetre);
+        m_MapView.SetCenter(m_MapPressCenter + worldOffset);
+    }
+
+    void ZoomMap(int x, int y, int wheel)
+    {
+        if (wheel == 0 || m_MapPressed) return;
+        vector cursor = Vector(x, y, 0);
+        vector anchor = m_MapView.ToWorld(cursor);
+        float factor = 0.8;
+        if (wheel < 0) factor = 1.25;
+        float before = m_MapView.m_Scale;
+        m_MapView.SetScale(before * factor);
+        float ratio = m_MapView.m_Scale / before;
+        m_MapView.SetCenter(anchor - (anchor - m_MapView.m_Center) * ratio);
+        HidePulsePicker();
     }
 
     void EndMapPress(bool overMap, int x, int y)
     {
         bool pressed = m_MapPressed;
         m_MapPressed = false;
-        if (!pressed || !overMap || !m_MapOverlay) return;
+        if (!pressed || m_MapDragged || !overMap || !m_MapOverlay) return;
         float slop = 5 * m_MapScale;
         if (vector.DistanceSq(Vector(x, y, 0), m_MapPress) > slop * slop) return;
-        vector currentCenter = m_Map.MapToScreen(m_Map.GetMapPos());
-        vector pressedCenter = m_Map.MapToScreen(m_MapPressCenter);
-        if (vector.DistanceSq(currentCenter, pressedCenter) > slop * slop) return;
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
         if (!player || !player.m_PredateState) return;
         PredateState state = player.m_PredateState;
@@ -588,7 +633,14 @@ modded class MissionGameplay
         }
         if (m_PredateFootprintTest && !m_PredateFootprintTest.Update(player, state, m_PredateFootprintView, m_PredateOwnFootprintView, m_PredateFootprintClue, m_PredateHuntFeed))
             m_PredateFootprintTest = null;
-        string text = PredateReceiverText.CompassReadout(state);
+        float nextPulse = -1;
+        if (player.m_PredatePulseCountdown)
+        {
+            bool clockHeld = IsPaused() || (agent && (agent.m_UserPaused || agent.m_ServerFrozen || agent.m_ResumePending));
+            player.m_PredatePulseCountdown.Advance(timeslice, clockHeld);
+            nextPulse = player.m_PredatePulseCountdown.Remaining();
+        }
+        string text = PredateReceiverText.CompassReadout(state, nextPulse);
         if (PredatePresentationOptions.Current().HighContrast) m_PredateHudText.SetColor(0xFFFFFFFF);
         else m_PredateHudText.SetColor(0xFFC4D4D9);
         m_PredateHudText.SetText(text);

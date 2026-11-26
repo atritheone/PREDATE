@@ -1,9 +1,13 @@
-"""Win32 focus handoff for a freshly launched DayZ window."""
+"""Win32 focus and branding for the client launched by PREDATE."""
 import ctypes
 from ctypes import wintypes
+from pathlib import Path
 import subprocess
+import sys
 import threading
 import time
+
+from app_runtime import ROOT
 
 
 class GuiThreadInfo(ctypes.Structure):
@@ -40,6 +44,8 @@ class ClientWindow:
         self.user.GetWindow.restype = wintypes.HWND
         self.user.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
         self.user.GetClientRect.restype = wintypes.BOOL
+        self.user.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+        self.user.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
         self.user.GetForegroundWindow.argtypes = []
         self.user.GetForegroundWindow.restype = wintypes.HWND
         self.user.GetGUIThreadInfo.argtypes = [wintypes.DWORD, ctypes.POINTER(GuiThreadInfo)]
@@ -66,7 +72,12 @@ class ClientWindow:
             self.user.GetWindowThreadProcessId(handle, ctypes.byref(process))
         return process.value
 
-    def find(self, pid):
+    def class_name(self, handle):
+        name = ctypes.create_unicode_buffer(32)
+        self.user.GetClassNameW(handle, name, len(name))
+        return name.value
+
+    def find(self, pid, class_name=None):
         windows = []
 
         @self.callback_type
@@ -74,6 +85,8 @@ class ClientWindow:
             if self.owner_pid(handle) != pid or not self.user.IsWindowVisible(handle):
                 return True
             if self.user.GetWindow(handle, 4):  # GW_OWNER. Skip owned dialogs.
+                return True
+            if class_name is not None and self.class_name(handle) != class_name:
                 return True
             rect = wintypes.RECT()
             if self.user.GetClientRect(handle, ctypes.byref(rect)):
@@ -194,16 +207,20 @@ class ClientLaunchFocus:
         return connected
 
 
-def hide_diagnostic_startup_dialog(process):
-    """Suppress the diagnostic client's native checklist during initialization."""
-    threading.Thread(target=_watch_diagnostic_startup, args=(process,), daemon=True).start()
+def watch_diagnostic_client(process, launcher_pid=None):
+    """Hide the startup checklist and brand the game window for this process."""
+    threading.Thread(target=_watch_diagnostic_client, args=(process, launcher_pid), daemon=True).start()
 
 
-def _watch_diagnostic_startup(process):
+def _watch_diagnostic_client(process, launcher_pid):
     window = ClientWindow()
+    _hide_diagnostic_startup(window, process)
+    if process.poll() is None:
+        _brand_client(window, process, launcher_pid)
+
+
+def _hide_diagnostic_startup(window, process):
     user = window.user
-    user.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
-    user.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
     user.GetDlgItem.argtypes = [wintypes.HWND, ctypes.c_int]
     user.GetDlgItem.restype = wintypes.HWND
     user.MsgWaitForMultipleObjects.argtypes = [wintypes.DWORD, ctypes.c_void_p, wintypes.BOOL,
@@ -218,12 +235,11 @@ def _watch_diagnostic_startup(process):
         nonlocal main_window_seen
         if window.owner_pid(handle) != process.pid:
             return
-        class_name = ctypes.create_unicode_buffer(32)
-        user.GetClassNameW(handle, class_name, len(class_name))
-        if class_name.value == 'DayZ':
+        class_name = window.class_name(handle)
+        if class_name == 'DayZ':
             main_window_seen = True
             return
-        if class_name.value != '#32770':
+        if class_name != '#32770':
             return
         title = ctypes.create_unicode_buffer(32)
         user.GetWindowTextW(handle, title, len(title))
@@ -262,3 +278,59 @@ def _watch_diagnostic_startup(process):
                 user.DispatchMessageW(ctypes.byref(message))
     finally:
         if hook: user.UnhookWinEvent(hook)
+
+
+def _brand_client(window, process, launcher_pid):
+    user = window.user
+    user.LoadImageW.argtypes = [wintypes.HINSTANCE, wintypes.LPCWSTR, wintypes.UINT, ctypes.c_int,
+                               ctypes.c_int, wintypes.UINT]
+    user.LoadImageW.restype = wintypes.HICON
+    user.CopyIcon.argtypes = [wintypes.HICON]
+    user.CopyIcon.restype = wintypes.HICON
+    user.DestroyIcon.argtypes = [wintypes.HICON]
+    user.SendMessageTimeoutW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM,
+                                        wintypes.UINT, wintypes.UINT, ctypes.POINTER(ctypes.c_size_t)]
+    user.SendMessageTimeoutW.restype = ctypes.c_ssize_t
+
+    title = ctypes.create_unicode_buffer("PREDATE")
+    current_title = ctypes.create_unicode_buffer(32)
+    result = ctypes.c_size_t()
+
+    def send(handle, message, wparam, lparam=0):
+        return user.SendMessageTimeoutW(handle, message, wparam, lparam, 0x0022, 100,
+                                        ctypes.byref(result))  # SMTO_ABORTIFHUNG | SMTO_ERRORONEXIT
+
+    launcher_window = window.find(launcher_pid) if launcher_pid else None
+    icons = {}
+    copies = {}
+    if launcher_window:
+        # Own a copy so it remains valid if the launcher window closes first.
+        for kind in (0, 1):  # ICON_SMALL, ICON_BIG
+            if send(launcher_window, 0x007F, kind) and result.value:  # WM_GETICON
+                if result.value not in copies:
+                    copies[result.value] = user.CopyIcon(result.value)
+                if copies[result.value]:
+                    icons[kind] = copies[result.value]
+
+    if len(icons) < 2:
+        icon_path = (Path(sys._MEIPASS) / "predate-data/icon.ico" if getattr(sys, "frozen", False)
+                     else ROOT / "flash/predate_logo.ico")
+        # Keep the bundled icon at its native size for Windows to scale when drawing it.
+        fallback = user.LoadImageW(None, str(icon_path), 1, 0, 0, 0x0010)  # IMAGE_ICON, LR_LOADFROMFILE
+        if fallback:
+            icons.setdefault(0, fallback)
+            icons.setdefault(1, fallback)
+
+    try:
+        while process.poll() is None:
+            handle = window.find(process.pid, class_name="DayZ")
+            if handle and process.poll() is None and window.owner_pid(handle) == process.pid:
+                if not user.GetWindowTextW(handle, current_title, len(current_title)) or current_title.value != title.value:
+                    send(handle, 0x000C, 0, ctypes.addressof(title))  # WM_SETTEXT
+                for kind, icon in icons.items():
+                    if send(handle, 0x007F, kind) and result.value != icon:  # WM_GETICON
+                        send(handle, 0x0080, kind, icon)  # WM_SETICON
+            time.sleep(1)
+    finally:
+        for icon in set(icons.values()):
+            user.DestroyIcon(icon)

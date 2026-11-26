@@ -97,8 +97,10 @@ def layouts():
     historical_label = map_label("MapLastKnown", "0.66 0.88 0.90 1")
     arrow = map_image("MapPlayer", "set:PredateMapIcons image:Player", extra="visible 0\npriority 130")
     # Widget edges are measured from the original 1672 by 941 tablet art.
-    children = widget("MapWidgetClass", "Terrain", 75/1672,69/941,1028/1672,805/941, 'clipchildren 1',
-                      history_canvas+canvas+bearing_labels+pulse_labels+historical_label+arrow)
+    terrain = widget("MapWidgetClass", "Terrain", 0,0,1,1, 'ignorepointer 1')
+    children = widget("PanelWidgetClass", "MapPane", 75/1672,69/941,1028/1672,805/941,
+                      'clipchildren 1\ncolor 1 1 1 1\nstyle rover_sim_colorable',
+                      terrain+history_canvas+canvas+bearing_labels+pulse_labels+historical_label+arrow)
     children += map_image("TabletArtwork", "set:PredateMapTablet image:Tablet", extra="priority 150")
     for name, glyph in (("Overview", "Overview"), ("CenterPlayer", "Center")):
         icon = map_image(name+"Icon", f"set:PredateMapIcons image:{glyph}", .2,.2,.6,.6)

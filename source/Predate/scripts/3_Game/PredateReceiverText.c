@@ -2,7 +2,7 @@
 // bearing is never re-aimed from the player's current location.
 class PredateReceiverText
 {
-    static string CompassReadout(PredateState state)
+    static string CompassReadout(PredateState state, float nextPulse = -1)
     {
         if (!state || !state.Available || !state.Locked) return "Map  M";
         string text = PredateProtocol.DisplayName(state.OperatorId);
@@ -13,7 +13,8 @@ class PredateReceiverText
             PredateBearingPulse tracked = state.TrackedPulse();
             if (tracked) text += "  |  " + tracked.DistanceText(" – ");
         }
-        return text + "  |  Next Pulse " + Math.Ceil(state.NextPulse).ToString() + "s";
+        if (nextPulse < 0) nextPulse = state.NextPulse;
+        return text + "  |  Next Pulse " + Math.Ceil(nextPulse).ToString() + "s";
     }
 
     static bool LostContact(PredateState state)

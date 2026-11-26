@@ -1,6 +1,6 @@
 class PredateProtocol
 {
-    static const int VERSION = 22;
+    static const int VERSION = 23;
     static const int MAX_OPERATORS = 100;
     static const int MAX_BEARING_HISTORY = 4;
     static const int REQUEST = 918601;
@@ -110,6 +110,8 @@ class PredateState
     int Bearing;
     float Age;
     float NextPulse;
+    float PulseDeadline;
+    int PulseClockRevision;
     bool HasPulseOrigin;
     vector PulseOrigin;
     float BearingError;

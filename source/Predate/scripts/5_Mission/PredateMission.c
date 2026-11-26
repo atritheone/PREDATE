@@ -41,6 +41,7 @@ class PredateSession
     bool m_Paused;
     bool m_PauseReady;
     bool m_DiscardResumeStep;
+    int m_PulseClockRevision;
     ref array<Man> m_PauseActors = new array<Man>;
     ref array<Man> m_PauseDamageActors = new array<Man>;
     ref array<Man> m_PauseClockActors = new array<Man>;
@@ -267,6 +268,8 @@ class PredateSession
             m_PauseDamageActors.Clear();
             m_MemoryRestored = false;
             m_DiscardResumeStep = true;
+            m_PulseClockRevision++;
+            m_HuntStateTimer = 1;
         }
         m_Paused = paused;
         if (GetGame().IsDedicatedServer()) PredateServerPauseDriver.Held = paused;
@@ -370,7 +373,12 @@ class PredateSession
             bearingError = sample.BearingError;
         }
         float nextPulse;
-        if (receiverTrack) nextPulse = Math.Max(0, receiverTrack.NextPulseAt - now);
+        float pulseDeadline;
+        if (receiverTrack)
+        {
+            pulseDeadline = receiverTrack.NextPulseAt;
+            nextPulse = Math.Max(0, pulseDeadline - now);
+        }
         string message;
         if (needsRedeploy) message = "Deployment ended";
         else if (!receiverReady) message = "Waiting for receiver initialization...";
@@ -396,6 +404,8 @@ class PredateSession
         rpc.Write(bearing);
         rpc.Write(age);
         rpc.Write(nextPulse);
+        rpc.Write(pulseDeadline);
+        rpc.Write(m_PulseClockRevision);
         rpc.Write(message);
         rpc.Write(hasPulseOrigin);
         rpc.Write(pulseOrigin);

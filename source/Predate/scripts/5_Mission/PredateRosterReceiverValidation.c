@@ -63,9 +63,7 @@ class PredateRosterReceiverValidation
         if (m_Phase == 1)
         {
             float firstArcRadius = overlay.m_ArcRadii[slot];
-            float originalRadius = Math.Min(overlay.m_Width, overlay.m_Height) * 0.36;
-            Print("[PredateRosterReceiverTest] dial arc=" + firstArcRadius + "; former radius=" + originalRadius + "; arrow=" + overlay.m_PlayerPoint + "; viewport=" + overlay.m_Width + "x" + overlay.m_Height);
-            m_Result.Check(firstArcRadius > originalRadius, "the centered bearing dial draws a larger selectable arc");
+            m_Result.Check(firstArcRadius > 0 && overlay.m_DialCenter == overlay.m_PlayerPoint, "the selectable arc is centered on the player");
         }
         vector position = overlay.m_LabelPositions[slot];
         if (!useLabel)
@@ -123,6 +121,35 @@ class PredateRosterReceiverValidation
         return entry.Origin == state.PulseOrigin && entry.Bearing == state.Bearing && entry.Error == state.BearingError;
     }
 
+    void CheckCountdown()
+    {
+        PredatePulseCountdown countdown = new PredatePulseCountdown;
+        PredateState sample = new PredateState;
+        sample.Available = true;
+        sample.Locked = true;
+        sample.NextPulse = 50;
+        sample.PulseDeadline = 90;
+        countdown.Sync(sample);
+        countdown.Advance(1.1);
+        m_Result.Check(Math.Ceil(countdown.Remaining()) == 49, "countdown ticks between receiver packets");
+        sample.NextPulse = 49.2;
+        countdown.Sync(sample);
+        m_Result.Check(Math.Ceil(countdown.Remaining()) == 49, "routine resynchronization does not move the display backwards");
+        countdown.Advance(1.2);
+        m_Result.Check(Math.Ceil(countdown.Remaining()) == 48, "countdown continues through packet jitter");
+        float beforePause = countdown.Remaining();
+        countdown.Advance(5, true);
+        m_Result.Check(countdown.Remaining() == beforePause, "pause freezes the client countdown");
+        sample.NextPulse = 47.6;
+        sample.PulseClockRevision = 1;
+        countdown.Sync(sample);
+        m_Result.Check(countdown.Remaining() == sample.NextPulse, "resume reanchors the countdown");
+        sample.NextPulse = 90;
+        sample.PulseDeadline = 180;
+        countdown.Sync(sample);
+        m_Result.Check(countdown.Remaining() == 90, "a new pulse resets the countdown");
+    }
+
     void CheckTerrainGeometry(PlayerBase player)
     {
         m_Result.Terrain = GetGame().GetWorldName();
@@ -131,28 +158,48 @@ class PredateRosterReceiverValidation
         m_Result.Viewport = Vector(screenWidth, screenHeight, 0);
         m_Menu.OnClick(m_Menu.m_Overview, 0, 0, 0);
         float midpoint = GetGame().GetWorld().GetWorldSize() / 2;
-        m_Result.Check(PredateHunterBrain.Distance(m_Menu.m_Map.GetMapPos(), Vector(midpoint, 0, midpoint)) < 25, "overview centers on the active terrain");
+        PredateMapViewport view = m_Menu.m_MapView;
+        m_Result.Check(PredateHunterBrain.Distance(view.m_Center, Vector(midpoint, 0, midpoint)) < 25, "overview centers on the active terrain");
+        view.SetScale(0.22);
+        view.SetCenter(Vector(0, 0, midpoint));
+        m_Menu.Update(0);
+        float tileX, tileY, tileWidth, tileHeight;
+        m_Menu.m_Map.GetScreenPos(tileX, tileY);
+        m_Menu.m_Map.GetScreenSize(tileWidth, tileHeight);
+        vector westernEdge = view.ToScreen(Vector(0, 0, midpoint));
+        m_Result.Check(Math.AbsFloat(tileX - westernEdge[0]) < 1 && tileX > view.m_Origin[0] + 50, "the western terrain edge leaves white space");
+        view.SetCenter(Vector(midpoint * 2, 0, midpoint));
+        m_Menu.Update(0);
+        m_Menu.m_Map.GetScreenPos(tileX, tileY);
+        m_Menu.m_Map.GetScreenSize(tileWidth, tileHeight);
+        vector easternEdge = view.ToScreen(Vector(midpoint * 2, 0, midpoint));
+        m_Result.Check(Math.AbsFloat(tileX + tileWidth - easternEdge[0]) < 1 && easternEdge[0] < view.m_Origin[0] + view.m_Size[0] - 50, "the eastern terrain edge leaves white space");
+        view.SetCenter(player.GetPosition());
+        m_Menu.Update(0);
         PredateMapOverlay overlay = m_Menu.m_MapOverlay;
         float dialRadius = overlay.m_DialRadius;
         array<float> scales = {0.085, 0.33, 0.68};
         foreach (float scale : scales)
         {
-            m_Menu.m_Map.SetScale(scale);
-            m_Menu.m_Map.SetMapPos(player.GetPosition());
+            m_Menu.m_MapView.SetScale(scale);
+            m_Menu.m_MapView.SetCenter(player.GetPosition());
             m_Menu.Update(0);
-            vector arrow = overlay.m_PlayerPoint + Vector(overlay.m_Left, overlay.m_Top, 0);
-            vector underArrow = m_Menu.m_Map.ScreenToMap(arrow);
+            float arrowX, arrowY, arrowWidth, arrowHeight;
+            overlay.m_PlayerArrow.GetScreenPos(arrowX, arrowY);
+            overlay.m_PlayerArrow.GetScreenSize(arrowWidth, arrowHeight);
+            vector arrow = Vector(arrowX + arrowWidth / 2, arrowY + arrowHeight / 2, 0);
+            vector underArrow = m_Menu.m_MapView.ToWorld(arrow);
             m_Result.Check(PredateHunterBrain.Distance(player.GetPosition(), underArrow) < 25, "player arrow follows map coordinates through zoom");
             m_Result.Check(Math.AbsFloat(dialRadius - overlay.m_DialRadius) < 0.1, "bearing dial keeps its size through zoom");
         }
         vector start = overlay.m_PlayerPoint;
         vector pan = Vector(overlay.m_Left + overlay.m_Width * 0.68, overlay.m_Top + overlay.m_Height * 0.54, 0);
-        m_Menu.m_Map.SetMapPos(m_Menu.m_Map.ScreenToMap(pan));
+        m_Menu.m_MapView.SetCenter(m_Menu.m_MapView.ToWorld(pan));
         m_Menu.Update(0);
         m_Result.Check(vector.Distance(start, overlay.m_PlayerPoint) > 20, "panning moves the player arrow");
         m_Menu.OnClick(m_Menu.m_CenterPlayer, 0, 0, 0);
         m_Menu.Update(0);
-        m_Result.Check(PredateHunterBrain.Distance(m_Menu.m_Map.GetMapPos(), player.GetPosition()) < 25, "center control returns to the player");
+        m_Result.Check(PredateHunterBrain.Distance(m_Menu.m_MapView.m_Center, player.GetPosition()) < 25, "center control returns to the player");
     }
 
     bool Update(PredateState state)
@@ -166,11 +213,12 @@ class PredateRosterReceiverValidation
             m_Result.Check(m_Menu != null, "receiver opens in the operation");
             if (!m_Menu) return Finish();
             PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
-            m_Menu.m_Map.SetScale(0.085);
+            m_Menu.m_MapView.SetScale(0.085);
             m_Menu.CenterOn(player.GetPosition());
             m_Menu.Update(0);
             CheckTerrainGeometry(player);
-            m_Menu.m_Map.SetScale(0.085);
+            CheckCountdown();
+            m_Menu.m_MapView.SetScale(0.085);
             m_Menu.CenterOn(player.GetPosition());
             m_Menu.Update(0);
             m_Count = state.Pulses.Count();

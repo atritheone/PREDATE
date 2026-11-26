@@ -240,7 +240,8 @@ class Supervisor:
                 return
             launched_at = time.time()
             startup_args = ["-predateStartupFocus"] if self.client_launch_focus else None
-            process = world.launch_client(self.session_id, extra_args=startup_args, wait_for_server=True)
+            process = world.launch_client(self.session_id, extra_args=startup_args, wait_for_server=True,
+                                          launcher_pid=launcher_pid)
             self.client_start_pid = process.pid
 
         def loading_progress(_):

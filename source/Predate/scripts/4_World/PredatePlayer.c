@@ -75,6 +75,7 @@ modded class PlayerBase
 {
     static PlayerBase s_PredateTrackingRequester;
     ref PredateState m_PredateState;
+    ref PredatePulseCountdown m_PredatePulseCountdown;
     int m_PredateRequest;
     int m_PredateTrackingRequest;
     int m_PredateTrackingChoice;
@@ -291,6 +292,8 @@ modded class PlayerBase
             if (ok && state.HasPulse) ok = PredateBearingPulse.Valid(state.Bearing);
             ok = ok && ctx.Read(state.Age);
             ok = ok && ctx.Read(state.NextPulse);
+            ok = ok && ctx.Read(state.PulseDeadline);
+            ok = ok && ctx.Read(state.PulseClockRevision);
             ok = ok && ctx.Read(state.Message);
             ok = ok && ctx.Read(state.HasPulseOrigin);
             ok = ok && ctx.Read(state.PulseOrigin);
@@ -327,6 +330,8 @@ modded class PlayerBase
             if (ok)
             {
                 if (footprintNotice != "") m_PredateFootprintNotice = footprintNotice;
+                if (!m_PredatePulseCountdown) m_PredatePulseCountdown = new PredatePulseCountdown;
+                m_PredatePulseCountdown.Sync(state);
                 m_PredateState = state;
                 foreach (int slot : state.ConfirmedKills)
                     if (m_PredateKillNotices.Find(slot) < 0) m_PredateKillNotices.Insert(slot);
