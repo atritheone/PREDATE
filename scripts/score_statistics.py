@@ -19,6 +19,7 @@ def summarize(saves, *, lifetime_seconds=None):
     encounter_outcomes = Counter()
     deaths_by_operator = Counter()
     kills_by_operator = Counter()
+    fights_by_operator = Counter()
 
     for state, lives in saves:
         totals["hunts"] += 1
@@ -59,14 +60,27 @@ def summarize(saves, *, lifetime_seconds=None):
             if outcome in ("Died", "KIA") and isinstance(killer, str) and killer:
                 deaths_by_operator[killer] += 1
             entries = life.get("Encounters")
+            fought = set()
             if isinstance(entries, list):
                 for entry in entries:
                     if isinstance(entry, dict):
                         add_encounter(entry, totals, encounter_outcomes, kills_by_operator)
+                        operator = entry.get("Callsign") or entry.get("OperatorId")
+                        if isinstance(operator, str) and operator and (
+                            entry.get("ReachedContact") is True or count(entry, "KillPoints") > 0
+                            or measurement(entry, "ReturnDamage") > 0
+                        ):
+                            fought.add((operator, count(entry, "Deployment")))
+            if outcome in ("Died", "KIA") and isinstance(killer, str) and killer:
+                deployment = count(life, "KillerDeployment")
+                if deployment or all(operator != killer for operator, _ in fought):
+                    fought.add((killer, deployment))
+            fights_by_operator.update(operator for operator, _ in fought)
 
     if lifetime_seconds is not None:
         totals["played_seconds"] = lifetime_seconds
-    return sections(totals, deployment_outcomes, encounter_outcomes, deaths_by_operator, kills_by_operator)
+    rival = min(fights_by_operator, key=lambda name: (-fights_by_operator[name], name.casefold(), name), default=None)
+    return sections(totals, deployment_outcomes, encounter_outcomes, deaths_by_operator, kills_by_operator, rival)
 
 
 def played_seconds(state, lives):
@@ -122,7 +136,7 @@ def add_encounter(entry, totals, outcomes, kills_by_operator):
         totals["precision_ratio_sum"] += min(1, count(entry, "PrecisionHits") / rounds)
 
 
-def sections(totals, deployments, encounters, deaths_by_operator, kills_by_operator):
+def sections(totals, deployments, encounters, deaths_by_operator, kills_by_operator, rival):
     def ratio(numerator, denominator):
         return numerator / denominator if denominator else None
 
@@ -145,6 +159,7 @@ def sections(totals, deployments, encounters, deaths_by_operator, kills_by_opera
             ("Average Recorded Survival", ratio(totals["recorded_survival"], totals["recorded_deployments"]), "duration"),
         ]),
         ("Combat", [
+            ("Rival", rival, "text"),
             ("Operator Kills", totals["Kills"]),
             ("Direct Kills", totals["direct_kills"]),
             ("Wound Kills", totals["wound_kills"]),

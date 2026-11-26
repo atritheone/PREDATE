@@ -316,7 +316,7 @@ class PredateSession
         bool receiverReady = !needsRedeploy && m_HuntReady && m_HuntError == "";
         PredateSignalTrack receiverTrack;
         if (m_WorldState) receiverTrack = m_WorldState.PlayerSignal;
-        string operatorId = "raven-01";
+        string operatorId = m_HuntConfig.OperatorAtPosition(0);
         int availableOperators = -1;
         PredatePeerBinding chosen;
         bool defeated = m_HuntProgress.Defeated || (m_HuntBot && !m_HuntBot.IsAlive());
@@ -547,7 +547,8 @@ class PredateSession
         eAIGroup resolvedGroup;
         PredateOperatorIndex index;
         if (m_PeerRoster) index = PredateOperatorIndex.Capture();
-        if (!m_Operators.Resolve("raven-01", resolvedActor, resolvedGroup, registryError, index))
+        string primaryId = m_HuntProgress.Operator.Id;
+        if (!m_Operators.Resolve(primaryId, resolvedActor, resolvedGroup, registryError, index))
         {
             PredatePersistence.Fail(this, registryError);
             return;
@@ -564,7 +565,7 @@ class PredateSession
             m_MemoryRestored = false;
             if (m_Paused) HoldPauseActor(m_HuntBot);
             PredateConfigureBot();
-            Print("[Predate] Rebound registered operator raven-01 by its persistent storage key.");
+            Print("[Predate] Rebound registered operator " + primaryId + " by its persistent storage key.");
         }
         if (m_Paused)
         {
@@ -584,7 +585,7 @@ class PredateSession
             m_HuntProgress.Operator.LifeState = "defeated";
             m_HuntProgress.Selected = false;
             m_HuntProgress.HasPulse = false;
-            Print("[Predate] " + PredateProtocol.SignatureFor("raven-01") + " eliminated.");
+            Print("[Predate] " + PredateProtocol.SignatureFor(primaryId) + " eliminated.");
             PredateRequestCheckpoint();
         }
         SoloApplyCombatRules(m_HuntBot);
@@ -711,7 +712,7 @@ class PredateSession
         PredatePeerBinding previousPeer;
         if (m_PeerRoster) previousPeer = m_PeerRoster.PlayerLock();
         if (previousPeer) previousSelection = previousPeer.State.Operator.Id;
-        else if (m_WorldState.PlayerSignal.Selected) previousSelection = "raven-01";
+        else if (m_WorldState.PlayerSignal.Selected) previousSelection = m_HuntProgress.Operator.Id;
         if (selection == previousSelection) return;
 
         if (m_PeerRoster)
@@ -720,7 +721,7 @@ class PredateSession
         }
         else
         {
-            if (operatorId != "raven-01") return;
+            if (request == 1 && operatorId != m_HuntProgress.Operator.Id) return;
             if (selection != "" && m_WorldState.PlayerSignal.HasLostPlayerReception()) return;
             PredateSignalService.Select(this, selection != "");
         }

@@ -24,7 +24,7 @@ from app_runtime import ROOT, command as helper_command, saves_directory
 RUNTIME = ROOT / "session-runtime"
 STATUS = RUNTIME / "status.json"
 MANAGER = RUNTIME / "manager.json"
-OPERATION_SETUP_VERSION = 10
+OPERATION_SETUP_VERSION = 11
 DELETE_SAVE_VERSION = 1
 PLAY_TIME_CHECKPOINT_SECONDS = 30
 _status_cache = None
@@ -398,7 +398,7 @@ class Supervisor:
                                               opponent_count=command.get('opponents', store.DEFAULT_OPPONENT_COUNT),
                                               footprints=command.get('footprints', True), spawn=command.get('spawn'),
                                               setup=command.get('setup'), require_modern_gear=True,
-                                              map_id=command.get('map', maps.DEFAULT_MAP))
+                                              map_id=command.get('map', maps.DEFAULT_MAP), randomize_operators=True)
                 self.start_operation(info["id"], command.get("launcher_pid"), command.get("diagnostics"))
             elif action == "restore":
                 store.validate_snapshot(ROOT / "backups" / command["backup"])

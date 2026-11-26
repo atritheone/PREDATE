@@ -40,6 +40,7 @@ const timePresets = [
   ['Night', '00:00'],
 ] as const
 const defaultTime = '12:00'
+const defaultRespawnDelay = '7'
 
 function isNightStart(time: string, map: HuntMap = 'chernarusplus'): boolean {
   if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) return false
@@ -76,7 +77,6 @@ export interface OperationDraft {
   z: string
   kit: string
   playerOutfit: string
-  operatorOutfit: string
   inventory: Inventory | null
   weaponPresetId?: string
   equipmentPresetId?: string
@@ -89,13 +89,12 @@ const defaults: OperationDraft = {
   dayNightCycle: true,
   opponents: DEFAULT_OPPONENT_COUNT,
   enemyRespawns: true,
-  respawnDelay: '120',
+  respawnDelay: defaultRespawnDelay,
   spawn: 'original',
   x: '',
   z: '',
   kit: 'hk417',
   playerOutfit: defaultPlayerOutfit,
-  operatorOutfit: 'varied',
   inventory: null,
 }
 
@@ -103,11 +102,15 @@ export function readOperationDraft(): OperationDraft {
   try {
     const saved = localStorage.getItem(setupKey)
     if (!saved) return { ...defaults }
-    const { componentsReady, ...draft } = JSON.parse(saved) as Partial<OperationDraft> & {
+    const { componentsReady, respawnRules, ...draft } = JSON.parse(saved) as Partial<OperationDraft> & {
       componentsReady?: boolean
       footprints?: boolean
+      operatorOutfit?: string
+      respawnRules?: number
     }
     delete draft.footprints
+    delete draft.operatorOutfit
+    if (respawnRules === undefined && draft.respawnDelay === '120') draft.respawnDelay = defaultRespawnDelay
     if (!isHuntMap(draft.map)) delete draft.map
     if (typeof draft.dayNightCycle !== 'boolean') delete draft.dayNightCycle
     if (!isOpponentCount(draft.opponents)) delete draft.opponents
@@ -216,9 +219,6 @@ export function OperationSetup({
   const playerOutfit = clothingPresets.some(({ Id }) => Id === draft.playerOutfit)
     ? draft.playerOutfit
     : defaults.playerOutfit
-  const operatorOutfit = clothingPresets.some(({ Id }) => Id === draft.operatorOutfit)
-    ? draft.operatorOutfit
-    : defaults.operatorOutfit
   const terrain = overview.maps.find((item) => item.id === draft.map) ?? overview.maps[0]
   const lighting = terrainAssets[terrain.id]
   const times = terrain.id === 'sakhal' || terrain.id === 'nasdara'
@@ -335,7 +335,7 @@ export function OperationSetup({
           opponents,
           spawn,
           playerOutfit,
-          operatorOutfit,
+          respawnRules: 1,
           componentsReady: true,
         }),
       )
@@ -364,9 +364,8 @@ export function OperationSetup({
         startMinute,
         dayNightCycle: draft.dayNightCycle,
         enemyRespawns: draft.enemyRespawns,
-        respawnDelay: draft.enemyRespawns ? delay : 120,
+        respawnDelay: draft.enemyRespawns ? delay : Number(defaultRespawnDelay),
         playerOutfit,
-        operatorOutfit,
         inventory: inventoryEntries(packed),
       },
     })
@@ -466,21 +465,6 @@ export function OperationSetup({
                       </option>
                     ))}
                     <option value="custom">Custom</option>
-                  </select>
-                </label>
-                <label className="field">
-                  AI Equipment
-                  <select
-                    id="operator-outfit"
-                    value={operatorOutfit}
-                    onChange={(event) => change({ operatorOutfit: event.target.value })}
-                  >
-                    <option value="varied">Default</option>
-                    {clothingPresets.map(({ Id, Name }) => (
-                      <option key={Id} value={Id}>
-                        {Name}
-                      </option>
-                    ))}
                   </select>
                 </label>
                 {customOpponents && (

@@ -75,6 +75,9 @@ modded class MissionServer
     void PredateRecordOperatorDeath(int slot, PlayerBase credited)
     {
         if (!m_PredateSession || !m_PredateSession.m_HuntReady || !m_PredateSession.m_WorldState) return;
+        PredateOperatorSlot entry = m_PredateSession.m_Operators.Get(PredateProtocol.OperatorAt(slot));
+        if (entry && m_PredateSession.m_HuntConfig.EnableOperatorRespawns)
+            entry.Record.RespawnAt = m_PredateSession.m_WorldState.SimulationSeconds + m_PredateSession.m_HuntConfig.OperatorRespawnDelay;
         bool retired = PredateSignalService.RetireDefeatedSignal(m_PredateSession, slot, true);
         if (retired || m_PredateSession.m_CheckpointRosterRow > 0) m_PredateSession.PredateRequestCheckpoint(true);
         if (!retired) return;

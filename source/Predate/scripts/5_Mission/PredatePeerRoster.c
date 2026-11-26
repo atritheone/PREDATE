@@ -19,6 +19,7 @@ class PredatePeerRoster
     static const string CHECKPOINT_PATH = "$profile:PredatePeerRosterCheckpoint.json";
     ref PredatePeerRosterSave m_State = new PredatePeerRosterSave;
     ref array<ref PredatePeerBinding> m_Bindings = new array<ref PredatePeerBinding>;
+    ref map<string, PredatePeerBinding> m_ById = new map<string, PredatePeerBinding>;
     float m_LastTick;
     protected FileHandle m_StateFile;
     protected int m_CheckpointSlot = -1;
@@ -35,10 +36,10 @@ class PredatePeerRoster
         return key;
     }
 
-    static PredatePeerState MakePeer(int slot, vector start)
+    static PredatePeerState MakePeer(int slot, vector start, string id = "")
     {
         PredatePeerState peer = new PredatePeerState;
-        string id = PredateProtocol.OperatorAt(slot);
+        if (id == "") id = PredateProtocol.OperatorAt(slot);
         peer.Operator.Id = id;
         peer.Operator.Signature = PredateProtocol.PersistentSignatureFor(id);
         peer.Operator.StorageKey = StorageKey(slot);
@@ -106,13 +107,13 @@ class PredatePeerRoster
                     vector insertion;
                     if (!PredateSpawnPlanner.OperatorSite(session, site, occupied, PredateDeployment.MINIMUM_DISTANCE, insertion))
                     {
-                        error = "No navigable insertion for " + PredateProtocol.OperatorAt(slot);
+                        error = "No navigable insertion for " + session.m_HuntConfig.OperatorAtPosition(slot);
                         return false;
                     }
                     site = insertion;
                 }
                 if (count <= 6) occupied.Insert(site);
-                m_State.Peers.Insert(MakePeer(slot, site));
+                m_State.Peers.Insert(MakePeer(slot, site, session.m_HuntConfig.OperatorAtPosition(slot)));
             }
         }
         if (!m_State || m_State.Schema < 1 || m_State.Schema > 2 || !m_State.Peers || m_State.Peers.Count() != count - 1)
@@ -133,11 +134,12 @@ class PredatePeerRoster
                 peer.PlayerReceiver = PredateSignalService.Track("player-01", peer.Operator.Id);
             if (peer && peer.PlayerReceiver) peer.PlayerReceiver.NormalizeLoaded();
             if (peer && peer.Operator && !peer.Operator.Supplies) peer.Operator.Supplies = new PredateSupplyPlan;
-            if (!peer || !peer.Validate(now) || !MatchesSlot(index, peer))
+            if (!peer || !peer.Validate(now) || !MatchesSlot(index, peer, session.m_HuntConfig))
             {
                 error = "Invalid peer roster record";
                 return false;
             }
+            peer.Operator.NormalizeRespawnClock(now, session.m_HuntConfig.OperatorRespawnDelay);
             peer.PlayerReceiver.UseBearingSectors(now);
             if (peer.PlayerReceiver.Selected) selected++;
         }
@@ -158,14 +160,15 @@ class PredatePeerRoster
             }
             if (saved.Operator.LifeState != "defeated" && !BindNative(session, binding, error)) return false;
             m_Bindings.Insert(binding);
+            m_ById.Insert(saved.Operator.Id, binding);
         }
         return true;
     }
 
-    bool MatchesSlot(int index, PredatePeerState peer)
+    bool MatchesSlot(int index, PredatePeerState peer, PredateConfig config)
     {
         int slot = index + 1;
-        string id = PredateProtocol.OperatorAt(slot);
+        string id = config.OperatorAtPosition(slot);
         return peer.Operator.Id == id && peer.Operator.Signature == PredateProtocol.PersistentSignatureFor(id) && peer.Operator.StorageKey == StorageKey(slot, peer.Operator.Deployment);
     }
 
@@ -188,7 +191,9 @@ class PredatePeerRoster
         else
         {
             group = eAIGroup.CreateGroup(new eAIFactionRaiders);
-            actor = eAIBase.Cast(GetGame().CreateObjectEx("eAI_SurvivorM_Mirek", session.PredateGround(peer.Start), ECE_CREATEPHYSICS | ECE_KEEPHEIGHT | ECE_NOSURFACEALIGN));
+            vector position = peer.Start;
+            if (record.Deployment == 1) position = session.PredateGround(position);
+            actor = eAIBase.Cast(GetGame().CreateObjectEx("eAI_SurvivorM_Mirek", position, ECE_CREATEPHYSICS | ECE_KEEPHEIGHT | ECE_NOSURFACEALIGN));
             if (actor)
             {
                 actor.SetGroup(group);
@@ -251,9 +256,9 @@ class PredatePeerRoster
 
     PredatePeerBinding Find(string id)
     {
-        int index = PredateProtocol.OperatorSlot(id) - 1;
-        if (index < 0 || index >= m_Bindings.Count()) return null;
-        return m_Bindings[index];
+        PredatePeerBinding binding;
+        m_ById.Find(id, binding);
+        return binding;
     }
 
     bool RefreshSupplies(PredateSession session, float now)
@@ -285,7 +290,7 @@ class PredatePeerRoster
 
     bool SelectPlayerTarget(PredateSession session, string id)
     {
-        bool wantsRaven = id == "raven-01";
+        bool wantsRaven = id == session.m_HuntProgress.Operator.Id;
         if (id != "")
         {
             PredateSignalTrack receiver;
@@ -349,13 +354,11 @@ class PredatePeerRoster
             PredatePeerState previous = binding.State;
             PredateOperatorRecord record = previous.Operator;
             if (!record.RespawnDue(now, session.m_HuntConfig.OperatorRespawnDelay)) continue;
-            array<vector> occupied = {};
-            PredateDeployment.OperatorOccupancy(session, player, occupied);
             vector site;
-            if (!PredateSpawnPlanner.ReplacementSite(session, previous.Start, occupied, site))
+            if (!PredateDeployment.OperatorStartPosition(session, player, record, previous.Start, site))
             {
-                record.RespawnAt = now + 15;
-                continue;
+                record.RespawnAt = now + session.m_HuntConfig.OperatorRespawnDelay;
+                return true;
             }
             if (binding.Group)
             {
@@ -371,16 +374,18 @@ class PredatePeerRoster
             record.EquipmentRevision = 0;
             record.RifleKit = "";
             record.Supplies = new PredateSupplyPlan;
-            PredatePeerState fresh = MakePeer(index + 1, site);
+            PredatePeerState fresh = MakePeer(index + 1, site, record.Id);
             fresh.PlayerReceiver = previous.PlayerReceiver;
             fresh.Operator = record;
             binding.State = fresh;
             m_State.Peers[index] = fresh;
             if (!BindNative(session, binding, error)) return false;
+            record.RememberInsertion(site);
             // A checkpoint already in progress may have passed this slot.
             // The new deployment must have native storage before publishing it.
             if (!SaveActor(session, binding, error)) return false;
             session.PredateRequestCheckpoint(true);
+            return true;
         }
         return true;
     }
@@ -439,7 +444,7 @@ class PredatePeerRoster
     {
         PredateWorldState state = session.m_WorldState;
         float until = now + PredateBearingPulse.INTERVAL + 30;
-        if (subject == "raven-01") state.BotInterceptionUntil = Math.Max(until, state.BotInterceptionUntil);
+        if (subject == session.m_HuntProgress.Operator.Id) state.BotInterceptionUntil = Math.Max(until, state.BotInterceptionUntil);
         else if (subject == "player-01") PredateSignalService.MarkPlayerHunted(session, now);
         else
         {

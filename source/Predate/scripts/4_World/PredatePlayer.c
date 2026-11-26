@@ -85,6 +85,7 @@ modded class PlayerBase
     bool m_PredateStagedForDeployment;
     int m_PredateScoringLife;
     string m_PredateScoreKiller;
+    int m_PredateScoreKillerDeployment;
     bool m_PredateScoreSuicide;
 
     bool m_PredateDeathRecorded;
@@ -129,7 +130,11 @@ modded class PlayerBase
         if (GetGame().IsServer() && GetIdentity())
         {
             eAIBase rival = eAIBase.Cast(PredateOperatorDeaths.Attacker(killer));
-            if (rival && rival.m_PredateOperatorRecord) m_PredateScoreKiller = rival.m_PredateOperatorRecord.Id;
+            if (rival && rival.m_PredateOperatorRecord)
+            {
+                m_PredateScoreKiller = rival.m_PredateOperatorRecord.Id;
+                m_PredateScoreKillerDeployment = rival.m_PredateOperatorRecord.Deployment;
+            }
             PredatePlayerLifeEvents.Death.Invoke(this);
         }
         super.EEKilled(killer);
@@ -299,7 +304,6 @@ modded class PlayerBase
             ok = ok && PredateReadPulses(ctx, state);
             ok = ok && ctx.Read(state.AvailableOperators);
             ok = ok && state.AvailableOperators >= -1 && state.AvailableOperators <= PredateProtocol.MAX_OPERATORS;
-            if (ok && state.AvailableOperators == -1) ok = state.OperatorId == "raven-01";
             ok = ok && ctx.Read(state.FootprintClue);
             ok = ok && state.FootprintClue >= 0 && state.FootprintClue <= 2;
             if (ok && state.FootprintClue > 0)

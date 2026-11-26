@@ -77,11 +77,12 @@ export interface Overview {
   status: SessionStatus
 }
 
-export interface ProfileStat {
+export type ProfileStat = {
   label: string
-  value: number | null
-  format: 'count' | 'decimal' | 'duration' | 'distance' | 'percent'
-}
+} & (
+  | { value: number | null; format: 'count' | 'decimal' | 'duration' | 'distance' | 'percent' }
+  | { value: string | null; format: 'text' }
+)
 
 export type ProfileStats = { title: string; rows: ProfileStat[] }[]
 

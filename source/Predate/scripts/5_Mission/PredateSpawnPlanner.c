@@ -292,12 +292,4 @@ class PredateSpawnPlanner
         return true;
     }
 
-    static bool ReplacementSite(PredateSession session, vector preferred, array<vector> occupied, out vector point)
-    {
-        if (OperatorSite(session, preferred, occupied, PredateDeployment.MINIMUM_DISTANCE, point)) return true;
-        array<vector> alternatives = {};
-        if (!RegionalSites(session, occupied, 1, alternatives)) return false;
-        point = alternatives[0];
-        return true;
-    }
 }

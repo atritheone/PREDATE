@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+from random import SystemRandom
 import re
 import shutil
 import sqlite3
@@ -281,7 +282,7 @@ def validate_opponent_count(value):
 
 def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, player_loadout='m4a1',
                      opponent_count=1, footprints=True, spawn=None, setup=None, require_modern_gear=False,
-                     map_id=maps.DEFAULT_MAP):
+                     map_id=maps.DEFAULT_MAP, randomize_operators=False):
     import operation_setup
     import world
     name = name.strip()
@@ -325,10 +326,12 @@ def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, pl
             'PlayerLoadout': player_loadout,
             'RequireModernGear': require_modern_gear,
             'OpponentCount': opponent_count,
+            'OperatorRoster': SystemRandom().sample(range(MAX_OPPONENT_COUNT), opponent_count) if randomize_operators else [],
             'RandomInitialSpawns': True,
             'EnableFootprints': footprints,
             'FootprintRulesVersion': 1,
             'EnableOperatorRespawns': True,
+            'OperatorRespawnRulesVersion': 1,
             **player_start,
             **rules,
         })

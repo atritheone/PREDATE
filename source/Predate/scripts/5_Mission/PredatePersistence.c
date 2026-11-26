@@ -52,9 +52,7 @@ class PredatePersistence
         if (!loadouts.LoadModernOperatorKits(s.m_HuntConfig.RequireModernGear)) return Fail(s, loadouts.ValidationError);
         if (!loadouts.Valid()) return Fail(s, "Invalid starting-kit catalog: " + loadouts.ValidationError);
         if (!loadouts.FindOutfit(s.m_HuntConfig.PlayerOutfit)) return Fail(s, "Unknown player clothing preset: " + s.m_HuntConfig.PlayerOutfit);
-        string operatorOutfit = s.m_HuntConfig.OperatorOutfit;
-        if (operatorOutfit != "" && operatorOutfit != "varied" && !loadouts.FindOutfit(operatorOutfit))
-            return Fail(s, "Unknown AI clothing preset: " + operatorOutfit);
+        if (!loadouts.FindOutfit("spectral") || !loadouts.FindOutfit("operator")) return Fail(s, "Missing operator clothing presets");
         if (s.m_HuntConfig.HasCustomInventory)
         {
             if (!PredateCustomInventory.Validate(s.m_HuntConfig.PlayerInventory, error)) return Fail(s, error);
@@ -66,7 +64,11 @@ class PredatePersistence
             s.m_HuntProgress.Operator = new PredateOperatorRecord;
             if (s.m_HuntProgress.Defeated) s.m_HuntProgress.Operator.LifeState = "defeated";
             else if (s.m_HuntProgress.BotCreated) s.m_HuntProgress.Operator.LifeState = "alive";
-            Print("[Predate] Migrated prototype save to schema 1; retained raven-01 / PredateRaven01.");
+            else
+            {
+                s.m_HuntProgress.Operator.Id = s.m_HuntConfig.OperatorAtPosition(0);
+                s.m_HuntProgress.Operator.Signature = PredateProtocol.PersistentSignatureFor(s.m_HuntProgress.Operator.Id);
+            }
         }
         PredateOperatorRecord record = s.m_HuntProgress.Operator;
         if (!record) return Fail(s, "Missing persistent operator record");
@@ -92,6 +94,7 @@ class PredatePersistence
         int opponentCount = s.m_HuntConfig.OpponentCount;
         if (opponentCount < 1 || opponentCount > PredateProtocol.MAX_OPERATORS)
             return Fail(s, "Unsupported opponent count");
+        if (!s.m_HuntConfig.ValidOperatorRoster()) return Fail(s, "Invalid operation roster");
         if (opponentCount > 1 && !s.m_HuntConfig.EnableStrategicHunter)
             return Fail(s, "Multi-opponent operations require strategic hunters");
         string terrainName = GetGame().GetWorldName();
@@ -119,9 +122,12 @@ class PredatePersistence
             s.m_HuntConfig.EnableFootprints = s.m_HuntConfig.EnableFootprints || s.m_HuntConfig.EnableStrategicHunter;
         if (s.m_HuntConfig.EnableFootprints && !s.m_HuntConfig.EnableStrategicHunter)
             return Fail(s, "Footprint observations require strategic hunters");
-        if (!PredateInformationMath.Finite(record.RespawnAt) || record.RespawnAt < 0)
-            return Fail(s, "Invalid operator respawn clock");
+        if (!record.ValidRedeployment()) return Fail(s, "Invalid operator redeployment record");
+        if (s.m_HuntConfig.OperatorRespawnRulesVersion == 0 && s.m_HuntConfig.OperatorRespawnDelay == 120)
+            s.m_HuntConfig.OperatorRespawnDelay = PredateConfig.DEFAULT_OPERATOR_RESPAWN_DELAY;
+        s.m_HuntConfig.OperatorRespawnRulesVersion = 1;
         s.m_HuntConfig.OperatorRespawnDelay = Math.Clamp(s.m_HuntConfig.OperatorRespawnDelay, 1, 3600);
+        record.NormalizeRespawnClock(s.m_WorldState.SimulationSeconds, s.m_HuntConfig.OperatorRespawnDelay);
         if (!s.m_WorldState.Footprints) s.m_WorldState.Footprints = new PredateFootprintLedger;
         if (!s.m_WorldState.Footprints.Validate(s.m_WorldState.SimulationSeconds))
             return Fail(s, "Invalid saved footprint observations");
@@ -146,7 +152,7 @@ class PredatePersistence
             if (!pendingSound || !pendingSound.Valid(record.Id, s.m_WorldState.SimulationSeconds + 3)) return Fail(s, "Invalid pending perception event");
             if (!pendingSound.IsAudible()) return Fail(s, "Invalid pending perception source");
         }
-        if (record.Id != "raven-01" || record.StorageKey == "" || record.Deployment < 1)
+        if (record.Id != s.m_HuntConfig.OperatorAtPosition(0) || record.StorageKey == "" || record.Deployment < 1)
             return Fail(s, "Invalid persistent operator identity");
         string expectedKey = "PredateRaven01";
         if (record.Deployment > 1) expectedKey += "_d" + record.Deployment.ToString();

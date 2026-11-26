@@ -78,6 +78,7 @@ class PredateLifeScore
     float SurvivedSeconds;
     string EndReason;
     string Killer;
+    int KillerDeployment;
     bool Partial;
     int Shots;
     int Hits;

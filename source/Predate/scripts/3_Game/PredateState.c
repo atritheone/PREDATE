@@ -146,6 +146,7 @@ class PredateState
 
 class PredateConfig
 {
+    static const float DEFAULT_OPERATOR_RESPAWN_DELAY = 7;
     static const float DEFAULT_THREAT_DISTANCE = 1000;
     static const float DEFAULT_HEARING_DISTANCE = 600;
     static const float DEFAULT_AI_ACCURACY_MIN = 0.60;
@@ -163,11 +164,11 @@ class PredateConfig
     string PlayerLoadout = "m4a1";
     bool RequireModernGear;
     string PlayerOutfit;
-    string OperatorOutfit = "varied";
     bool HasCustomInventory;
     ref array<ref PredateInventoryNode> PlayerInventory = new array<ref PredateInventoryNode>;
     float ThreatDistance = DEFAULT_THREAT_DISTANCE;
     int OpponentCount = 1;
+    ref array<int> OperatorRoster = {};
     bool RandomInitialSpawns;
     vector PlayerStart = "4500 0 6500";
     bool ExplicitPlayerStart;
@@ -182,7 +183,28 @@ class PredateConfig
     bool EnableFootprints;
     int FootprintRulesVersion;
     bool EnableOperatorRespawns;
-    float OperatorRespawnDelay = 120;
+    float OperatorRespawnDelay = DEFAULT_OPERATOR_RESPAWN_DELAY;
+    int OperatorRespawnRulesVersion;
+
+    string OperatorAtPosition(int position)
+    {
+        if (OperatorRoster && position >= 0 && position < OperatorRoster.Count())
+            return PredateProtocol.OperatorAt(OperatorRoster[position]);
+        return PredateProtocol.OperatorAt(position);
+    }
+
+    bool ValidOperatorRoster()
+    {
+        if (!OperatorRoster || OperatorRoster.Count() == 0) return true;
+        if (OperatorRoster.Count() != OpponentCount) return false;
+        set<int> seen = new set<int>;
+        foreach (int slot : OperatorRoster)
+        {
+            if (PredateProtocol.OperatorAt(slot) == "" || seen.Find(slot) >= 0) return false;
+            seen.Insert(slot);
+        }
+        return true;
+    }
 }
 
 class PredateInventoryNode
@@ -200,12 +222,16 @@ class PredateInventoryNode
 // Logical identity is independent of the engine's transient group/entity IDs.
 class PredateOperatorRecord
 {
+    static const int INSERTION_HISTORY_SIZE = 3;
     string Id = "raven-01";
     string Signature = "RAVEN-01";
     string StorageKey = "PredateRaven01";
     string LifeState = "unspawned";
     int Deployment = 1;
     float RespawnAt;
+    bool HasDeathPosition;
+    vector DeathPosition;
+    ref array<vector> RecentInsertions = {};
     int EquipmentRevision;
     string RifleKit;
     int PlayerWoundBits;
@@ -225,6 +251,28 @@ class PredateOperatorRecord
         if (LifeState != "defeated") return false;
         if (RespawnAt <= 0) RespawnAt = now + delay;
         return now >= RespawnAt;
+    }
+
+    void NormalizeRespawnClock(float now, float delay)
+    {
+        if (LifeState == "defeated" && RespawnAt > now + delay) RespawnAt = now + delay;
+    }
+
+    bool ValidRedeployment()
+    {
+        if (!RecentInsertions) RecentInsertions = {};
+        if (RecentInsertions.Count() > INSERTION_HISTORY_SIZE) return false;
+        if (HasDeathPosition && !PredateInformationMath.FiniteVector(DeathPosition)) return false;
+        foreach (vector insertion : RecentInsertions)
+            if (!PredateInformationMath.FiniteVector(insertion)) return false;
+        return PredateInformationMath.Finite(RespawnAt) && RespawnAt >= 0;
+    }
+
+    void RememberInsertion(vector site)
+    {
+        HasDeathPosition = false;
+        RecentInsertions.Insert(site);
+        if (RecentInsertions.Count() > INSERTION_HISTORY_SIZE) RecentInsertions.RemoveOrdered(0);
     }
 }
 

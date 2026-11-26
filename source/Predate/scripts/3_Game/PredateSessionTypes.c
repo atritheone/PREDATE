@@ -81,13 +81,6 @@ class PredateContactMemory
     bool SearchOnLOSLost;
 }
 
-enum PredateRivalOptics
-{
-    UNSET,
-    DAY,
-    NIGHT
-}
-
 class PredateWorldState
 {
     int Schema = 1;
@@ -95,7 +88,6 @@ class PredateWorldState
     int PlayerLife = 1;
     string PlayerCharacterModel;
     bool PlayerPrimaryAssigned;
-    int RivalOptics;
     float PlayerLifeStartedAt;
     ref PredateSupplyPlan PlayerSupplies = new PredateSupplyPlan;
     bool PlayerAwaitingRedeploy;

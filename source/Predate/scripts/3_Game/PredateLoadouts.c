@@ -168,14 +168,6 @@ class PredateLoadoutCatalog
         return null;
     }
 
-    PredateOutfit RotatingOutfit(int offset)
-    {
-        array<PredateOutfit> choices = {};
-        foreach (PredateOutfit outfit : Outfits)
-            if (outfit.InRotation && !outfit.Legacy) choices.Insert(outfit);
-        return choices[offset % choices.Count()];
-    }
-
     bool Valid()
     {
         if (Schema != 1 || !Kits || Kits.Count() < 1 || Kits.Count() > 16) return Invalid("Invalid schema or kit count");

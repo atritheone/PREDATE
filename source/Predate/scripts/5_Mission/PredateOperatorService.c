@@ -108,7 +108,7 @@ class PredateOperatorService
                 else if (kit.NightVisionClass != "" && item.GetInventory().HasAttachmentSlot(InventorySlots.GetSlotIdFromString("BatteryD")) && !InstallBattery(item))
                     PredatePersistence.Fail(s, "Starting-kit accessory could not be powered: " + attachment);
             }
-            if (rival && !EquipRivalScope(rifle, kit, RivalUsesNightScopes(s)))
+            if (rival && !EquipRivalScope(rifle, kit, RivalUsesNightScopes()))
                 PredatePersistence.Fail(s, "Starting-kit scope could not be equipped: " + kit.Id);
             if (!rifle.GetAttachedSuppressor() && !rifle.GetInventory().CreateAttachment(kit.SuppressorClass))
                 PredatePersistence.Fail(s, "Starting-kit suppressor is incompatible: " + kit.SuppressorClass);
@@ -222,26 +222,13 @@ class PredateOperatorService
         return device && (device.FindAttachmentBySlotName("BatteryD") || device.GetInventory().CreateAttachment("Battery9V"));
     }
 
-    static bool RivalUsesNightScopes(PredateSession session)
+    static bool RivalUsesNightScopes()
     {
-        PredateWorldState state = session.m_WorldState;
-        if (state.RivalOptics == PredateRivalOptics.DAY) return false;
-        if (state.RivalOptics == PredateRivalOptics.NIGHT) return true;
-
         int year, month, day, hour, minute;
         GetGame().GetWorld().GetDate(year, month, day, hour, minute);
-        if (session.m_HuntConfig.StartHour >= 0)
-        {
-            hour = session.m_HuntConfig.StartHour;
-            minute = session.m_HuntConfig.StartMinute;
-            if (state.Year > 0) month = state.Month;
-        }
         WorldData lighting = GetGame().GetMission().GetWorldData();
-        float startTime = hour + minute / 60.0;
-        bool night = startTime < lighting.GetApproxSunriseTime(month) || startTime >= lighting.GetApproxSunsetTime(month);
-        if (night) state.RivalOptics = PredateRivalOptics.NIGHT;
-        else state.RivalOptics = PredateRivalOptics.DAY;
-        return night;
+        float time = hour + minute / 60.0;
+        return time < lighting.GetApproxSunriseTime(month) || time >= lighting.GetApproxSunsetTime(month);
     }
 
     static bool IsNightScopeClass(string name)
@@ -307,31 +294,29 @@ class PredateOperatorService
     static string RivalKit(PredateSession session, PredateOperatorRecord record)
     {
         if (record.RifleKit != "") return record.RifleKit;
-        int slot = Math.Max(0, PredateProtocol.s_OperatorIds.Find(record.Id));
-        int deploymentOffset = Math.Max(0, record.Deployment - 1);
-        array<ref PredateStartingKit> modern = session.m_Loadouts.ModernOperatorKits;
-        if (modern.Count() > 0) return modern[(slot + deploymentOffset) % modern.Count()].Id;
+        int slot = Math.Max(0, PredateProtocol.OperatorSlot(record.Id));
+        array<string> modern = {"hk417", "hk416d", "buca-m4a1", "g36k", "mdr", "ak47-tactical", "buca-scar-h", "sa58", "g28", "cz-tsr", "m110", "rsass"};
+        string kit = modern[slot % modern.Count()];
+        if (session.m_Loadouts.Find(kit)) return kit;
         array<string> rotation = {"m4a1", "m4a1", "ak74", "fal", "sv98", "m14", "akm", "ak74"};
-        return rotation[(slot + deploymentOffset * 3) % rotation.Count()];
+        return rotation[slot % rotation.Count()];
     }
 
     static bool EquipRival(PredateSession session, eAIBase actor, PredateOperatorRecord record)
     {
         string kitId = RivalKit(session, record);
-        int slot = Math.Max(0, PredateProtocol.s_OperatorIds.Find(record.Id));
-        PredateEquip(session, actor, kitId, RivalOutfit(session, record, slot), slot % 2 == 1);
+        int slot = Math.Max(0, PredateProtocol.OperatorSlot(record.Id));
+        PredateEquip(session, actor, kitId, RivalOutfit(session, slot), slot % 2 == 1);
         if (session.m_HuntError != "") return false;
         record.RifleKit = kitId;
         if (UpgradeRivalEquipment(session, actor, record, true)) return true;
         return PredatePersistence.Fail(session, "Cannot equip starting gear for " + record.Id);
     }
 
-    static PredateOutfit RivalOutfit(PredateSession session, PredateOperatorRecord record, int slot)
+    static PredateOutfit RivalOutfit(PredateSession session, int slot)
     {
-        string selection = session.m_HuntConfig.OperatorOutfit;
-        if (selection != "" && selection != "varied") return session.m_Loadouts.FindOutfit(selection);
-        int deploymentOffset = Math.Max(0, record.Deployment - 1);
-        return session.m_Loadouts.RotatingOutfit(slot + deploymentOffset);
+        if (slot % 2 == 0) return session.m_Loadouts.FindOutfit("spectral");
+        return session.m_Loadouts.FindOutfit("operator");
     }
 
     static bool UpgradeRivalEquipment(PredateSession session, eAIBase actor, PredateOperatorRecord record, bool freshDeployment = false)
@@ -352,7 +337,7 @@ class PredateOperatorService
         {
             if (record.EquipmentRevision < 4)
             {
-                bool night = RivalUsesNightScopes(session);
+                bool night = RivalUsesNightScopes();
                 array<EntityAI> inventory = {};
                 actor.GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
                 foreach (EntityAI entity : inventory)
@@ -462,13 +447,14 @@ class PredateOperatorService
         if (!s.m_HuntSchemaValid || s.m_HuntError != "") return;
         s.PredateClearWeather();
         s.PredateApplyWorldClock();
-        if (s.m_WorldState.Year == 0 && s.m_HuntConfig.StartHour >= 0)
+        if (s.m_WorldState.Year > 0)
+            GetGame().GetWorld().SetDate(s.m_WorldState.Year, s.m_WorldState.Month, s.m_WorldState.Day, s.m_WorldState.Hour, s.m_WorldState.Minute);
+        else if (s.m_HuntConfig.StartHour >= 0)
         {
             int year, month, day, hour, minute;
             GetGame().GetWorld().GetDate(year, month, day, hour, minute);
             GetGame().GetWorld().SetDate(year, month, day, s.m_HuntConfig.StartHour, s.m_HuntConfig.StartMinute);
         }
-        RivalUsesNightScopes(s);
         PredateOperatorRecord record = s.m_HuntProgress.Operator;
         bool restoring = record.LifeState == "alive";
         if (record.LifeState != "defeated")
@@ -538,7 +524,6 @@ class PredateOperatorService
         else Print("[Predate] Restored defeated operator " + record.Id + "; no respawn.");
         if (s.m_WorldState && s.m_WorldState.Year > 0)
         {
-            GetGame().GetWorld().SetDate(s.m_WorldState.Year, s.m_WorldState.Month, s.m_WorldState.Day, s.m_WorldState.Hour, s.m_WorldState.Minute);
             if (restoring && s.m_HuntGroup)
             {
                 s.m_HuntGroup.m_CurrentWaypointIndex = s.m_WorldState.WaypointIndex;
@@ -629,23 +614,23 @@ class PredateOperatorService
         float now = s.m_WorldState.SimulationSeconds;
         PredateOperatorRecord record = s.m_HuntProgress.Operator;
         if (!record.RespawnDue(now, s.m_HuntConfig.OperatorRespawnDelay)) return;
-        array<vector> occupied = {};
-        PredateDeployment.OperatorOccupancy(s, player, occupied);
         vector site;
-        if (!PredateSpawnPlanner.ReplacementSite(s, s.m_HuntConfig.BotStart, occupied, site))
+        if (!PredateDeployment.OperatorStartPosition(s, player, record, s.m_HuntConfig.BotStart, site))
         {
-            record.RespawnAt = now + 15;
+            record.RespawnAt = now + s.m_HuntConfig.OperatorRespawnDelay;
             return;
         }
         ResetRavenLife(s);
         if (!SpawnRaven(s, site)) return;
+        record.RememberInsertion(site);
         PredateConfigureBot(s);
         if (!s.m_Operators.Bind(record.Id, s.m_HuntGroup, s.m_HuntBot))
         {
             PredatePersistence.Fail(s, "Replacement operator registry binding rejected");
             return;
         }
-        s.PredateSave();
+        s.m_HuntGroup.Save(true);
+        s.PredateRequestCheckpoint(true);
     }
 
     // The legacy explicit action retains the operation and its player body.

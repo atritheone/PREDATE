@@ -15,6 +15,8 @@ function duration(seconds: number): string {
 function formatStat({ value, format }: ProfileStat): string {
   if (value === null) return '—'
   switch (format) {
+    case 'text':
+      return value
     case 'duration':
       return duration(value)
     case 'distance':

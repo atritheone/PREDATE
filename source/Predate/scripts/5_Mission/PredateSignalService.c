@@ -23,7 +23,7 @@ class PredateSignalService
             if (state.BotActivity && state.BotActivity.Energy != 0) hasLegacyData = true;
             if (hasLegacyData)
                 return PredatePersistence.Fail(s, "Signal data has no schema");
-            state.PlayerSignal = Track("player-01", "raven-01");
+            state.PlayerSignal = Track("player-01", s.m_HuntProgress.Operator.Id);
             state.PlayerActivity = new PredateSignatureActivity;
             state.BotActivity = new PredateSignatureActivity;
             // Retain the legacy cooldown, but never fabricate an old sample origin.
@@ -35,7 +35,7 @@ class PredateSignalService
         }
         if (state.SignalSchema != 1 || !state.PlayerSignal || !state.PlayerActivity || !state.BotActivity)
             return PredatePersistence.Fail(s, "Unsupported signal state");
-        if (state.PlayerSignal.OwnerId != "player-01" || state.PlayerSignal.SubjectId != "raven-01")
+        if (state.PlayerSignal.OwnerId != "player-01" || state.PlayerSignal.SubjectId != s.m_HuntProgress.Operator.Id)
             return PredatePersistence.Fail(s, "Invalid signal ownership");
         state.PlayerSignal.NormalizeLoaded();
         state.BotSignal = null;
@@ -118,12 +118,14 @@ class PredateSignalService
 
     static bool RetireDefeatedSignal(PredateSession session, int slot, bool trackedOnly)
     {
+        string id = PredateProtocol.OperatorAt(slot);
+        if (id == "") return false;
         PredateSignalTrack track = session.m_WorldState.PlayerSignal;
         PredatePeerBinding peer;
-        if (slot != 0)
+        if (id != session.m_HuntProgress.Operator.Id)
         {
-            if (!session.m_PeerRoster || slot < 1 || slot > session.m_PeerRoster.m_Bindings.Count()) return false;
-            peer = session.m_PeerRoster.m_Bindings[slot - 1];
+            if (session.m_PeerRoster) peer = session.m_PeerRoster.Find(id);
+            if (!peer) return false;
             track = peer.State.PlayerReceiver;
         }
         if (!track || (trackedOnly && !track.Selected)) return false;
@@ -273,7 +275,8 @@ class PredateSignalService
     static void NewDeployment(PredateSession s, bool preserveReceiver = false)
     {
         s.m_WorldState.Hunter = new PredateHunterState;
-        if (!preserveReceiver) s.m_WorldState.PlayerSignal = Track("player-01", "raven-01");
+        s.m_WorldState.Hunter.OwnerId = s.m_HuntProgress.Operator.Id;
+        if (!preserveReceiver) s.m_WorldState.PlayerSignal = Track("player-01", s.m_HuntProgress.Operator.Id);
         s.m_WorldState.HuntReceiver = new PredateHuntReceiver;
         s.m_WorldState.BotActivity = new PredateSignatureActivity;
         if (!preserveReceiver) s.m_WorldState.PlayerInterceptionUntil = 0;

@@ -20,7 +20,7 @@ class PredatePeerState
     {
         if (!Operator || !Memory || !PendingSounds || !PredateInformationMath.FiniteVector(Start)) return false;
         if (Operator.LifeState != "alive" && Operator.LifeState != "defeated" && Operator.LifeState != "unspawned") return false;
-        if (Operator.Deployment < 1 || !PredateInformationMath.Finite(Operator.RespawnAt) || Operator.RespawnAt < 0) return false;
+        if (Operator.Deployment < 1 || !Operator.ValidRedeployment()) return false;
         if (!Operator.Supplies || !Operator.Supplies.Valid(now)) return false;
         if (Memory.OwnerId != Operator.Id || !Memory.Validate(now) || PendingSounds.Count() > 8) return false;
         if (!HuntReceiver || !HuntReceiver.Valid(now, Operator.Id)) return false;

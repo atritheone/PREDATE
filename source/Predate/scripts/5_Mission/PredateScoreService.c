@@ -420,7 +420,11 @@ class PredateScoreService
         life.EndReason = "Died";
         if (player.m_PredateScoreSuicide) life.EndReason = "Suicide";
         else if (player.m_PredateScoreKiller != "") life.EndReason = "KIA";
-        if (player.m_PredateScoreKiller != "") life.Killer = PredateProtocol.DisplayName(player.m_PredateScoreKiller);
+        if (player.m_PredateScoreKiller != "")
+        {
+            life.Killer = PredateProtocol.DisplayName(player.m_PredateScoreKiller);
+            life.KillerDeployment = player.m_PredateScoreKillerDeployment;
+        }
         foreach (PredatePursuitScore entry : life.Encounters)
             if (entry.Outcome == "") entry.Outcome = "Life ended";
         m_Tracked = null;

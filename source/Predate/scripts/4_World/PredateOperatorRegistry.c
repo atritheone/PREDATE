@@ -165,7 +165,12 @@ modded class eAIBase
                         credited = PredateOperatorDeaths.HuntPlayer();
                     if (credited && credited.GetIdentity() && credited.m_PredateKillNotices.Find(slot) < 0)
                         credited.m_PredateKillNotices.Insert(slot);
-                    if (m_PredateOperatorRecord) PredateScoreEvents.Defeated.Invoke(m_PredateOperatorRecord, credited, woundKill);
+                    if (m_PredateOperatorRecord)
+                    {
+                        m_PredateOperatorRecord.DeathPosition = GetPosition();
+                        m_PredateOperatorRecord.HasDeathPosition = PredateInformationMath.FiniteVector(m_PredateOperatorRecord.DeathPosition);
+                        PredateScoreEvents.Defeated.Invoke(m_PredateOperatorRecord, credited, woundKill);
+                    }
                     PredateOperatorDeaths.Defeated.Invoke(slot, credited);
                 }
             }
