@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import type { ProfileStat, ProfileStats } from '../../shared/types'
+import { formatAccuracy } from './accuracy'
 
 const wholeNumber = new Intl.NumberFormat()
 const decimal = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 })
@@ -23,6 +24,8 @@ function formatStat({ value, format }: ProfileStat): string {
       return `${wholeNumber.format(value)} m`
     case 'percent':
       return percent.format(value)
+    case 'accuracy':
+      return formatAccuracy(value)
     case 'decimal':
       return decimal.format(value)
     case 'count':

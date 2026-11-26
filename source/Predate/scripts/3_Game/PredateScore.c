@@ -82,6 +82,7 @@ class PredateLifeScore
     bool Partial;
     int Shots;
     int Hits;
+    int ExtraOperatorHits;
     int Misses;
     int PendingRounds;
     int UnverifiedRounds;

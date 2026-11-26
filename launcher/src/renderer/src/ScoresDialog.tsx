@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ScoreEncounter, ScoreHistory } from '../../shared/types'
+import { formatAccuracy } from './accuracy'
 
 const duration = (seconds: number): string => {
   const minutes = Math.floor(seconds / 60)
@@ -49,6 +50,11 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
   const misses = life?.Misses ?? 0
   const pending = life?.PendingRounds ?? 0
   const unverified = life?.UnverifiedRounds ?? 0
+  const verifiedRounds = hits + misses
+  const accuracy =
+    pending || unverified || !verifiedRounds
+      ? null
+      : (hits + (life?.ExtraOperatorHits ?? 0)) / verifiedRounds
   return (
     <dialog
       ref={dialog}
@@ -86,8 +92,10 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
             {life.Version >= 2 && (
               <div>
                 <dt>Accuracy</dt>
-                <dd>{pending || unverified ? '—' : accuracyText(hits, hits + misses)}</dd>
-                <dd>{hits} hits · {misses} misses</dd>
+                <dd>{formatAccuracy(accuracy)}</dd>
+                <dd>
+                  {hits} rounds hit · {misses} missed
+                </dd>
                 {pending > 0 && <dd>{pending} pending</dd>}
                 {unverified > 0 && <dd>{unverified} unverified</dd>}
               </div>
@@ -95,7 +103,9 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
             {(legacyShots > 0 || life.Version === 1) && (
               <div>
                 <dt>Earlier Accuracy Estimate</dt>
-                <dd>{accuracyText(legacyHits, legacyShots)} ({legacyHits}/{legacyShots})</dd>
+                <dd>
+                  {accuracyText(legacyHits, legacyShots)} ({legacyHits}/{legacyShots})
+                </dd>
               </div>
             )}
             <div>

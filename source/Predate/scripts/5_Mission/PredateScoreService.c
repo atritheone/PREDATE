@@ -286,6 +286,28 @@ class PredateScoreService
         PredateProjectileRounds.Active.Remove(round.Tag);
     }
 
+    void RecordRoundHit(PredateLifeScore life, PredateProjectileRound round, eAIBase actor)
+    {
+        if (!round.Hit)
+        {
+            round.FirstOperator = actor;
+            ResolveRound(life, round, true);
+            return;
+        }
+        if (round.FirstOperator == actor) return;
+        if (!round.AdditionalOperators)
+        {
+            // Spread ammunition shares a tag across its pellets. Only a
+            // single projectile can establish that both impacts came from it.
+            if (GetGame().ConfigGetTextOut("CfgAmmo " + round.Tag + " simulation") != "shotBullet") return;
+            round.AdditionalOperators = new set<Object>;
+        }
+        if (round.AdditionalOperators.Find(actor) >= 0) return;
+        round.AdditionalOperators.Insert(actor);
+        life.ExtraOperatorHits++;
+        m_DirtyLives.Insert(life.Life);
+    }
+
     void OnProjectileContact(PredateProjectileRound round, Object hitObject, vector point, bool aliveBeforeConfirmation)
     {
         if (round.Number == 0) return;
@@ -298,7 +320,7 @@ class PredateScoreService
         if (round.Hit && round.ContactTarget == actor && round.ContactPosition == point) return;
         round.ContactTarget = actor;
         round.ContactPosition = point;
-        if (!round.Hit) ResolveRound(life, round, true);
+        RecordRoundHit(life, round, actor);
         RecordContact(life, actor.m_PredateOperatorRecord, round);
     }
 
@@ -354,7 +376,7 @@ class PredateScoreService
         PredateLifeScore life = Life(number, number == state.PlayerLife);
         if (!life) return;
         PredateOperatorRecord record = actor.m_PredateOperatorRecord;
-        if (round && !round.Hit) ResolveRound(life, round, true);
+        if (round) RecordRoundHit(life, round, actor);
         PredatePursuitScore entry = RecordContact(life, record, round);
         record.ScoreInjuryLife = life.Life;
         m_DirtyLives.Insert(life.Life);

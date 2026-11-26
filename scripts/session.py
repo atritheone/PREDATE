@@ -43,13 +43,14 @@ def manager_alive():
 
 def ensure_manager():
     RUNTIME.mkdir(exist_ok=True)
-    if manager_alive(): return
-    log = (RUNTIME / "supervisor.log").open("ab")
-    world.launch_hidden(helper_command("session", "serve", windowless=True), ROOT, log)
-    log.close()
+    candidate = None
     deadline = time.monotonic() + 10
     while time.monotonic() < deadline:
         if manager_alive(): return
+        if candidate is None or candidate.poll() == 0:
+            # A retiring owner may still hold the singleton when we first try.
+            with (RUNTIME / "supervisor.log").open("ab") as log:
+                candidate = world.launch_hidden(helper_command("session", "serve", windowless=True), ROOT, log)
         time.sleep(0.1)
     raise RuntimeError("The PREDATE session supervisor did not start. Inspect session-runtime/supervisor.log")
 
@@ -76,8 +77,11 @@ def request(action, **values):
                 raise RuntimeError("An older PREDATE session is still running. Restart the session supervisor and try again.")
             time.sleep(0.1)
     identifier = uuid.uuid4().hex
-    store.atomic_json(RUNTIME / "requests" / (identifier + ".json"),
-                      {"id": identifier, "action": action, **values})
+    queued = RUNTIME / "requests" / (identifier + ".json")
+    store.atomic_json(queued, {"id": identifier, "action": action, **values})
+    # The supervisor may have retired between the startup check and enqueueing.
+    if not manager_alive() and queued.exists():
+        ensure_manager()
     return identifier
 
 
@@ -102,6 +106,9 @@ def state():
         owner = _status_cache[0]
     if not owner or world.process_identity(owner.get("pid", 0)) != owner:
         _status_cache = None
+        saved = read_native(STATUS)
+        if isinstance(saved, dict) and saved.get("phase") == "suspended" and isinstance(saved.get("message"), str):
+            return saved
         return {"phase": "idle", "message": "Ready to continue", "profile": store.preferences()["selected_world"]}
     result = read_native(STATUS)
     updated = result.get("updated") if isinstance(result, dict) else None
@@ -129,7 +136,6 @@ class Supervisor:
         self.command_sequence = 0
         self.connection_deadline = None
         self.last_backup = None
-        self.last_activity = time.monotonic()
         self.data = {"phase": "idle", "message": "Ready to continue", "profile": None, "error": "",
                      "operation_setup_version": OPERATION_SETUP_VERSION, "can_delete_saves": True,
                      "delete_save_version": DELETE_SAVE_VERSION, "battleye_enabled": not world.diagnostic_runtime(),
@@ -593,20 +599,39 @@ class Supervisor:
         saves_directory(ROOT)
         handle = platform_win.singleton(ROOT)
         if handle is None: return
-        store.atomic_json(MANAGER, world.process_identity(os.getpid()))
-        self.publish("idle", "Ready to continue")
-        self.recover()
+        identity = world.process_identity(os.getpid())
+        requests = RUNTIME / "requests"
         try:
+            store.atomic_json(MANAGER, identity)
+            self.publish("idle", "Ready to continue")
+            self.recover()
             while True:
-                for path in sorted((RUNTIME / "requests").glob("*.json"), key=lambda p: p.stat().st_mtime_ns):
+                for path in sorted(requests.glob("*.json"), key=lambda p: p.stat().st_mtime_ns):
                     command = read_native(path)
                     if not command: continue
                     path.unlink()
                     self.dispatch(command)
                 self.monitor()
+                if self.retire_if_drained(identity, requests): return
                 time.sleep(0.25)
         finally:
             MANAGER.unlink(missing_ok=True)
+
+    def retire_if_drained(self, identity, requests):
+        if (self.job is None or self.job.is_alive() or self.data["phase"] not in {"idle", "suspended"}
+                or self.session_id or self.client_alive() or (RUNTIME / "active-session.json").exists()
+                or next(requests.glob("*.json"), None) is not None):
+            return False
+        try:
+            MANAGER.unlink(missing_ok=True)
+        except PermissionError:
+            return False  # A status reader can briefly hold the file open on Windows.
+        # A requester that saw us as live has already put its command on disk.
+        # Requesters arriving after this check will start a fresh supervisor.
+        if next(requests.glob("*.json"), None) is None:
+            return True
+        store.atomic_json(MANAGER, identity)
+        return False
 
 
 def main():

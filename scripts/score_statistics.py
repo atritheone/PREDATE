@@ -45,6 +45,7 @@ def summarize(saves, *, lifetime_seconds=None):
                 totals["legacy_hits"] += legacy_hits
                 totals["verified_hits"] += max(0, count(life, "Hits") - legacy_hits)
                 totals["verified_misses"] += count(life, "Misses")
+                totals["extra_operator_hits"] += count(life, "ExtraOperatorHits")
                 totals["pending_rounds"] += count(life, "PendingRounds")
                 totals["unverified_rounds"] += count(life, "UnverifiedRounds")
             else:
@@ -170,8 +171,9 @@ def sections(totals, deployments, encounters, deaths_by_operator, kills_by_opera
             ("Verified Misses", totals["verified_misses"]),
             ("Pending Rounds", totals["pending_rounds"]),
             ("Unverified Rounds", totals["unverified_rounds"]),
-            ("Accuracy", ratio(totals["verified_hits"], totals["verified_hits"] + totals["verified_misses"])
-             if not (totals["pending_rounds"] or totals["unverified_rounds"]) else None, "percent"),
+            ("Accuracy", ratio(totals["verified_hits"] + totals["extra_operator_hits"],
+                               totals["verified_hits"] + totals["verified_misses"])
+             if not (totals["pending_rounds"] or totals["unverified_rounds"]) else None, "accuracy"),
             ("Earlier Accuracy Estimate", ratio(totals["legacy_hits"], totals["legacy_shots"]), "percent"),
             ("Encounters With a Matched Round", totals["matched_encounters"]),
             ("Counter-hunt Encounters", totals["counter_encounters"]),

@@ -80,7 +80,10 @@ export interface Overview {
 export type ProfileStat = {
   label: string
 } & (
-  | { value: number | null; format: 'count' | 'decimal' | 'duration' | 'distance' | 'percent' }
+  | {
+      value: number | null
+      format: 'count' | 'decimal' | 'duration' | 'distance' | 'percent' | 'accuracy'
+    }
   | { value: string | null; format: 'text' }
 )
 
@@ -217,6 +220,7 @@ export interface ScoreLife {
   Partial: boolean
   Shots: number
   Hits: number
+  ExtraOperatorHits?: number
   Misses?: number
   PendingRounds?: number
   UnverifiedRounds?: number

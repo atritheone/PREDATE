@@ -8,8 +8,6 @@ import sys
 import time
 import uuid
 
-from run_elite_acquisition import close_client
-
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -47,9 +45,11 @@ def main():
     print(f"Validation profile: {profile}", flush=True)
 
     nonce = uuid.uuid4().hex
+    client_process = None
     try:
         def open_client():
-            world.launch_client(nonce, extra_args=["-window", "-x=1920", "-y=1080"], wait_for_server=True)
+            nonlocal client_process
+            client_process = world.launch_client(nonce, extra_args=["-window", "-x=1280", "-y=720"], wait_for_server=True)
 
         world.start(nonce, on_started=open_client)
         store.atomic_json(world.WORLD / "client" / "PredateClientCommand.json", {
@@ -71,7 +71,12 @@ def main():
             time.sleep(0.25)
         print(json.dumps(result, indent=2), flush=True)
         assert result.get("Unverified") == result.get("Pending") == 0, result
-        assert (result.get("Shots"), result.get("Hits"), result.get("Misses")) == (4, 2, 2), result
+        spread_round = int(args.operators > 1)
+        expected_counts = (4 + spread_round, 2 + spread_round, 2)
+        assert (result.get("Shots"), result.get("Hits"), result.get("Misses")) == expected_counts, result
+        assert result.get("ExtraOperatorHits") == spread_round, result
+        saved = store.read_json(world.PROFILE / "PredateLifeScore-1.json")
+        assert saved["ExtraOperatorHits"] == spread_round, saved
         assert result.get("ExpiryReleased") and result.get("QuitReleased") and result.get("ResumedMisses") == 1, result
         assert result.get("LaterDeploymentHits") == 0 and result.get("BuckshotLifetime", 0) > 0, result
         if args.buca:
@@ -80,8 +85,14 @@ def main():
         assert abs(result["CreditedRange"] - result["ExpectedRange"]) < 2, result
     finally:
         try:
-            if nonce:
-                close_client(nonce)
+            if client_process and client_process.poll() is None:
+                client_path = world.WORLD / "client"
+                status = session.read_native(client_path / "PredateClientStatus.json")
+                store.atomic_json(client_path / "PredateClientCommand.json", {
+                    "Schema": 1, "SessionId": nonce, "Sequence": status.get("Acknowledged", 1) + 1,
+                    "Action": "server-closed",
+                })
+                client_process.wait(timeout=30)
         finally:
             if world.running():
                 world.stop(make_backup=False)

@@ -3,6 +3,7 @@ class PredateShotScoreRegression : MissionServer
     bool m_ShotStarted;
     PlayerBase m_ShotPlayer;
     eAIBase m_ShotTarget;
+    eAIBase m_ShotPeer;
     float m_ExpectedRange;
     int m_FiringDeployment;
 
@@ -10,6 +11,12 @@ class PredateShotScoreRegression : MissionServer
     {
         super.OnUpdate(timeslice);
         if (m_ShotStarted || !m_PredateSession.m_ActorsActive || !m_PredateSession.m_HuntBot) return;
+        if (m_PredateSession.m_HuntConfig.OpponentCount > 1)
+        {
+            if (!m_PredateSession.m_PeerRoster || m_PredateSession.m_PeerRoster.m_Bindings.Count() == 0) return;
+            m_ShotPeer = m_PredateSession.m_PeerRoster.m_Bindings[0].Actor;
+            if (!m_ShotPeer) return;
+        }
         array<Man> players = new array<Man>;
         GetGame().GetPlayers(players);
         foreach (Man man : players)
@@ -47,6 +54,13 @@ class PredateShotScoreRegression : MissionServer
         vector impact = position + "0 1.2 0";
         m_ExpectedRange = vector.Distance(m_ShotPlayer.GetPosition(), impact);
         m_ShotTarget.ProcessDirectDamage(DT_FIRE_ARM, weapon, "Torso", hit.Tag, impact, 0.2);
+        if (m_ShotPeer)
+        {
+            vector peerImpact = m_ShotPeer.GetPosition() + "0 1.2 0";
+            PredateProjectileRounds.ReportContact(hit.Tag, m_ShotPeer, peerImpact);
+            PredateProjectileRounds.ReportContact(hit.Tag, m_ShotTarget, impact + "0 0.1 0");
+            PredateProjectileRounds.ReportContact(hit.Tag, m_ShotPeer, peerImpact + "0 0.1 0");
+        }
         GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(ObserveDuplicateContact, 150, false, hit, impact);
         GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(WriteRegressionResult, 1800, false, weapon, impact);
     }
@@ -88,6 +102,11 @@ class PredateShotScoreRegression : MissionServer
         m_ShotPlayer.m_PredateScoringLife = m_FiringDeployment;
         SeedRound(weapon, "PR_2_Bullet_556x45", m_ShotTarget, impact);
         SeedRound(weapon, "PR_3_Bullet_556x45");
+        if (m_ShotPeer)
+        {
+            PredateProjectileRound spread = SeedRound(weapon, "PR_4_Bullet_12GaugePellets", m_ShotTarget, impact);
+            PredateProjectileRounds.ReportContact(spread.Tag, m_ShotPeer, m_ShotPeer.GetPosition() + "0 1.2 0");
+        }
         score.FinishRounds();
         bool quitReleased = !PredateProjectileRounds.Active.Contains("PR_3_Bullet_556x45");
         PredateLifeScore resumed = new PredateLifeScore;
@@ -98,12 +117,13 @@ class PredateShotScoreRegression : MissionServer
         score.Save();
         float range;
         foreach (PredatePursuitScore encounter : life.Encounters)
-            if (encounter.ReachedContact) range = encounter.CreditedRange;
+            if (encounter.OperatorId == m_ShotTarget.m_PredateOperatorRecord.Id) range = encounter.CreditedRange;
         FileHandle report = OpenFile("$profile:ShotScoreRegression.json", FileMode.WRITE);
         if (!report) return;
         FPrintln(report, "{");
         FPrintln(report, "\"Shots\":" + life.Shots + ",");
         FPrintln(report, "\"Hits\":" + life.Hits + ",");
+        FPrintln(report, "\"ExtraOperatorHits\":" + life.ExtraOperatorHits + ",");
         FPrintln(report, "\"Misses\":" + life.Misses + ",");
         FPrintln(report, "\"Unverified\":" + life.UnverifiedRounds + ",");
         FPrintln(report, "\"Pending\":" + life.PendingRounds + ",");
