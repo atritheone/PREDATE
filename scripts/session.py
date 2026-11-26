@@ -60,7 +60,7 @@ def request(action, **values):
     ensure_manager()
     required = {}
     if action in {"new", "continue"}:
-        required["battleye_free_launch"] = True
+        required["battleye_enabled"] = True
     if action == "new" and ("setup" in values or "map" in values):
         required["operation_setup_version"] = OPERATION_SETUP_VERSION
     elif action == "delete":
@@ -130,7 +130,7 @@ class Supervisor:
         self.last_activity = time.monotonic()
         self.data = {"phase": "idle", "message": "Ready to continue", "profile": None, "error": "",
                      "operation_setup_version": OPERATION_SETUP_VERSION, "can_delete_saves": True,
-                     "delete_save_version": DELETE_SAVE_VERSION, "battleye_free_launch": True}
+                     "delete_save_version": DELETE_SAVE_VERSION, "battleye_enabled": True}
         self.quit_waiters = []
         self.pause_preparing = None
         self.pause_resume_sequence = None
@@ -187,7 +187,7 @@ class Supervisor:
             self.publish("connecting", "Reconnecting to your saved operation...", error="")
             self.disconnected_at = None
             return
-        if platform_win.find_processes("DayZ_x64.exe"):
+        if any(platform_win.find_processes(name) for name in ("DayZ_x64.exe", world.CLIENT_BOOTSTRAP)):
             raise RuntimeError("DayZ is already open outside this session. Close it before continuing here.")
         self.configure(profile)
         if profile == "main" and world.stable_fallback():

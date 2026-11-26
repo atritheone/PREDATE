@@ -36,6 +36,7 @@ SETTINGS = ROOT / "config/settings.local.json"
 STATE = WORLD / "server-process.json"
 SERVER = ROOT / "runtime"
 CLIENT = Path(r"C:\Program Files (x86)\Steam\steamapps\common\DayZ")
+CLIENT_BOOTSTRAP = "DayZ_BE.exe"
 PORT, QUERY_PORT, RCON_PORT = 2402, 2405, 2406
 
 TEST_CLIENT = False
@@ -235,7 +236,7 @@ def setup():
     if SETTINGS.exists():
         print("Existing world retained. Setup already complete.", flush=True)
         return
-    for path in [SERVER / "DayZServer_x64.exe", CLIENT / "DayZ_x64.exe"]:
+    for path in (SERVER / "DayZServer_x64.exe", CLIENT / "DayZ_x64.exe", CLIENT / CLIENT_BOOTSTRAP):
         if not path.is_file():
             raise RuntimeError(f"Missing installation: {path}")
     if MISSION.exists() and any(STORAGE.rglob("players.db")):
@@ -253,7 +254,7 @@ passwordAdmin = "";
 maxPlayers = 1;
 verifySignatures = 2;
 forceSameBuild = 1;
-BattlEye = 0;
+BattlEye = 1;
 disableVoN = 1;
 disable3rdPerson = 1;
 thirdPersonView = 0;
@@ -372,7 +373,7 @@ def process_failure(identity, logdir=None):
 
 
 def managed_server_config(config):
-    for name, value in (("BattlEye", 0), ("disable3rdPerson", 1), ("thirdPersonView", 0),
+    for name, value in (("BattlEye", 1), ("disable3rdPerson", 1), ("thirdPersonView", 0),
                         ("disableVoN", 1), ("adminLogPlayerList", 0)):
         config, count = re.subn(rf"(?im)^[ \t]*{name}\s*=\s*[^;\r\n]+;", f"{name} = {value};", config)
         if not count:
@@ -430,7 +431,7 @@ def start(session_id=None, progress=None, cancelled=None, on_started=None,
         identity = process_identity(pid)
         if identity is None:
             raise RuntimeError(f"Server exited during startup. Inspect {log_hint}")
-        identity.update(session_id=session_id, battleye=False)
+        identity.update(session_id=session_id, battleye=True, rcon_enabled=False)
         from session_store import atomic_json
         atomic_json(STATE, identity)
         process_identity_only = {key: identity[key] for key in ("pid", "created", "executable")}
@@ -493,8 +494,8 @@ def stop(make_backup=True):
         return
     print("Requesting a clean server shutdown and save...", flush=True)
     identity = json.loads(STATE.read_text())
-    # Process records from older launchers can belong to a protected server.
-    legacy_rcon = identity.get("battleye", True)
+    # Older launchers used BattlEye RCon. Managed sessions use native saves.
+    legacy_rcon = identity.get("rcon_enabled", identity.get("battleye", True))
     stop_sequence = None
     if identity.get("session_id"):
         stop_sequence = control("stop")
@@ -535,10 +536,13 @@ def launch_client(session_id=None, extra_args=None, wait_for_server=False):
     mods = launch_mods()
     workshop_lasers.verify_launch(mods)
     # Avoid launching another client over an existing DayZ session.
-    if platform_win.find_processes("DayZ_x64.exe"):
+    if any(platform_win.find_processes(name) for name in ("DayZ_x64.exe", CLIENT_BOOTSTRAP)):
         raise RuntimeError("DayZ is already open. Close it before using scripts/Play PREDATE.cmd.")
+    bootstrap = CLIENT / CLIENT_BOOTSTRAP
+    if not bootstrap.is_file():
+        raise RuntimeError(f"Missing DayZ BattlEye launcher: {bootstrap}")
     private = settings()
-    args = [str(CLIENT / "DayZ_x64.exe"), "-noSplash", "-noPause"]
+    args = [str(bootstrap), "0", "1", "-exe", "DayZ_x64.exe", "-noSplash", "-noPause"]
     if not wait_for_server:
         args += [f"-connect=127.0.0.1:{PORT}:{QUERY_PORT}", f"-port={PORT}",
                  f"-password={private['join_password']}"]
@@ -592,7 +596,7 @@ def status():
         status = native_status()
         if identity.get("session_id") and status.get("SessionId") == identity["session_id"]:
             report["players"] = status.get("Players", 0)
-        elif identity.get("battleye", True):
+        elif identity.get("rcon_enabled", identity.get("battleye", True)):
             try:
                 report["players"] = rcon("players")
             except (OSError, RuntimeError, TimeoutError) as error:
