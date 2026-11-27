@@ -41,6 +41,20 @@ modded class ItemBase
         m_PredateLoadedWeaponModuleState = -1;
     }
 
+    void PredateTransferWeaponModule(map<string, int> states, Weapon_Base weapon, bool drawn, bool restore)
+    {
+        if (!GetCompEM() || !PredateSupportsWeaponControl(PredateWeaponControl.WHITE_LIGHT)) return;
+        InventoryLocation location = new InventoryLocation;
+        if (!GetInventory().GetCurrentInventoryLocation(location)) return;
+        string key = weapon.GetType() + "/" + location.GetSlot() + "/" + GetType();
+        if (restore)
+        {
+            int state;
+            if (!IsRuined() && states.Find(key, state)) PredateApplyWeaponModuleState(state, drawn);
+        }
+        else states.Set(key, PredatePackWeaponModuleState());
+    }
+
     protected void PredateApplyWeaponModuleState(int state, bool drawn)
     {
         ComponentEnergyManager energy = GetCompEM();
@@ -74,6 +88,20 @@ modded class ItemBase
 
 modded class PlayerBase
 {
+    void PredateTransferWeaponModules(map<string, int> states, bool restore)
+    {
+        if (!restore) states.Clear();
+        array<EntityAI> inventory = {};
+        GetInventory().EnumerateInventory(InventoryTraversalType.PREORDER, inventory);
+        foreach (EntityAI entity : inventory)
+        {
+            ItemBase attachment = ItemBase.Cast(entity);
+            if (!attachment) continue;
+            Weapon_Base weapon = Weapon_Base.Cast(attachment.GetHierarchyParent());
+            if (weapon) attachment.PredateTransferWeaponModule(states, weapon, GetItemInHands() == weapon, restore);
+        }
+    }
+
     override void OnSelectPlayer()
     {
         super.OnSelectPlayer();

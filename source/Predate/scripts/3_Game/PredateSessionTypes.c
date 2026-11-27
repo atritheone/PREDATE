@@ -88,6 +88,7 @@ class PredateWorldState
     int PlayerLife = 1;
     string PlayerCharacterModel;
     bool PlayerPrimaryAssigned;
+    ref map<string, int> PlayerWeaponModules = new map<string, int>;
     float PlayerLifeStartedAt;
     ref PredateSupplyPlan PlayerSupplies = new PredateSupplyPlan;
     bool PlayerAwaitingRedeploy;

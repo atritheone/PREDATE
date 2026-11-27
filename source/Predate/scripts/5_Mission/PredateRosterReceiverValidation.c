@@ -80,9 +80,7 @@ class PredateRosterReceiverValidation
         }
         int clickX = Math.Round(overlay.m_Left + position[0]);
         int clickY = Math.Round(overlay.m_Top + position[1]);
-        array<string> hits = {};
-        overlay.HitPulses(clickX, clickY, state, hits);
-        if (hits.Find(id) < 0)
+        if (overlay.HitPulse(clickX, clickY) != id)
         {
             m_Result.Check(false, "pulse hit test did not find " + id);
             Finish();
@@ -90,16 +88,6 @@ class PredateRosterReceiverValidation
         }
         m_Menu.m_Events.OnMouseButtonDown(m_Menu.m_Map, clickX, clickY, MouseState.LEFT);
         m_Menu.m_Events.OnMouseButtonUp(m_Menu.m_Map, clickX, clickY, MouseState.LEFT);
-        if (hits.Count() > 1)
-        {
-            int row = m_Menu.m_PulseChoices.Find(id);
-            if (!m_Menu.m_Events.OnItemSelected(m_Menu.m_PulseRows, clickX, clickY, row, 0, -1, -1))
-            {
-                m_Result.Check(false, "could not choose " + id + " in the pulse picker");
-                Finish();
-                return;
-            }
-        }
         m_Result.Check(true, "clicked " + id);
     }
 

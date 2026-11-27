@@ -34,28 +34,6 @@ style rover_sim_colorable
  ignorepointer 1
  {  }
 }
-CanvasWidgetClass MapHistoryGuides {
- position 0 0
- size 1 1
- hexactpos 0
- vexactpos 0
- hexactsize 0
- vexactsize 0
- ignorepointer 1
-priority 80
- {  }
-}
-CanvasWidgetClass MapOverlay {
- position 0 0
- size 1 1
- hexactpos 0
- vexactpos 0
- hexactsize 0
- vexactsize 0
- ignorepointer 1
-priority 110
- {  }
-}
 TextWidgetClass MapBearing0 {
  position 0 0
  size 0.12 0.035
@@ -2870,44 +2848,6 @@ font "gui/fonts/sdf_MetronBook24"
 "exact text size" 15
 "text valign" center
  {  }
-}
-FrameWidgetClass PulsePicker {
- position 0.06 0.48
- size 0.88 0.4
- hexactpos 0
- vexactpos 0
- hexactsize 0
- vexactsize 0
- visible 0
- { TextWidgetClass PulsePickerTitle {
- position 0 0
- size 1 0.14
- hexactpos 0
- vexactpos 0
- hexactsize 0
- vexactsize 0
- ignorepointer 1
-color 0.55 0.85 0.90 1
-text "Overlapping pulses"
-scaled 0
-font "gui/fonts/sdf_MetronBook24"
-"exact text" 1
-"exact text size" 15
-"text valign" center
- {  }
-}
-TextListboxWidgetClass PulseChoices {
- position 0 0.16
- size 1 0.84
- hexactpos 0
- vexactpos 0
- hexactsize 0
- vexactsize 0
- lines 9
-font "gui/fonts/sdf_MetronBook24"
- {  }
-}
- }
 }
 ButtonWidgetClass Select {
  position 0.06 0.366

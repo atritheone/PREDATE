@@ -38,6 +38,10 @@ class PredateDeployment
         PredateWorldState state = session.m_WorldState;
         RememberCharacter(state, player);
         if (state.PlayerAwaitingRedeploy) return;
+#ifdef SERVER
+        if (!state.PlayerWeaponModules) state.PlayerWeaponModules = new map<string, int>;
+        player.PredateTransferWeaponModules(state.PlayerWeaponModules, false);
+#endif
         if (session.m_Score) session.m_Score.EndLife(player);
         state.PlayerAwaitingRedeploy = true;
         state.PlayerLastDeathAt = state.SimulationSeconds;
@@ -350,6 +354,9 @@ class PredateDeployment
         player.RemoveAllItems();
         session.PredateEquip(player);
         if (session.m_HuntError != "") return;
+#ifdef SERVER
+        if (state.PlayerWeaponModules) player.PredateTransferWeaponModules(state.PlayerWeaponModules, true);
+#endif
         session.m_HuntProgress.PlayerPlacementRevision = 1;
 
         // Age and resource state survive. Clear only contacts that referred to

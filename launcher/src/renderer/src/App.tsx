@@ -13,6 +13,7 @@ import { ScoresDialog } from './ScoresDialog'
 import { LauncherMusic } from './LauncherMusic'
 import { OperationSetup, readOperationDraft } from './OperationSetup'
 import { ProfilePage } from './ProfilePage'
+import { formatAtreyanDateTime } from './atreyanDate'
 
 type Page = 'Continue' | 'New Hunt' | 'Profile' | 'Settings' | 'Backups'
 type SettingsValues = Omit<Preferences, 'schema' | 'selected_world'>
@@ -511,10 +512,7 @@ export function App(): ReactNode {
                     <option value="">Select a Snapshot</option>
                     {overview.backups.map((item) => (
                       <option key={item.file} value={item.file}>
-                        {new Date(item.created).toLocaleString(undefined, {
-                          dateStyle: 'medium',
-                          timeStyle: 'short',
-                        })}{' '}
+                        {formatAtreyanDateTime(item.created) ?? 'Date unavailable'}{' '}
                         · {item.name} · {huntMapName(item.map)}
                       </option>
                     ))}

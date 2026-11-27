@@ -11,6 +11,7 @@ class PredateProtocol
     static const int WEAPON_MODULE_LOG = 918606;
     static const int FOOTPRINT_LOOK = 918608;
     static const int SIGNAL_LOST = 918609;
+    static const int WEAPON_ZEROING = 918610;
     static const int REQUEST_SUICIDE = 6;
     // These IDs associate saved actors, receiver tracks and evidence with each slot.
     static ref array<string> s_OperatorIds = {

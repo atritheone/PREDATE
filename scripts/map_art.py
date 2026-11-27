@@ -159,8 +159,55 @@ def make_arcs():
     write_imageset("PredateMapArcs", "map_arcs.imageset", atlas, entries)
 
 
+def make_linework():
+    # All masks carry coverage in alpha, with white RGB for tinting in-game.
+    atlas = Image.new("RGBA", (4096, 2048), (255, 255, 255, 0))
+    entries = []
+    samples = 4
+    size, radius = 1024, 480
+    for index, width in enumerate((2.4, 3.6, 6.0, 10.0)):
+        mask = Image.new("L", (size * samples, size * samples))
+        pen = ImageDraw.Draw(mask)
+        for edge, fill in ((radius + width / 2, 255), (radius - width / 2, 0)):
+            low, high = ((size / 2 - edge) * samples, (size / 2 + edge) * samples)
+            pen.ellipse((low, low, high, high), fill=fill)
+        ring = Image.new("RGBA", (size, size), "white")
+        ring.putalpha(mask.resize(ring.size, Image.Resampling.BOX))
+        x = index * size
+        atlas.paste(ring, (x, 0))
+        entries.append((f"Ring{index}", x, 0, size, size))
+
+    # Square tiles keep the complete stroke visible when DayZ rotates the widget.
+    # The length is 15/16 of each tile. Select the width closest to the screen ratio.
+    ratios = (2, 3, 4, 6, 9, 13, 19, 28, 42, 63, 94, 141, 212, 318, 477, 716)
+    tiles = sorted((max(64, 1 << (ratio - 1).bit_length()), index, ratio)
+                   for index, ratio in enumerate(ratios))
+    x, y, row = 0, 1024, 0
+    for tile, index, ratio in reversed(tiles):
+        if x + tile > atlas.width:
+            x, y, row = 0, y + row, 0
+        mask = Image.new("L", (tile * samples, tile * samples))
+        length = tile * samples * 15 / 16
+        thickness = length / ratio
+        pad_x = (tile * samples - length) / 2
+        pad_y = (tile * samples - thickness) / 2
+        ImageDraw.Draw(mask).rectangle(
+            (pad_x, pad_y, pad_x + length - 1, pad_y + thickness - 1), fill=255)
+        line = Image.new("RGBA", (tile, tile), "white")
+        line.putalpha(mask.resize(line.size, Image.Resampling.BOX))
+        atlas.paste(line, (x, y))
+        entries.append((f"Line{index}", x, y, tile, tile))
+        x += tile
+        row = max(row, tile)
+    ImageDraw.Draw(atlas).rectangle((4064, 1032, 4087, 1055), fill="white")
+    entries.append(("Box", 4068, 1036, 16, 16))
+    to_paa(atlas, "map_linework")
+    write_imageset("PredateMapLinework", "map_linework.imageset", atlas, entries)
+
+
 if __name__ == "__main__":
     WORK.mkdir(parents=True, exist_ok=True)
     make_controls()
     make_tablet()
     make_arcs()
+    make_linework()

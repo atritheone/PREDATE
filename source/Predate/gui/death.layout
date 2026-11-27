@@ -26,8 +26,8 @@ filter 1
  {  }
 }
 FrameWidgetClass DeathChoices {
- position 0 0
- size 1 1
+ position 0.4 0
+ size 0.2 0.117
  hexactpos 0
  vexactpos 0
  hexactsize 0
@@ -36,8 +36,8 @@ FrameWidgetClass DeathChoices {
 ignorepointer 1
 priority 10
  { ButtonWidgetClass DeathRedeploy {
- position 0.4 0.595
- size 0.2 0.052
+ position 0 0
+ size 1 0.4444444444444444
  hexactpos 0
  vexactpos 0
  hexactsize 0
@@ -47,8 +47,8 @@ text "Redeploy"
  {  }
 }
 ButtonWidgetClass DeathSaveQuit {
- position 0.4 0.66
- size 0.2 0.052
+ position 0 0.5555555555555556
+ size 1 0.4444444444444444
  hexactpos 0
  vexactpos 0
  hexactsize 0

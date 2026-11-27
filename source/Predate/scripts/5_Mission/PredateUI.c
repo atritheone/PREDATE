@@ -32,11 +32,6 @@ class PredateReceiverEvents : ScriptedWidgetEventHandler
         return true;
     }
 
-    override bool OnItemSelected(Widget w, int x, int y, int row, int column, int oldRow, int oldColumn)
-    {
-        if (!m_Menu || w != m_Menu.m_PulseRows || !m_Menu.m_PulsePicker || !m_Menu.m_PulsePicker.IsVisible()) return false;
-        return m_Menu.SelectPulseChoice(row);
-    }
 }
 
 class PredateTrackerMenu : UIScriptedMenu
@@ -52,9 +47,6 @@ class PredateTrackerMenu : UIScriptedMenu
     TextWidget m_HistoryTitle;
     TextWidget m_TrackingTitle;
     TextWidget m_InterceptionStatus;
-    Widget m_PulsePicker;
-    TextListboxWidget m_PulseRows;
-    ref array<string> m_PulseChoices = {};
     ref array<TextWidget> m_HistoryRows = new array<TextWidget>;
     ref array<TextWidget> m_MapLabels = new array<TextWidget>;
     ButtonWidget m_Select;
@@ -66,7 +58,6 @@ class PredateTrackerMenu : UIScriptedMenu
     MapWidget m_Map;
     Widget m_MapPane;
     ref PredateMapViewport m_MapView;
-    CanvasWidget m_MapCanvas;
     ref PredateMapOverlay m_MapOverlay;
     bool m_ConfirmReplacement;
     bool m_MapPressed;
@@ -95,14 +86,10 @@ class PredateTrackerMenu : UIScriptedMenu
         m_HistoryTitle = TextWidget.Cast(layoutRoot.FindAnyWidget("HistoryTitle"));
         m_TrackingTitle = TextWidget.Cast(layoutRoot.FindAnyWidget("TrackingTitle"));
         m_InterceptionStatus = TextWidget.Cast(layoutRoot.FindAnyWidget("InterceptionStatus"));
-        m_PulsePicker = layoutRoot.FindAnyWidget("PulsePicker");
-        m_PulseRows = TextListboxWidget.Cast(layoutRoot.FindAnyWidget("PulseChoices"));
-        if (m_PulseRows) m_PulseRows.SetHandler(m_Events);
         for (int index = 0; index < PredateProtocol.MAX_BEARING_HISTORY; index++)
             m_HistoryRows.Insert(TextWidget.Cast(layoutRoot.FindAnyWidget("History" + index)));
         m_MapLabels = {m_Status, m_TargetName, m_Bearing, m_Timing, m_Origin};
         m_MapLabels.Insert(m_InterceptionStatus);
-        m_MapLabels.Insert(TextWidget.Cast(layoutRoot.FindAnyWidget("PulsePickerTitle")));
         foreach (TextWidget historyLabel : m_HistoryRows) m_MapLabels.Insert(historyLabel);
         m_Select = ButtonWidget.Cast(layoutRoot.FindAnyWidget("Select"));
         m_Select.SetTextProportion(0.55);
@@ -116,8 +103,7 @@ class PredateTrackerMenu : UIScriptedMenu
         m_MapPane = layoutRoot.FindAnyWidget("MapPane");
         m_MapPane.SetHandler(m_Events);
         m_MapView = new PredateMapViewport(m_Map, m_MapPane);
-        m_MapCanvas = CanvasWidget.Cast(layoutRoot.FindAnyWidget("MapOverlay"));
-        if (m_MapCanvas) m_MapOverlay = new PredateMapOverlay(m_MapView, m_MapPane, m_MapCanvas);
+        m_MapOverlay = new PredateMapOverlay(m_MapView, m_MapPane);
         m_Overview = layoutRoot.FindAnyWidget("Overview");
         m_CenterPlayer = layoutRoot.FindAnyWidget("CenterPlayer");
         m_Overview.SetHandler(m_Events);
@@ -154,7 +140,6 @@ class PredateTrackerMenu : UIScriptedMenu
         m_PredateOwnAimExclude = false;
         m_ConfirmReplacement = false;
         m_MapPressed = false;
-        HidePulsePicker();
         super.OnHide();
     }
 
@@ -207,8 +192,6 @@ class PredateTrackerMenu : UIScriptedMenu
             PredateBearingPulse hover = m_MapOverlay.m_HoveredPulse;
             m_Origin.SetText(PredateProtocol.DisplayName(hover.OperatorId) + "  |  " + hover.DistanceText(" - "));
         }
-        else if (m_MapOverlay && m_MapOverlay.m_HoverHits.Count() > 1)
-            m_Origin.SetText("Click to choose among " + m_MapOverlay.m_HoverHits.Count().ToString() + " pulses");
         ShowHistory(state);
     }
 
@@ -238,7 +221,7 @@ class PredateTrackerMenu : UIScriptedMenu
     void ShowHistory(PredateState state)
     {
         int count;
-        if (state && state.CanShowHistory() && (!m_PulsePicker || !m_PulsePicker.IsVisible())) count = state.History.Count();
+        if (state && state.CanShowHistory()) count = state.History.Count();
         if (m_HistoryTitle) m_HistoryTitle.Show(count > 0);
         for (int index = 0; index < m_HistoryRows.Count(); index++)
         {
@@ -334,7 +317,6 @@ class PredateTrackerMenu : UIScriptedMenu
         float slop = 5 * m_MapScale;
         if (!m_MapDragged && displacement.LengthSq() <= slop * slop) return;
         if (m_MapView.m_PixelsPerMetre <= 0) return;
-        if (!m_MapDragged) HidePulsePicker();
         m_MapDragged = true;
         vector worldOffset = Vector(-displacement[0], 0, displacement[1]) * (1 / m_MapView.m_PixelsPerMetre);
         m_MapView.SetCenter(m_MapPressCenter + worldOffset);
@@ -351,7 +333,6 @@ class PredateTrackerMenu : UIScriptedMenu
         m_MapView.SetScale(before * factor);
         float ratio = m_MapView.m_Scale / before;
         m_MapView.SetCenter(anchor - (anchor - m_MapView.m_Center) * ratio);
-        HidePulsePicker();
     }
 
     void EndMapPress(bool overMap, int x, int y)
@@ -363,48 +344,8 @@ class PredateTrackerMenu : UIScriptedMenu
         if (vector.DistanceSq(Vector(x, y, 0), m_MapPress) > slop * slop) return;
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
         if (!player || !player.m_PredateState) return;
-        PredateState state = player.m_PredateState;
-        array<string> hits = {};
-        m_MapOverlay.HitPulses(x, y, state, hits);
-        HidePulsePicker();
-        if (hits.Count() == 1) SelectPulse(player, state, hits[0]);
-        else if (hits.Count() > 1) ShowPulsePicker(state, hits);
-    }
-
-    void ShowPulsePicker(PredateState state, array<string> hits)
-    {
-        if (!m_PulsePicker || !m_PulseRows) return;
-        m_PulseRows.ClearItems();
-        m_PulseChoices.Clear();
-        // Display near to far so the tightest nearby leads are at the top.
-        for (int index = state.Pulses.Count() - 1; index >= 0; index--)
-        {
-            PredateBearingPulse pulse = state.Pulses[index];
-            if (hits.Find(pulse.OperatorId) < 0) continue;
-            int row = m_PulseRows.AddItem(PredateProtocol.DisplayName(pulse.OperatorId) + "  |  " + pulse.DistanceText(" - "), null, 0);
-            if (row >= 0) m_PulseChoices.Insert(pulse.OperatorId);
-        }
-        m_PulsePicker.Show(m_PulseChoices.Count() > 0);
-        m_PulseRows.Update();
-        ShowHistory(state);
-    }
-
-    void HidePulsePicker()
-    {
-        if (m_PulsePicker) m_PulsePicker.Show(false);
-    }
-
-    bool SelectPulseChoice(int row)
-    {
-        if (row < 0 || row >= m_PulseChoices.Count()) return false;
-        HidePulsePicker();
-        PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
-        if (player && player.m_PredateState)
-        {
-            SelectPulse(player, player.m_PredateState, m_PulseChoices[row]);
-            ShowHistory(player.m_PredateState);
-        }
-        return true;
+        string id = m_MapOverlay.HitPulse(x, y);
+        if (id != "") SelectPulse(player, player.m_PredateState, id);
     }
 
     void SelectPulse(PlayerBase player, PredateState state, string id)
@@ -424,8 +365,8 @@ class PredateTrackerMenu : UIScriptedMenu
         Print("[Predate] Receiver click: " + w.GetName());
         PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
         if (w.GetName() == "Close") { Close(); return true; }
-        if (w.GetName() == "Overview") { HidePulsePicker(); ShowOverview(); return true; }
-        if (w.GetName() == "CenterPlayer" && player) { HidePulsePicker(); CenterOn(player.GetPosition()); return true; }
+        if (w.GetName() == "Overview") { ShowOverview(); return true; }
+        if (w.GetName() == "CenterPlayer" && player) { CenterOn(player.GetPosition()); return true; }
         if (!player || !player.m_PredateState) return false;
         PredateState state = player.m_PredateState;
         if (w.GetName() == "Select")
@@ -483,7 +424,7 @@ modded class MissionGameplay
     {
         super.OnInit();
         m_PredateDeathCard = GetGame().GetWorkspace().CreateWidgets("Predate/gui/death.layout");
-        if (m_PredateDeathCard) PredateDeathPresentation.FitTitle(m_PredateDeathCard);
+        if (m_PredateDeathCard) PredateDeathPresentation.Fit(m_PredateDeathCard);
         PredatePlayerLifeEvents.LocalDeath.Insert(PredateBeginDeathCard);
         PredateCompass.LoadStyles();
         m_PredateHud = GetGame().GetWorkspace().CreateWidgets("Predate/gui/hud.layout");
@@ -779,6 +720,7 @@ modded class MissionGameplay
 
     override void OnMissionFinish()
     {
+        GetDayZGame().PredateSuppressDeathCursor(false);
         GetDayZGame().PredateSuppressRedeployCursor(false);
         PredatePlayerLifeEvents.LocalDeath.Remove(PredateBeginDeathCard);
         if (m_PredateDeathCard) m_PredateDeathCard.Unlink();

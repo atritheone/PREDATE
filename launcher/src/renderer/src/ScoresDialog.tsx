@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ScoreEncounter, ScoreHistory } from '../../shared/types'
 import { formatAccuracy } from './accuracy'
+import { formatAtreyanDateTime } from './atreyanDate'
 
 const duration = (seconds: number): string => {
   const minutes = Math.floor(seconds / 60)
@@ -39,7 +40,16 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
     }
   }, [profile])
 
-  const lives = [...(history?.lives ?? [])].sort((a, b) => b.Life - a.Life)
+  let sessionNumber = 0
+  const sessions = (history?.sessions ?? [])
+    .map((session) => {
+      const date = formatAtreyanDateTime(session.startedAt)
+      const name = session.id ? `Session ${++sessionNumber}` : 'Session Unknown'
+      const label = date ? `${name} · ${date}` : name
+      return { ...session, label, lives: [...session.lives].reverse() }
+    })
+    .reverse()
+  const lives = sessions.flatMap((session) => session.lives).sort((a, b) => b.Life - a.Life)
   const life = lives.find((entry) => entry.Life === selected) ?? lives[0]
   const encounters = life?.Encounters ?? []
   const pursuits = encounters.filter((entry) => entry.Tracked && entry.Committed)
@@ -76,13 +86,20 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
           <label className="score-life-picker">
             Deployment
             <select value={life.Life} onChange={(event) => setSelected(Number(event.target.value))}>
-              {lives.map((entry) => (
-                <option value={entry.Life} key={entry.Life}>
-                  {entry.Life} · {scoreText(entry.Score)} · {entry.EndReason || 'In progress'}
-                </option>
+              {sessions.map((session) => (
+                <optgroup key={session.id ?? 'earlier'} label={session.label}>
+                  {session.lives.map((entry) => (
+                    <option value={entry.Life} key={entry.Life}>
+                      Deployment {entry.Life} · {scoreText(entry.Score)} · {entry.EndReason || 'In progress'}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
+          <p className="score-session-label">
+            {sessions.find((session) => session.lives.includes(life))?.label}
+          </p>
           <div className="score-digits">{scoreText(life.Score)}</div>
           <dl className="score-stats">
             <div>

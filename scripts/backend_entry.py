@@ -74,11 +74,14 @@ def dispatch(method, params):
             raise ValueError("Enter a callsign.")
         return store.save_callsign(params["callsign"])
     if method == "scores":
+        import score_sessions
+
         profile = params.get("profile")
         if not isinstance(profile, str):
             raise ValueError("Select a save to view scores.")
         path = store.existing_world_path(profile)
-        return {"name": store.display_name(profile), "lives": list(store.life_scores(path / "profile"))}
+        sessions = score_sessions.group(ROOT / "backups", profile, store.life_scores(path / "profile"))
+        return {"name": store.display_name(profile), "sessions": sessions}
     if method == "preferences":
         allowed = {"reconnect_grace", "backup_limit", "offline", "extra_mods", "receiver_scale", "receiver_high_contrast"}
         if not isinstance(params, dict) or set(params) - allowed:

@@ -1,6 +1,6 @@
 class PredateDeathPresentation
 {
-    static void FitTitle(Widget card)
+    static void Fit(Widget card)
     {
         Widget title = card.FindAnyWidget("DeathTitle");
         if (!title) return;
@@ -14,7 +14,15 @@ class PredateDeathPresentation
         float x, y;
         card.GetScreenPos(x, y);
         title.SetScreenSize(titleWidth, titleHeight);
-        title.SetScreenPos(x + Math.Round((width - titleWidth) / 2), y + Math.Round((height - titleHeight) / 2 + 3 * scale));
+        float titleTop = y + Math.Round((height - titleHeight) / 2 + 3 * scale);
+        title.SetScreenPos(x + Math.Round((width - titleWidth) / 2), titleTop);
+        Widget choices = card.FindAnyWidget("DeathChoices");
+        if (!choices) return;
+        float choicesWidth, choicesHeight;
+        choices.GetScreenSize(choicesWidth, choicesHeight);
+        // The last visible row is 178 pixels from the top of the 256-pixel image.
+        float textBottom = titleTop + titleHeight * 178.0 / 256;
+        choices.SetScreenPos(x + (width - choicesWidth) / 2, (textBottom + y + height - choicesHeight) / 2 - 15);
     }
 }
 
@@ -39,6 +47,9 @@ modded class InGameMenu
     static const int PREDATE_SUICIDE_WAIT_MS = 5000;
     bool m_PredateDeploymentScreen;
     bool m_PredateRedeployPending;
+    protected bool m_PredateDeathMouseAnchored;
+    protected int m_PredateDeathMouseX;
+    protected int m_PredateDeathMouseY;
     bool m_PredateSuicidePending;
     PlayerBase m_PredateSuicideQueuedFor;
     int m_PredateSuicideWaitUntil;
@@ -104,9 +115,20 @@ modded class InGameMenu
         return root;
     }
 
+    override void OnShow()
+    {
+        if (PredateNeedsRedeploy(PlayerBase.Cast(GetGame().GetPlayer())))
+        {
+            PredateArmDeathCursor();
+            m_PredateDeploymentScreen = true;
+        }
+        super.OnShow();
+    }
+
     override void OnHide()
     {
         m_PredateSuicideQueuedFor = null;
+        if (m_PredateDeploymentScreen) GetDayZGame().PredateSuppressDeathCursor(false);
         super.OnHide();
     }
 
@@ -134,6 +156,8 @@ modded class InGameMenu
         {
             bool choicesWereVisible = PredateDeathOptionsVisible();
             PredateShowDeathOptions();
+            if (!m_PredateDeploymentScreen) PredateArmDeathCursor();
+            PredateUpdateDeathCursor();
             if (receiver && receiver.DeploymentSpawnRejected) m_PredateRedeployPending = false;
             m_PredateDeploymentScreen = true;
             m_ContinueButton.Show(false);
@@ -165,6 +189,36 @@ modded class InGameMenu
         m_SeparatorPanel.Show(false);
     }
 
+    protected void PredateArmDeathCursor()
+    {
+        m_PredateDeathMouseAnchored = false;
+        GetDayZGame().PredateSuppressDeathCursor(true);
+    }
+
+    protected void PredateUpdateDeathCursor()
+    {
+        if (!GetDayZGame().PredateDeathCursorMasked() || m_PredateRedeployPending || GetGame().GetUIManager().GetMenu() != this) return;
+        if (!GetGame().IsAppActive())
+        {
+            m_PredateDeathMouseAnchored = false;
+            return;
+        }
+        int x, y;
+        GetMousePos(x, y);
+        // Sample after the menu opens so its cursor positioning does not count as movement.
+        if (!m_PredateDeathMouseAnchored)
+        {
+            m_PredateDeathMouseX = x;
+            m_PredateDeathMouseY = y;
+            m_PredateDeathMouseAnchored = true;
+            return;
+        }
+        // DayZ may park the UI pointer while hidden, so also read physical mouse motion.
+        bool moved = x != m_PredateDeathMouseX || y != m_PredateDeathMouseY;
+        if (!moved && GetMouseState(MouseState.X) == 0 && GetMouseState(MouseState.Y) == 0) return;
+        GetDayZGame().PredateSuppressDeathCursor(false);
+    }
+
     void PredateShowDeathOptions()
     {
         if (m_PredateDeathOptions) return;
@@ -183,9 +237,9 @@ modded class InGameMenu
         if (nativeOptions) nativeOptions.Show(false);
         m_RespawnButton = deploy;
         m_ExitButton = quit;
-        PredateDeathPresentation.FitTitle(card);
         card.Show(true);
         m_PredateDeathOptions.Show(true);
+        PredateDeathPresentation.Fit(card);
         SetFocus(m_RespawnButton);
     }
 
@@ -371,8 +425,10 @@ modded class MissionGameplay
     override void OnEvent(EventType eventTypeId, Param params)
     {
         super.OnEvent(eventTypeId, params);
-        if (eventTypeId == WindowsResizeEventTypeID && m_PredateDeathCard)
-            PredateDeathPresentation.FitTitle(m_PredateDeathCard);
+        if (eventTypeId != WindowsResizeEventTypeID) return;
+        if (m_PredateDeathCard) PredateDeathPresentation.Fit(m_PredateDeathCard);
+        InGameMenu menu = InGameMenu.Cast(GetGame().GetUIManager().GetMenu());
+        if (menu && menu.m_PredateDeathOptions) PredateDeathPresentation.Fit(menu.m_PredateDeathOptions.GetParent());
     }
 
     void PredateBeginDeathCard(DayZPlayerImplement player)
@@ -383,6 +439,7 @@ modded class MissionGameplay
         PredateClientAgent agent = GetDayZGame().m_PredateClientAgent;
         if (agent && agent.m_UserPaused) agent.RequestResume();
         CloseAllMenus();
+        GetDayZGame().PredateSuppressDeathCursor(true);
         if (!m_PredateDeathValidation) return;
         Widget title = m_PredateDeathCard.FindAnyWidget("DeathTitle");
         float width, height;
@@ -446,6 +503,7 @@ modded class MissionGameplay
         if (m_Hud) m_Hud.DisplayBadge(NTFKEY_PILLS, eBadgeLevel.NONE);
         Continue();
         GetGame().GetUIManager().ShowUICursor(false);
+        GetDayZGame().PredateSuppressDeathCursor(false);
         GetDayZGame().PredateSuppressRedeployCursor(false);
         PredateHideDeathCard();
         if (m_PredateDeathValidation)

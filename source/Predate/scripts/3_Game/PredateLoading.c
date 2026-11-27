@@ -325,6 +325,7 @@ modded class DayZGame
     bool m_PredateRestoreJoinInput;
     float m_PredateJoinInputAfter;
     protected bool m_PredateHideRedeployCursor;
+    protected bool m_PredateDeathCursorMasked;
 
     void PredateSuppressRedeployCursor(bool suppress)
     {
@@ -333,9 +334,21 @@ modded class DayZGame
         RefreshMouseCursorVisibility();
     }
 
+    void PredateSuppressDeathCursor(bool suppress)
+    {
+        if (m_PredateDeathCursorMasked == suppress) return;
+        m_PredateDeathCursorMasked = suppress;
+        RefreshMouseCursorVisibility();
+    }
+
+    bool PredateDeathCursorMasked()
+    {
+        return m_PredateDeathCursorMasked;
+    }
+
     override bool CanDisplayMouseCursor()
     {
-        return !m_PredateHideRedeployCursor && super.CanDisplayMouseCursor();
+        return !m_PredateHideRedeployCursor && !m_PredateDeathCursorMasked && super.CanDisplayMouseCursor();
     }
 
     override void OnUpdate(bool doSim, float timeslice)

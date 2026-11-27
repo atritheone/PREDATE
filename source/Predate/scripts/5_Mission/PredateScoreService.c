@@ -5,6 +5,9 @@ class PredateScoreService
     static const int ADDITIONAL_KILL_POINTS = 500;
 
     PredateSession m_Session;
+    string m_SessionId;
+    string m_SessionStartedAt;
+    float m_SessionStartSeconds;
     ref map<int, ref PredateLifeScore> m_Lives = new map<int, ref PredateLifeScore>;
     ref set<int> m_CheckedLives = new set<int>;
     ref set<int> m_DirtyLives = new set<int>;
@@ -22,6 +25,8 @@ class PredateScoreService
     void PredateScoreService(PredateSession session)
     {
         m_Session = session;
+        GetGame().CommandlineGetParam("predateSessionId", m_SessionId);
+        GetGame().CommandlineGetParam("predateSessionStartedAt", m_SessionStartedAt);
     }
 
     string LifePath(int number)
@@ -78,6 +83,11 @@ class PredateScoreService
         if (!create || number != state.PlayerLife || state.PlayerAwaitingRedeploy) return null;
         life = new PredateLifeScore;
         life.Life = number;
+        if (state.PlayerLifeStartedAt >= m_SessionStartSeconds)
+        {
+            life.SessionId = m_SessionId;
+            life.SessionStartedAt = m_SessionStartedAt;
+        }
         life.StartedAt = state.SimulationSeconds;
         life.Partial = state.SimulationSeconds > state.PlayerLifeStartedAt;
         m_Lives.Set(number, life);

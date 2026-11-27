@@ -355,6 +355,9 @@ def save_files(profile):
     for path in sorted((base / "profile").glob("Predate*.json")):
         if path.name in {"PredateSessionStatus.json", "PredateControl.json", "PredateFailure.json"}: continue
         yield path, path.relative_to(base).as_posix()
+    zeroing = base / "client/PredateZeroing.json"
+    if zeroing.is_file():
+        yield zeroing, zeroing.relative_to(base).as_posix()
 
 
 def snapshot(profile, session_id="", reason="manual"):

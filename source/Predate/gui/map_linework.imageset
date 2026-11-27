@@ -1,0 +1,138 @@
+ImageSetClass {
+ Name "PredateMapLinework"
+ RefSize 4096 2048
+ Textures {
+  ImageSetTextureClass {
+   mpix 0
+   path "Predate/gui/map_linework_ca.paa"
+  }
+ }
+ Images {
+  ImageSetDefClass Ring0 {
+   Name "Ring0"
+   Pos 0 0
+   Size 1024 1024
+   Flags 0
+  }
+  ImageSetDefClass Ring1 {
+   Name "Ring1"
+   Pos 1024 0
+   Size 1024 1024
+   Flags 0
+  }
+  ImageSetDefClass Ring2 {
+   Name "Ring2"
+   Pos 2048 0
+   Size 1024 1024
+   Flags 0
+  }
+  ImageSetDefClass Ring3 {
+   Name "Ring3"
+   Pos 3072 0
+   Size 1024 1024
+   Flags 0
+  }
+  ImageSetDefClass Line15 {
+   Name "Line15"
+   Pos 0 1024
+   Size 1024 1024
+   Flags 0
+  }
+  ImageSetDefClass Line14 {
+   Name "Line14"
+   Pos 1024 1024
+   Size 512 512
+   Flags 0
+  }
+  ImageSetDefClass Line13 {
+   Name "Line13"
+   Pos 1536 1024
+   Size 512 512
+   Flags 0
+  }
+  ImageSetDefClass Line12 {
+   Name "Line12"
+   Pos 2048 1024
+   Size 256 256
+   Flags 0
+  }
+  ImageSetDefClass Line11 {
+   Name "Line11"
+   Pos 2304 1024
+   Size 256 256
+   Flags 0
+  }
+  ImageSetDefClass Line10 {
+   Name "Line10"
+   Pos 2560 1024
+   Size 128 128
+   Flags 0
+  }
+  ImageSetDefClass Line9 {
+   Name "Line9"
+   Pos 2688 1024
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Line8 {
+   Name "Line8"
+   Pos 2752 1024
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Line7 {
+   Name "Line7"
+   Pos 2816 1024
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Line6 {
+   Name "Line6"
+   Pos 2880 1024
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Line5 {
+   Name "Line5"
+   Pos 2944 1024
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Line4 {
+   Name "Line4"
+   Pos 3008 1024
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Line3 {
+   Name "Line3"
+   Pos 3072 1024
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Line2 {
+   Name "Line2"
+   Pos 3136 1024
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Line1 {
+   Name "Line1"
+   Pos 3200 1024
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Line0 {
+   Name "Line0"
+   Pos 3264 1024
+   Size 64 64
+   Flags 0
+  }
+  ImageSetDefClass Box {
+   Name "Box"
+   Pos 4068 1036
+   Size 16 16
+   Flags 0
+  }
+ }
+}

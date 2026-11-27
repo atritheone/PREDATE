@@ -237,7 +237,7 @@ export interface ScoreLife {
 
 export interface ScoreHistory {
   name: string
-  lives: ScoreLife[]
+  sessions: { id: string | null; startedAt: string | null; lives: ScoreLife[] }[]
 }
 
 export interface PredateAPI {

@@ -63,6 +63,7 @@ class PredateSession
     {
         m_HuntSchemaValid = PredatePersistence.Load(this);
         if (!m_HuntSchemaValid) return;
+        if (m_Score) m_Score.m_SessionStartSeconds = m_WorldState.SimulationSeconds;
         m_Operators = new PredateOperatorRegistry;
         if (!m_Operators.Register(m_HuntProgress.Operator))
         {

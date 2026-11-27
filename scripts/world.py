@@ -5,7 +5,7 @@ import argparse
 from contextlib import nullcontext
 import ctypes
 from ctypes import wintypes
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import hashlib
 import re
@@ -460,6 +460,7 @@ def start(session_id=None, progress=None, cancelled=None, on_started=None,
         args += ["-doLogs", "-adminLog", "-predateServerDiagnostics"]
     args.append("-mod=" + ";".join(str(p) for p in mods))
     args.append("-predateSessionId=" + session_id)
+    args.append("-predateSessionStartedAt=" + datetime.now(timezone.utc).isoformat(timespec="seconds"))
     if PROFILE_NAME == "development":
         args.append("-predateDevelopment")
         if SCENARIO: args.append("-predateScenario=" + SCENARIO)

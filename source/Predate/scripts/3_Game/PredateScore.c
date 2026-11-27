@@ -74,6 +74,8 @@ class PredateLifeScore
 {
     int Version = 2;
     int Life;
+    string SessionId;
+    string SessionStartedAt;
     float StartedAt;
     float SurvivedSeconds;
     string EndReason;

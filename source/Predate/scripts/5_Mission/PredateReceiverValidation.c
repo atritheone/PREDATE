@@ -126,7 +126,7 @@ class PredateReceiverValidation
             result.Check(mission.IsInputExcludeActive("aiming"));
             result.Check(!GetGame().GetInput().HasGameFocus(INPUT_DEVICE_MOUSE));
             menu.Update(0);
-            result.Check(menu.m_Map && menu.m_MapCanvas && menu.m_MapOverlay && menu.m_Map.IsVisible());
+            result.Check(menu.m_Map && menu.m_MapOverlay && menu.m_Map.IsVisible());
             CheckMapPresentation(result, menu);
             result.Check(state.Pulses.Count() == 1);
             if (menu.m_MapOverlay && state.Pulses.Count() == 1)
@@ -148,7 +148,7 @@ class PredateReceiverValidation
                 if (!centeredPlayer) Print("[PredateMapTest] could not center player");
                 result.Check(centeredPlayer);
                 float width, height;
-                menu.m_MapCanvas.GetScreenSize(width, height);
+                menu.m_MapPane.GetScreenSize(width, height);
                 int pulseSlot = PredateProtocol.s_OperatorIds.Find(pulse.OperatorId);
                 float arcRadius;
                 array<float> zooms = {0.085, 0.33, 0.68};
@@ -179,9 +179,7 @@ class PredateReceiverValidation
                 float dialRadius = overlay.m_DialRadius;
                 result.Check(dialCenter[0] - dialRadius >= 0 && dialCenter[0] + dialRadius <= width && dialCenter[1] - dialRadius >= 0 && dialCenter[1] + dialRadius <= height, "panning keeps the entire bearing dial in the pane");
                 vector arc = overlay.m_ArcCenters[pulseSlot];
-                array<string> edgeHits = {};
-                overlay.HitPulses(overlay.m_Left + arc[0], overlay.m_Top + arc[1], state, edgeHits);
-                result.Check(edgeHits.Find(pulse.OperatorId) >= 0, "the arc remains selectable after panning near the edge");
+                result.Check(overlay.HitPulse(overlay.m_Left + arc[0], overlay.m_Top + arc[1]) == pulse.OperatorId, "the arc remains selectable after panning near the edge");
                 menu.m_MapView.SetCenter(player.GetPosition());
                 menu.Update(0);
                 CheckOverlappingPulses(result, menu, player);
@@ -289,15 +287,26 @@ class PredateReceiverValidation
     static void CheckMapPresentation(PredateReceiverValidationResult result, PredateTrackerMenu menu)
     {
         PredateMapOverlay overlay = menu.m_MapOverlay;
-        result.Check(overlay.m_Strokes.m_Visible >= 2, "the receiver draws both filtered pulse layers");
         result.Check(overlay.m_PlayerArrow.IsVisible() && overlay.m_PlayerArrow.GetColor() == PredateMapOverlay.PLAYER_GOLD, "the gold player arrow is visible");
-        result.Check(overlay.m_DialPoints.Count() > 72, "the compass ring is tessellated for the current resolution");
+        bool compassMask;
+        int pulseMasks;
+        for (int strokeIndex = 0; strokeIndex < overlay.m_Strokes.m_Used; strokeIndex++)
+        {
+            PredateMapStroke stroke = overlay.m_Strokes.m_Strokes[strokeIndex];
+            if (stroke.Mask.IndexOf("set:PredateMapLinework image:Ring") == 0)
+                compassMask = true;
+            if (stroke.Mask.IndexOf("set:PredateMapArcs image:Arc") == 0)
+            {
+                pulseMasks++;
+                result.Check(stroke.Size[0] > 0 && stroke.Size[0] == stroke.Size[1], "arc masks have room to rotate at every bearing");
+            }
+        }
+        result.Check(pulseMasks >= 2, "the receiver draws both filtered pulse layers");
+        result.Check(compassMask, "the compass ring uses a filtered continuous texture");
         int iconWidth, iconHeight;
         overlay.m_PlayerArrow.GetImageSize(0, iconWidth, iconHeight);
         result.Check(iconWidth > 0 && iconHeight > 0, "the map loads the downloaded player arrow");
         result.Check(overlay.m_DialRadius > 0, "the compass ring is drawn in map coordinates");
-        foreach (PredateMapStroke stroke : overlay.m_Strokes.m_Strokes)
-            result.Check(stroke.Size[0] > 0 && stroke.Size[0] == stroke.Size[1], "arc masks have room to rotate at every bearing");
         result.Check(menu.m_TargetName.IsVisible() && menu.m_TargetName.GetBold(), "the tracked name is bold");
         result.Check(menu.m_Select.IsVisible() && menu.m_Select.GetStyleName() == "PredateMapClear", "the lock uses its dedicated button style");
         float clearWidth, clearHeight;
@@ -360,9 +369,7 @@ class PredateReceiverValidation
         overlay.Draw(player, example, menu.m_MapScale);
         result.Check(overlay.m_ArcRadii[0] > overlay.m_ArcRadii[1] && overlay.m_ArcRadii[1] > overlay.m_ArcRadii[2] && overlay.m_ArcRadii[2] > 0);
         vector click = overlay.RadialPoint(2, overlay.m_ArcRadii[0]);
-        array<string> hits = {};
-        overlay.HitPulses(click[0] + overlay.m_Left, click[1] + overlay.m_Top, example, hits);
-        result.Check(hits.Count() == 1 && hits[0] == example.Pulses[0].OperatorId);
+        result.Check(overlay.HitPulse(click[0] + overlay.m_Left, click[1] + overlay.m_Top) == example.Pulses[0].OperatorId);
         int readableNames;
         foreach (int placed : overlay.m_PlacedSlots)
         {
@@ -400,23 +407,31 @@ class PredateReceiverValidation
         example.OperatorId = example.Pulses[0].OperatorId;
         overlay.Draw(player, example, menu.m_MapScale);
         int last = example.Pulses.Count() - 1;
-        result.Check(overlay.m_ArcRadii[0] - overlay.m_ArcRadii[1] >= PredateMapOverlay.MIN_LANE_SPACING * menu.m_MapScale - 0.1, "a dense stack retains readable lane spacing");
-        result.Check(overlay.m_ArcRadii[last] >= PredateMapOverlay.INNER_CLEARANCE * menu.m_MapScale - 0.1, "the dense stack leaves room for the player arrow");
+        result.Check(overlay.m_ArcRadii[last] >= PredateMapOverlay.PLAYER_CLEARANCE * menu.m_MapScale - 0.1, "the dense stack leaves room for the player arrow");
         result.Check(overlay.m_Labels[0].IsVisible() && overlay.m_Labels[0].GetColor() == PredateMapOverlay.SELECTED_COLOR, "the tracked pulse has a white label");
-        vector inside = overlay.RadialPoint(crowdedBearing + 7.5, overlay.m_ArcRadii[last]);
-        overlay.HitPulses(inside[0] + overlay.m_Left, inside[1] + overlay.m_Top, example, hits);
-        result.Check(hits.Count() > 1 && hits.Find(example.Pulses[last].OperatorId) >= 0 && hits.Find(example.Pulses[0].OperatorId) < 0, "overlapping contacts on the shared lane are selectable");
-        overlay.PreviewPulse(inside[0] + overlay.m_Left, inside[1] + overlay.m_Top, example);
-        result.Check(!overlay.m_HoveredPulse && overlay.m_HoverHits.Count() == hits.Count(), "shared arcs preview the group instead of implying a single Operator");
-        menu.ShowPulsePicker(example, hits);
-        result.Check(menu.m_PulsePicker.IsVisible() && menu.m_PulseRows.GetNumItems() == hits.Count() && menu.m_PulseChoices[0] == example.Pulses[last].OperatorId, "the crowded lane opens a nearest-first list of every matching contact");
-        result.Check(menu.m_Events.OnItemSelected(menu.m_PulseRows, 0, 0, 0, 0, -1, -1) && !menu.m_PulsePicker.IsVisible(), "choosing a list row dismisses the picker");
+        bool everyArcSelectable = true;
+        for (int lane = 0; lane <= last; lane++)
+        {
+            float radius = overlay.m_ArcRadii[lane];
+            if (lane > 0 && radius >= overlay.m_ArcRadii[lane - 1]) everyArcSelectable = false;
+            bool arcHit = false;
+            for (float offset = 1; offset < 15; offset += 0.5)
+            {
+                vector arcPoint = overlay.RadialPoint(crowdedBearing + offset, radius);
+                string hit = overlay.HitPulse(Math.Round(arcPoint[0] + overlay.m_Left), Math.Round(arcPoint[1] + overlay.m_Top));
+                if (hit != example.Pulses[lane].OperatorId) continue;
+                arcHit = true;
+                break;
+            }
+            if (!arcHit) everyArcSelectable = false;
+        }
+        result.Check(everyArcSelectable, "all 100 same-bearing arcs have separate lanes and accept a direct mouse click");
         bool everyNameSelectable = overlay.m_PlacedSlots.Count() == example.Pulses.Count();
         foreach (int named : overlay.m_PlacedSlots)
         {
             vector nameCenter = overlay.m_LabelPositions[named];
-            overlay.HitPulses(nameCenter[0] + overlay.m_Left, nameCenter[1] + overlay.m_Top, example, hits);
-            if (hits.Count() != 1 || hits[0] != PredateProtocol.OperatorAt(named) || !Fits(overlay.m_Labels[named])) everyNameSelectable = false;
+            string nameHit = overlay.HitPulse(nameCenter[0] + overlay.m_Left, nameCenter[1] + overlay.m_Top);
+            if (nameHit != PredateProtocol.OperatorAt(named) || !Fits(overlay.m_Labels[named])) everyNameSelectable = false;
         }
         result.Check(everyNameSelectable, "all 100 map nameplates fit and each can be clicked directly");
 

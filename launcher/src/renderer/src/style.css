@@ -672,6 +672,12 @@ button.music-toggle:hover:not(:disabled) {
   margin-top: 14px;
 }
 
+.score-session-label {
+  margin: 8px 0 0;
+  color: #abc0d7;
+  font-size: 12px;
+}
+
 .score-digits {
   margin-top: 14px;
   font-size: 32px;

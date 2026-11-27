@@ -90,8 +90,6 @@ def map_image(name, image, x=0, y=0, w=1, h=1, extra=""):
 def layouts():
     gui = ROOT / "source/Predate/gui"
     gui.mkdir(exist_ok=True)
-    history_canvas = widget("CanvasWidgetClass", "MapHistoryGuides", 0,0,1,1,"ignorepointer 1\npriority 80")
-    canvas = widget("CanvasWidgetClass", "MapOverlay", 0,0,1,1,"ignorepointer 1\npriority 110")
     bearing_labels = "".join(map_label(f"MapBearing{index}", "0.70 0.85 0.95 1") for index in range(24))
     pulse_labels = "".join(map_label(f"MapPulse{index}", "1 0.79 0.44 1") for index in range(100))
     historical_label = map_label("MapLastKnown", "0.66 0.88 0.90 1")
@@ -100,7 +98,7 @@ def layouts():
     terrain = widget("MapWidgetClass", "Terrain", 0,0,1,1, 'ignorepointer 1')
     children = widget("PanelWidgetClass", "MapPane", 75/1672,69/941,1028/1672,805/941,
                       'clipchildren 1\ncolor 1 1 1 1\nstyle rover_sim_colorable',
-                      terrain+history_canvas+canvas+bearing_labels+pulse_labels+historical_label+arrow)
+                      terrain+bearing_labels+pulse_labels+historical_label+arrow)
     children += map_image("TabletArtwork", "set:PredateMapTablet image:Tablet", extra="priority 150")
     for name, glyph in (("Overview", "Overview"), ("CenterPlayer", "Center")):
         icon = map_image(name+"Icon", f"set:PredateMapIcons image:{glyph}", .2,.2,.6,.6)
@@ -125,12 +123,6 @@ def layouts():
         readout += row.replace('ignorepointer 1','ignorepointer 1\nvisible 0')
     readout = readout.replace('font "gui/fonts/etelkatextpro22"',
                               'scaled 0\nfont "gui/fonts/sdf_MetronBook24"\n"exact text" 1\n"exact text size" 15')
-    pulse_picker = label("PulsePickerTitle", "Overlapping pulses", 0,0,1,.14,"0.55 0.85 0.90 1")
-    pulse_picker = pulse_picker.replace('font "gui/fonts/etelkatextpro22"',
-                                        'scaled 0\nfont "gui/fonts/sdf_MetronBook24"\n"exact text" 1\n"exact text size" 15')
-    pulse_picker += widget("TextListboxWidgetClass","PulseChoices",0,.16,1,.84,
-                           'lines 9\nfont "gui/fonts/sdf_MetronBook24"')
-    readout += widget("FrameWidgetClass","PulsePicker",.06,.48,.88,.40,'visible 0',pulse_picker)
     readout += widget("ButtonWidgetClass","Select",.06,.366,.24,.041,
                        'visible 0\nstyle PredateMapClear\ntext "Clear Lock"')
     readout += widget("ButtonWidgetClass","NewHunt",.06,.913,.52,.058,
@@ -201,11 +193,11 @@ def layouts():
     death = widget("ImageWidgetClass", "DeathTitle", 0, 0, 1, 1,
                    'ignorepointer 1\ncolor 0 0 0 1\nimage0 "Predate/gui/death_title_ca.paa"\n'
                    'mode blend\n"src alpha" 1\n"stretch mode" stretch_w_h\nfilter 1')
-    death_buttons = widget("ButtonWidgetClass","DeathRedeploy",.40,.595,.20,.052,
+    death_buttons = widget("ButtonWidgetClass","DeathRedeploy",0,0,1,52/117,
                            'style Default\ntext "Redeploy"')
-    death_buttons += widget("ButtonWidgetClass","DeathSaveQuit",.40,.66,.20,.052,
+    death_buttons += widget("ButtonWidgetClass","DeathSaveQuit",0,65/117,1,52/117,
                             'style Default\ntext "Save and Quit"')
-    death += widget("FrameWidgetClass","DeathChoices",0,0,1,1,
+    death += widget("FrameWidgetClass","DeathChoices",.40,0,.20,.117,
                     'visible 0\nignorepointer 1\npriority 10',death_buttons)
     release.write_changed(gui/"death.layout",widget("PanelWidgetClass","PredateDeath",0,0,1,1,
         "visible 0\npriority 9999\ncolor 1 0 0 1\nstyle rover_sim_colorable",death))
