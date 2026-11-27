@@ -346,6 +346,12 @@ class PredateSession
             }
             else if (PredateSignalService.DropOutOfRangeTrack(receiverTrack))
             {
+                if (m_Score)
+                {
+                    PredateOperatorRecord target = m_HuntProgress.Operator;
+                    if (chosen) target = chosen.State.Operator;
+                    m_Score.RecordPursuitOutcome(target, "Signal lost");
+                }
                 if (!chosen) PredateSignalService.SyncReceiverProgress(this);
                 PredateRequestCheckpoint(true);
             }
@@ -738,6 +744,8 @@ class PredateSession
         }
         if (m_Score)
         {
+            if (previousPeer) m_Score.RecordPursuitOutcome(previousPeer.State.Operator, "Abandoned");
+            else if (previousSelection != "") m_Score.RecordPursuitOutcome(m_HuntProgress.Operator, "Abandoned");
             PredateLifeScore trackingLife = m_Score.Life(m_WorldState.PlayerLife, true);
             if (trackingLife) m_Score.RefreshTracking(player, trackingLife);
         }

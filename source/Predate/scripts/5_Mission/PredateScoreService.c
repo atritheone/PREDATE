@@ -123,13 +123,25 @@ class PredateScoreService
         m_DirtyLives.Insert(life.Life);
     }
 
+    void RecordPursuitOutcome(PredateOperatorRecord target, string outcome)
+    {
+        if (!target || m_Session.m_WorldState.PlayerAwaitingRedeploy) return;
+        PredateLifeScore life = Life(m_Session.m_WorldState.PlayerLife);
+        if (!life || life.EndReason != "") return;
+        PredatePursuitScore entry = life.Find(target.Id, target.Deployment);
+        if (!entry || !entry.Tracked || !entry.Committed || entry.KillPoints > 0) return;
+        if (entry.Outcome != "" && !(outcome == "Signal lost" && entry.Outcome == "Target eliminated")) return;
+        entry.Outcome = outcome;
+        m_DirtyLives.Insert(life.Life);
+    }
+
     void RefreshTracking(PlayerBase player, PredateLifeScore life, bool flush = false)
     {
         PredateWorldState state = m_Session.m_WorldState;
         if (m_Tracked && m_Player == player) Sample(player, state.SimulationSeconds);
         if (flush) return;
-        if (m_Tracked && m_TrackSignal && m_TrackSignal.HasLostPlayerReception() && m_Tracked.Outcome == "")
-            m_Tracked.Outcome = "Signal lost";
+        if (m_Tracked && m_TrackActor && m_TrackSignal && m_TrackSignal.HasLostPlayerReception())
+            RecordPursuitOutcome(m_TrackActor.m_PredateOperatorRecord, "Signal lost");
 
         PredateSignalTrack signal = state.PlayerSignal;
         eAIBase actor = m_Session.m_HuntBot;
@@ -150,11 +162,15 @@ class PredateScoreService
         {
             PredateOperatorRecord record = actor.m_PredateOperatorRecord;
             PredatePursuitScore encounter = life.Find(record.Id, record.Deployment, true);
-            if (!encounter.ReachedContact && (encounter.Outcome == "" || encounter.Outcome == "Signal lost"))
+            if (encounter.Outcome == "Signal lost" || encounter.Outcome == "Abandoned")
+            {
+                encounter.Outcome = "";
+                m_DirtyLives.Insert(life.Life);
+            }
+            if (!encounter.ReachedContact && encounter.Outcome == "")
             {
                 next = encounter;
                 next.BeginTracking(state.SimulationSeconds, life.Shots);
-                next.Outcome = "";
             }
         }
         m_Player = player;
@@ -460,7 +476,7 @@ class PredateScoreService
         if (current && current != life)
         {
             PredatePursuitScore other = current.Find(record.Id, record.Deployment);
-            if (other && other.KillPoints == 0)
+            if (other && other.KillPoints == 0 && other.Outcome == "")
             {
                 other.Outcome = "Target eliminated";
                 m_DirtyLives.Insert(current.Life);

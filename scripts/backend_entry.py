@@ -80,7 +80,8 @@ def dispatch(method, params):
         if not isinstance(profile, str):
             raise ValueError("Select a save to view scores.")
         path = store.existing_world_path(profile)
-        sessions = score_sessions.group(ROOT / "backups", profile, store.life_scores(path / "profile"))
+        profile_dir = path / "profile"
+        sessions = score_sessions.group(ROOT / "backups", profile, profile_dir, store.life_scores(profile_dir))
         return {"name": store.display_name(profile), "sessions": sessions}
     if method == "preferences":
         allowed = {"reconnect_grace", "backup_limit", "offline", "extra_mods", "receiver_scale", "receiver_high_contrast"}

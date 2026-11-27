@@ -116,7 +116,7 @@ class PredateSignalService
         return true;
     }
 
-    static bool RetireDefeatedSignal(PredateSession session, int slot, bool trackedOnly)
+    static bool RetireDefeatedSignal(PredateSession session, int slot, bool trackedOnly, bool playerKill = false)
     {
         string id = PredateProtocol.OperatorAt(slot);
         if (id == "") return false;
@@ -130,6 +130,12 @@ class PredateSignalService
         }
         if (!track || (trackedOnly && !track.Selected)) return false;
 
+        if (track.Selected && !playerKill && session.m_Score)
+        {
+            PredateOperatorRecord target = session.m_HuntProgress.Operator;
+            if (peer) target = peer.State.Operator;
+            session.m_Score.RecordPursuitOutcome(target, "Signal lost");
+        }
         ClearDefeatedSignal(track);
         if (peer) peer.State.InterceptedUntil = 0;
         else
@@ -142,7 +148,7 @@ class PredateSignalService
 
     static void ConfirmPlayerKills(PredateSession session, array<int> kills)
     {
-        foreach (int slot : kills) RetireDefeatedSignal(session, slot, false);
+        foreach (int slot : kills) RetireDefeatedSignal(session, slot, false, true);
     }
 
     static void WriteHistory(PredateSession s, ScriptRPC rpc, bool visible, PredateSignalTrack track)

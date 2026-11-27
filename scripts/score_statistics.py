@@ -13,6 +13,11 @@ def measurement(record, field):
     return value if type(value) in (int, float) and 0 <= value <= 2**53 - 1 and isfinite(value) else 0
 
 
+def flag(record, field):
+    value = record.get(field)
+    return value is True or (type(value) is int and value == 1)
+
+
 def summarize(saves, *, lifetime_seconds=None):
     totals = Counter()
     deployment_outcomes = Counter()
@@ -26,7 +31,7 @@ def summarize(saves, *, lifetime_seconds=None):
         totals["recorded_deployments"] += len(lives)
         elapsed = measurement(state, "SimulationSeconds")
         life_number = count(state, "PlayerLife")
-        awaiting_redeploy = state.get("PlayerAwaitingRedeploy") is True
+        awaiting_redeploy = flag(state, "PlayerAwaitingRedeploy")
         if not (elapsed or life_number > 1 or awaiting_redeploy):
             life_number = 0
         totals["deployments"] += max(life_number, len(lives))
@@ -54,7 +59,7 @@ def summarize(saves, *, lifetime_seconds=None):
                 totals["legacy_hits"] += count(life, "Hits")
             totals["best_score"] = max(totals["best_score"], count(life, "Score"))
             totals["longest_survival"] = max(totals["longest_survival"], measurement(life, "SurvivedSeconds"))
-            totals["partial"] += life.get("Partial") is True
+            totals["partial"] += flag(life, "Partial")
             outcome = life.get("EndReason")
             if isinstance(outcome, str):
                 deployment_outcomes[outcome] += 1
@@ -69,7 +74,7 @@ def summarize(saves, *, lifetime_seconds=None):
                         add_encounter(entry, totals, encounter_outcomes, kills_by_operator)
                         operator = entry.get("Callsign") or entry.get("OperatorId")
                         if isinstance(operator, str) and operator and (
-                            entry.get("ReachedContact") is True or count(entry, "KillPoints") > 0
+                            flag(entry, "ReachedContact") or count(entry, "KillPoints") > 0
                             or measurement(entry, "ReturnDamage") > 0
                         ):
                             fought.add((operator, count(entry, "Deployment")))
@@ -92,10 +97,10 @@ def played_seconds(state, lives):
 
 def add_encounter(entry, totals, outcomes, kills_by_operator):
     totals["encounters"] += 1
-    tracked = entry.get("Tracked") is True
-    committed = tracked and entry.get("Committed") is True
-    contact = entry.get("ReachedContact") is True
-    matched_round = entry.get("MatchedRound") is True
+    tracked = flag(entry, "Tracked")
+    committed = tracked and flag(entry, "Committed")
+    contact = flag(entry, "ReachedContact")
+    matched_round = flag(entry, "MatchedRound")
     kill = count(entry, "KillPoints") > 0
     totals["tracked"] += tracked
     totals["committed"] += committed
@@ -103,10 +108,13 @@ def add_encounter(entry, totals, outcomes, kills_by_operator):
     totals["tracked_contacts"] += tracked and contact
     totals["converted"] += committed and kill
     totals["matched_encounters"] += matched_round
-    totals["counter_encounters"] += entry.get("CounterHunt") is True
+    totals["counter_encounters"] += flag(entry, "CounterHunt")
     outcome = entry.get("Outcome")
     if isinstance(outcome, str):
         outcomes[outcome] += 1
+    if committed and not kill:
+        totals["pursuits_signal_lost"] += outcome == "Signal lost"
+        totals["pursuits_abandoned"] += outcome == "Abandoned"
     for field in ("LockSeconds", "FinalApproachSeconds", "GroundCovered", "UsefulClosure", "ReturnDamage"):
         totals[field] += measurement(entry, field)
     totals["Pulses"] += count(entry, "Pulses")
@@ -120,8 +128,9 @@ def add_encounter(entry, totals, outcomes, kills_by_operator):
         totals[field] += count(entry, field)
     if not kill:
         return
-    totals["wound_kills" if entry.get("WoundKill") is True else "direct_kills"] += 1
-    totals["counter_kills"] += entry.get("CounterHunt") is True
+    totals["wound_kills" if flag(entry, "WoundKill") else "direct_kills"] += 1
+    totals["kills_outside_pursuits"] += not committed
+    totals["counter_kills"] += flag(entry, "CounterHunt")
     totals["matched_kills"] += matched_round
     operator = entry.get("Callsign") or entry.get("OperatorId")
     if isinstance(operator, str) and operator:
@@ -163,6 +172,7 @@ def sections(totals, deployments, encounters, deaths_by_operator, kills_by_opera
         ("Combat", [
             ("Rival", rival, "text"),
             ("Operator Kills", totals["Kills"]),
+            ("Kills Outside Pursuits", totals["kills_outside_pursuits"]),
             ("Direct Kills", totals["direct_kills"]),
             ("Wound Kills", totals["wound_kills"]),
             ("Counter-hunt Kills", totals["counter_kills"]),
@@ -193,9 +203,10 @@ def sections(totals, deployments, encounters, deaths_by_operator, kills_by_opera
             ("Contacts Reached", totals["contacts"]),
             ("Contacts Reached While Tracking", totals["tracked_contacts"]),
             ("Pursuits Converted", totals["converted"]),
-            ("Pursuit Conversion Rate", ratio(totals["converted"], totals["committed"]), "percent"),
+            ("Pursuits Abandoned", totals["pursuits_abandoned"]),
+            ("Pursuits Ending in Signal Loss", totals["pursuits_signal_lost"]),
+            ("Pursuit Conversion Rate", ratio(totals["converted"], totals["committed"] - totals["pursuits_signal_lost"]), "percent"),
             ("Open Encounters", encounters[""]),
-            ("Encounters Ending in Signal Loss", encounters["Signal lost"]),
             ("Encounters Ending With Target Eliminated", encounters["Target eliminated"]),
             ("Encounters Ending With Deployment", encounters["Life ended"]),
             ("Pulses Received", totals["Pulses"]),

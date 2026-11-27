@@ -22,7 +22,7 @@ const encounterPoints = (entry: ScoreEncounter): number =>
 export function ScoresDialog({ profile, onClose }: { profile: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [history, setHistory] = useState<ScoreHistory>()
-  const [selected, setSelected] = useState<number>()
+  const [selected, setSelected] = useState<string>()
   const [error, setError] = useState(false)
   useEffect(() => {
     dialog.current?.showModal()
@@ -46,14 +46,26 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
       const date = formatAtreyanDateTime(session.startedAt)
       const name = session.id ? `Session ${++sessionNumber}` : 'Session Unknown'
       const label = date ? `${name} · ${date}` : name
-      return { ...session, label, lives: [...session.lives].reverse() }
+      const options = [...session.lives].reverse().map((life) => ({
+        life,
+        key: `${session.id ?? 'earlier'}/${life.Life}`,
+        label,
+        playedSeconds: session.playedSeconds,
+      }))
+      return { id: session.id, label, options }
     })
     .reverse()
-  const lives = sessions.flatMap((session) => session.lives).sort((a, b) => b.Life - a.Life)
-  const life = lives.find((entry) => entry.Life === selected) ?? lives[0]
+  const options = sessions.flatMap((session) => session.options)
+  const option = options.find((entry) => entry.key === selected) ?? options[0]
+  const life = option?.life
   const encounters = life?.Encounters ?? []
   const pursuits = encounters.filter((entry) => entry.Tracked && entry.Committed)
   const converted = pursuits.filter((entry) => entry.KillPoints > 0).length
+  const signalLost = pursuits.filter((entry) => !entry.KillPoints && entry.Outcome === 'Signal lost').length
+  const abandoned = pursuits.filter((entry) => !entry.KillPoints && entry.Outcome === 'Abandoned').length
+  const eligiblePursuits = pursuits.length - signalLost
+  const outsidePursuit = (entry: ScoreEncounter) => entry.KillPoints > 0 && !(entry.Tracked && entry.Committed)
+  const killsOutsidePursuits = encounters.filter(outsidePursuit).length
   const legacyShots = life?.Version === 1 ? life.Shots : (life?.LegacyShots ?? 0)
   const legacyHits = life?.Version === 1 ? life.Hits : (life?.LegacyHits ?? 0)
   const hits = (life?.Hits ?? 0) - legacyHits
@@ -85,26 +97,34 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
         <>
           <label className="score-life-picker">
             Deployment
-            <select value={life.Life} onChange={(event) => setSelected(Number(event.target.value))}>
+            <select value={option.key} onChange={(event) => setSelected(event.target.value)}>
               {sessions.map((session) => (
                 <optgroup key={session.id ?? 'earlier'} label={session.label}>
-                  {session.lives.map((entry) => (
-                    <option value={entry.Life} key={entry.Life}>
-                      Deployment {entry.Life} · {scoreText(entry.Score)} · {entry.EndReason || 'In progress'}
+                  {session.options.map(({ life, key }) => (
+                    <option value={key} key={key}>
+                      Deployment {life.Life} · {scoreText(life.Score)} · {life.EndReason || 'In progress'}
                     </option>
                   ))}
                 </optgroup>
               ))}
             </select>
           </label>
-          <p className="score-session-label">
-            {sessions.find((session) => session.lives.includes(life))?.label}
-          </p>
+          <p className="score-session-label">{option.label}</p>
           <div className="score-digits">{scoreText(life.Score)}</div>
           <dl className="score-stats">
+            {option.playedSeconds != null && (
+              <div>
+                <dt>Session played</dt>
+                <dd>{duration(option.playedSeconds)}</dd>
+              </div>
+            )}
             <div>
               <dt>Kills</dt>
               <dd>{life.Kills}</dd>
+            </div>
+            <div>
+              <dt>Kills outside pursuits</dt>
+              <dd>{killsOutsidePursuits}</dd>
             </div>
             {life.Version >= 2 && (
               <div>
@@ -126,14 +146,20 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
               </div>
             )}
             <div>
-              <dt>Survived</dt>
+              <dt>Deployment survived</dt>
               <dd>{duration(life.SurvivedSeconds)}</dd>
             </div>
             <div>
               <dt>Pursuits converted</dt>
-              <dd>
-                {converted}/{pursuits.length}
-              </dd>
+              <dd>{eligiblePursuits ? `${converted}/${eligiblePursuits}` : '—'}</dd>
+            </div>
+            <div>
+              <dt>Pursuits abandoned</dt>
+              <dd>{abandoned}</dd>
+            </div>
+            <div>
+              <dt>Pursuits ending in signal loss</dt>
+              <dd>{signalLost}</dd>
             </div>
             <div>
               <dt>Non-lethal hit points</dt>
@@ -168,7 +194,7 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
                 <summary>
                   {entry.Callsign || entry.OperatorId} ·{' '}
                   {entry.KillPoints
-                    ? `${encounterPoints(entry).toLocaleString()} pts`
+                    ? `${encounterPoints(entry).toLocaleString()} pts${outsidePursuit(entry) ? ' · Outside pursuit' : ''}`
                     : entry.Outcome.replace(/^Life ended$/, 'Deployment ended') || 'In pursuit'}
                 </summary>
                 <dl className="score-stats">

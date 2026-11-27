@@ -15,6 +15,7 @@ import mod_presets
 import maps
 import dlc_access
 import session_store as store
+import score_sessions
 from score_statistics import measurement
 import world
 import world_pause
@@ -227,7 +228,11 @@ class Supervisor:
         self.publish("starting", "Preparing your operation...", profile=profile, session_id=self.session_id, error="")
         world.setup()
         # A pre-launch recovery point is always taken from stopped stores.
-        self.last_backup = store.snapshot(profile, reason="before-continue")
+        try:
+            score_sessions.remember_history(ROOT / "backups", profile, world.PROFILE, store.atomic_json)
+        except OSError as error:
+            print(f"Could not retain earlier score sessions: {error}", flush=True)
+        self.last_backup = store.snapshot(profile, self.session_id, reason="before-continue")
         store.atomic_json(store.world_path(profile) / "last-session.json", {
             "schema": 1, "session_id": self.session_id, "clean": False,
             "backup": self.last_backup.name, "started": time.time()})
@@ -334,6 +339,13 @@ class Supervisor:
                          error="Unclean server exit; last validated snapshot retained")
             return
         self.publish("saving", "Validating the saved character and world...")
+        if reason == "save-and-quit" and self.session_id:
+            pending = read_native(store.world_path(self.profile) / "last-session.json")
+            try:
+                score_sessions.close_session(ROOT / "backups", self.profile, world.PROFILE, pending, native,
+                                             store.life_scores(world.PROFILE), store.atomic_json)
+            except score_sessions.ARCHIVE_ERRORS as error:
+                print(f"Could not retain the closed score session: {error}", flush=True)
         self.last_backup = store.snapshot(self.profile, self.session_id or "", reason)
         store.atomic_json(store.world_path(self.profile) / "last-session.json", {
             "schema": 1, "session_id": self.session_id, "clean": True,
