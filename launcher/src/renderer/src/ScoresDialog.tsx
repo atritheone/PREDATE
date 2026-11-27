@@ -19,6 +19,16 @@ const encounterPoints = (entry: ScoreEncounter): number =>
   entry.PrecisionPoints +
   entry.RangePoints
 
+const outsidePursuit = (entry: ScoreEncounter): boolean =>
+  entry.KillPoints > 0 && !(entry.Tracked && entry.Committed)
+
+const encounterOutcome = (entry: ScoreEncounter): string => {
+  if (entry.KillPoints > 0) return outsidePursuit(entry) ? 'Kill outside pursuit' : 'Target eliminated'
+  if (entry.Outcome === 'Life ended') return 'Deployment ended'
+  if (entry.Outcome === 'Target eliminated') return 'Killed by another Operator'
+  return entry.Outcome || 'In pursuit'
+}
+
 export function ScoresDialog({ profile, onClose }: { profile: string; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [history, setHistory] = useState<ScoreHistory>()
@@ -64,7 +74,6 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
   const signalLost = pursuits.filter((entry) => !entry.KillPoints && entry.Outcome === 'Signal lost').length
   const abandoned = pursuits.filter((entry) => !entry.KillPoints && entry.Outcome === 'Abandoned').length
   const eligiblePursuits = pursuits.length - signalLost
-  const outsidePursuit = (entry: ScoreEncounter) => entry.KillPoints > 0 && !(entry.Tracked && entry.Committed)
   const killsOutsidePursuits = encounters.filter(outsidePursuit).length
   const legacyShots = life?.Version === 1 ? life.Shots : (life?.LegacyShots ?? 0)
   const legacyHits = life?.Version === 1 ? life.Hits : (life?.LegacyHits ?? 0)
@@ -185,20 +194,18 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
               </dd>
             </div>
           </dl>
-          {life.Partial && <p>Recording started after this deployment began.</p>}
+          {Boolean(life.Partial) && <p>Recording started after this deployment began.</p>}
           {!life.EndReason && <p>Stats through the last save checkpoint.</p>}
           {encounters
             .filter((entry) => entry.KillPoints > 0 || (entry.Tracked && entry.Committed))
             .map((entry) => (
               <details key={`${entry.OperatorId}-${entry.Deployment}`} className="score-encounter">
                 <summary>
-                  {entry.Callsign || entry.OperatorId} ·{' '}
-                  {entry.KillPoints
-                    ? `${encounterPoints(entry).toLocaleString()} pts${outsidePursuit(entry) ? ' · Outside pursuit' : ''}`
-                    : entry.Outcome.replace(/^Life ended$/, 'Deployment ended') || 'In pursuit'}
+                  {entry.Callsign || entry.OperatorId} · {encounterOutcome(entry)} ·{' '}
+                  {encounterPoints(entry).toLocaleString()} pts
                 </summary>
                 <dl className="score-stats">
-                  {entry.Tracked && (
+                  {Boolean(entry.Tracked) && (
                     <>
                       <div>
                         <dt>Ground covered</dt>
@@ -212,7 +219,7 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
                         <dt>Active pursuit</dt>
                         <dd>{duration(entry.LockSeconds)}</dd>
                       </div>
-                      {entry.ReachedContact && (
+                      {Boolean(entry.ReachedContact) && (
                         <div>
                           <dt>Time to contact</dt>
                           <dd>{duration(entry.TimeToContact)}</dd>
