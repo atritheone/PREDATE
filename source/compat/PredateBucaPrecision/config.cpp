@@ -1,4 +1,4 @@
-// Zero spread overrides for the DayZ and Workshop weapon configs used by PREDATE.
+// Weapon and ammunition overrides for BUCA presets in PREDATE.
 class CfgPatches
 {
     class PredateBucaPrecision
@@ -155,6 +155,22 @@ class CfgPatches
 
 class CfgAmmo
 {
+    class Bullet_Base;
+    class BC_Bullet_338: Bullet_Base
+    {
+        class DamageApplied
+        {
+            class Health
+            {
+                // Ten percent above .308, below 100 HP through a plate carrier at full damage.
+                damage = 165;
+            };
+            class Shock
+            {
+                damage = 150;
+            };
+        };
+    };
 #include "predate-rounds.hpp"
 };
 

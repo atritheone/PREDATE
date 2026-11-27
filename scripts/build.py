@@ -423,8 +423,9 @@ def pack(candidate=False):
                 shutil.copytree(addon, deployed_source)
                 aliases = []
                 for ammo in ROUND_AMMO[name]:
-                    if name != "PredateStockPrecision" or ammo not in (
+                    if ammo not in (
                         "Bullet_12GaugeSlug", "Bullet_12GaugeBeanbag", "Bullet_12GaugePellets",
+                        "BC_Bullet_338",
                     ):
                         aliases.append(f"class {ammo};\n")
                     for slot in range(ROUND_SLOTS):
