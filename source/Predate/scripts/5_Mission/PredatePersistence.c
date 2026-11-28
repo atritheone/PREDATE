@@ -99,6 +99,9 @@ class PredatePersistence
             return Fail(s, "Multi-opponent operations require strategic hunters");
         string terrainName = GetGame().GetWorldName();
         terrainName.ToLower();
+        if (s.m_HuntConfig.WeatherPreset == "") s.m_HuntConfig.WeatherPreset = "clear";
+        if (!PredateWeather.IsSupported(s.m_HuntConfig.WeatherPreset, terrainName))
+            return Fail(s, "Unsupported weather condition for this map: " + s.m_HuntConfig.WeatherPreset);
         bool livonia = terrainName == "enoch";
         bool sakhal = terrainName == "sakhal";
         bool nasdara = terrainName == "nasdara";
@@ -214,6 +217,7 @@ class PredatePersistence
     {
         PredateSignalService.Capture(s);
         PredateMemoryPersistence.Capture(s);
+        PredateWeather.CaptureForSave(s);
         string error;
         string worldData;
         if (!JsonFileLoader<PredateWorldState>.MakeData(s.m_WorldState, worldData, error, false))

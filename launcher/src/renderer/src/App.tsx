@@ -56,7 +56,7 @@ const internalDetails =
   /dayz|\b(?:steam|battleye|servers?|connect\w*|reconnect\w*|disconnect\w*|remote|rcon|network|localhost|backend|bridge|supervisor|ipc|native|script|process|dependency)\b/i
 const playerValidation = [
   /^(?:Starting inventory|Unknown starting (?:inventory item|kit)|Invalid starting inventory|Too many levels|Cargo overlaps|Two items occupy)/i,
-  /^(?:Invalid (?:container|position|quantity|placement|cargo position|(?:operation|hunt) name|new (?:operation|hunt) settings)|Use (?:an operation|a hunt) name|Set (?:a valid|whether|a respawn))/i,
+  /^(?:Invalid (?:container|position|quantity|placement|cargo position|(?:operation|hunt) name|new (?:operation|hunt) settings)|Use (?:an operation|a hunt) name|Set (?:a valid|whether|a redeploy|a respawn))/i,
   /^(?:Choose (?:a supported hunt map|a spawn|one, three|1, 3)|Unknown (?:Chernarus|Livonia|Sakhal|Nasdara) spawn|Both (?:Chernarus|Livonia|Sakhal|Nasdara) coordinates|The selected spawn|Livonia mission input|The server configuration does not select|DayZ opened |That operation already exists)/i,
   /^(?:Unsupported launcher settings|Backup retention|Compass|This operation.s mod|Mod content changed|Mod changed while|Additional mod is selected|Use Save and Quit|Select a starting kit|Select a backup)/i,
   /^(?:Save and quit the current hunt before deleting saves|That hunt no longer exists|The original hunt is protected|Select a save)/i,
@@ -334,7 +334,7 @@ export function App(): ReactNode {
     setNotice('')
   }
 
-  const perform = async (action: SessionAction): Promise<void> => {
+  const perform = async (action: SessionAction): Promise<boolean> => {
     const stop = action.action === 'quit'
     if (stop) setQuitting(true)
     else setPending(action.action)
@@ -351,8 +351,10 @@ export function App(): ReactNode {
       }
       if (action.action === 'backup') setNotice('Backup created')
       if (action.action === 'delete') setNotice('Save deleted')
+      return true
     } catch (error) {
       setError(errorMessage(error, actionErrors[action.action]))
+      return false
     } finally {
       if (stop) setQuitting(false)
       else setPending(null)

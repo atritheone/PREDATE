@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 
 import loadouts
+import maps
 
 MAX_INVENTORY_ITEMS = 256
 MAX_INVENTORY_DEPTH = 12
@@ -14,6 +15,20 @@ PLAYER_SLOTS = {
 }
 ENTRY_KEYS = {"ClassName", "Parent", "Placement", "Slot", "Row", "Column", "Flipped", "Amount"}
 RULE_KEYS = {"startHour", "startMinute", "enemyRespawns", "respawnDelay"}
+OPTIONAL_RULE_KEYS = {"inventory", "playerOutfit", "operatorOutfit", "eliteAI", "dayNightCycle", "weather"}
+
+COMMON_WEATHER = (("dynamic", "Dynamic"), ("clear", "Clear"), ("overcast", "Overcast"))
+TEMPERATE_WEATHER = (("fog", "Fog"), ("rain", "Rain"), ("thunderstorm", "Thunderstorm"))
+MAP_WEATHER = {
+    "chernarusplus": TEMPERATE_WEATHER,
+    "enoch": TEMPERATE_WEATHER,
+    "sakhal": (("snow", "Snow"), ("blizzard", "Blizzard")),
+    "nasdara": (("high-wind", "High Wind"),),
+}
+
+
+def weather_options(map_id):
+    return [{"id": code, "label": label} for code, label in COMMON_WEATHER + MAP_WEATHER[map_id]]
 
 
 @cache
@@ -93,8 +108,8 @@ def inventory(entries):
     return entries
 
 
-def config(selection):
-    if not isinstance(selection, dict) or not RULE_KEYS <= selection.keys() <= RULE_KEYS | {"inventory", "playerOutfit", "operatorOutfit", "eliteAI", "dayNightCycle"}:
+def config(selection, map_id=maps.DEFAULT_MAP):
+    if not isinstance(selection, dict) or not RULE_KEYS <= selection.keys() <= RULE_KEYS | OPTIONAL_RULE_KEYS:
         raise ValueError("Invalid new operation settings")
     hour, minute = selection["startHour"], selection["startMinute"]
     if type(hour) is not int or type(minute) is not int or not (0 <= hour <= 23 and 0 <= minute <= 59):
@@ -104,9 +119,9 @@ def config(selection):
         raise ValueError("Set whether the day night cycle should run")
     respawns, delay = selection["enemyRespawns"], selection["respawnDelay"]
     if type(respawns) is not bool:
-        raise ValueError("Set whether defeated enemies should respawn")
+        raise ValueError("Set whether defeated enemies can redeploy")
     if type(delay) is not int or not 1 <= delay <= 3600:
-        raise ValueError("Set a respawn delay of 1–3600 seconds")
+        raise ValueError("Set a redeploy delay of 1–3600 seconds")
     rules = {
         "StartHour": hour,
         "StartMinute": minute,
@@ -114,6 +129,11 @@ def config(selection):
         "EnableOperatorRespawns": respawns,
         "OperatorRespawnDelay": delay,
     }
+    if "weather" in selection:
+        weather = selection["weather"]
+        if not isinstance(weather, str) or not any(option["id"] == weather for option in weather_options(map_id)):
+            raise ValueError("Select weather available on the chosen map")
+        rules["WeatherPreset"] = weather
     # Older launchers can send this field. Both values now use the same AI.
     if "eliteAI" in selection and type(selection["eliteAI"]) is not bool:
         raise ValueError("Invalid new operation settings")

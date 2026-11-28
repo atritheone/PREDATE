@@ -481,10 +481,19 @@ export function changeOutfit(
   return updated
 }
 
-function mountedOptic(rifle: InventoryItem): [string, InventoryItem] | undefined {
-  return Object.entries(rifle.attachments).find(([slot]) =>
-    ['weaponoptics', 'weaponopticsak', 'weaponopticshunting'].includes(slot.toLowerCase()),
-  )
+const opticSlots = ['weaponoptics', 'weaponopticsak', 'weaponopticshunting']
+const nightVisionOptics = ['KazuarOptic', 'StarlightOptic']
+
+export function isNightVisionOptic(id: string): boolean {
+  return nightVisionOptics.includes(id)
+}
+
+export function isWeaponOptic(id: string): boolean {
+  return gearById.get(id)?.slots.some((slot) => opticSlots.includes(slot.toLowerCase())) ?? false
+}
+
+export function mountedOptic(rifle: InventoryItem): [string, InventoryItem] | undefined {
+  return Object.entries(rifle.attachments).find(([slot]) => opticSlots.includes(slot.toLowerCase()))
 }
 
 export function switchPresetOptic(
@@ -538,7 +547,7 @@ export function starterInventory(id: string, outfitId: string, night = false): I
     if (slot) root.Hands.attachments[slot] = newItem(part)
   }
   if (night && weapon) {
-    for (const optic of ['KazuarOptic', 'StarlightOptic']) {
+    for (const optic of nightVisionOptics) {
       const slot = weapon.accepts.find((key) =>
         compatibleGear(key, weapon).some((part) => part.id === optic),
       )

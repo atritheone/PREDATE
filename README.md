@@ -29,7 +29,7 @@ The hunt persists between sessions. Surviving Operators carry their injuries and
 - Operators carry rifles ready on patrol. Stamina never drains for the player or Operators, and bullet damage between them is doubled.
 - Weapons, suppressors, and wearable gear keep their condition for the player and Operators. Ammunition and single-use items are still consumed.
 - Scheduled bearing pulses on the map and compass, with one interception warning per continuous hunt.
-- Custom insertion points, loadouts, time of day, and respawn settings for each hunt.
+- Custom insertion points, loadouts, time of day, weather, and redeploy settings for each hunt.
 - Persistent saves, redeployment, and backup restoration through the launcher.
 
 ## How a hunt works
@@ -47,7 +47,7 @@ Choose Chernarus, Livonia, Sakhal, or Nasdara under **Map** in **New Hunt**, the
 
 Sakhal hunts start on the main island, with surface insertions for players and Operators. Nasdara spreads surface insertions across the desert, foothills, and settlement outskirts. Both maps use PREDATE's clear weather and disabled survival, wildlife, infected, vehicles, and ambient loot rules.
 
-Each new hunt shuffles its Operator starting positions. At least one Operator starts 1.5–3.2 km from your insertion, while larger rosters fill regions across the selected map. Dense starting rosters allow Operators to start closer to each other. The 1.5 km separation for redeployment and Operator respawns still applies.
+Each new hunt shuffles its Operator starting positions. At least one Operator starts 1.5–3.2 km from your insertion, while larger rosters fill regions across the selected map. Dense starting rosters allow Operators to start closer to each other. The 1.5 km separation still applies to player and Operator redeployments.
 
 The pause menu's **Suicide** option asks for confirmation before ending your current life. On death, the screen immediately shows **Death** on solid red. **Redeploy** and **Save and Quit** appear two seconds later on the same screen. Redeploy returns you with the hunt's starting kit. PREDATE searches for safe ground at least 1.5 km from every living Operator, with multiple contacts within the 5 km receiver range when possible. It favors areas away from recent insertions and at least 5 km from where you died, with a 3.5 km fallback and closer sites available if needed. Operator and player corpses cannot be looted.
 

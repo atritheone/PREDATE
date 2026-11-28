@@ -38,7 +38,8 @@ def initialize():
 def map_options():
     available = dlc_access.availability()
     return [{"id": item.id, "name": item.name, "size": item.size, "available": available[item.id],
-             "spawnPoints": spawn_points.options(item.id)} for item in maps.TERRAINS.values()]
+             "spawnPoints": spawn_points.options(item.id), "weatherOptions": operation_setup.weather_options(item.id)}
+            for item in maps.TERRAINS.values()]
 
 
 def overview():
@@ -117,7 +118,7 @@ def dispatch(method, params):
             spawn_points.validate(values['spawn'], selected_map)
         if 'setup' in values:
             if action != 'new': raise ValueError('Game settings apply only to a new operation')
-            operation_setup.config(values['setup'])
+            operation_setup.config(values['setup'], selected_map)
         if "profile" in values: store.world_path(values["profile"])
         if "backup" in values and Path(values["backup"]).name != values["backup"]: raise ValueError("Invalid backup")
         if "diagnostics" in values and (action not in {"continue", "new"} or type(values["diagnostics"]) is not bool):

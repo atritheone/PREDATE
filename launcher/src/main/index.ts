@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Backend, findProject } from './backend'
-import { loadPresets, savePreset } from './loadoutPresets'
+import { loadPresets, savePreset, setDefaultPreset } from './loadoutPresets'
 import {
   DEFAULT_OPPONENT_COUNT,
   OPPONENT_COUNTS,
@@ -169,6 +169,10 @@ async function createWindow(): Promise<void> {
   ipcMain.handle('predate:save-loadout-preset', (event, preset: unknown) => {
     trusted(event)
     return savePreset(backend.root, preset)
+  })
+  ipcMain.handle('predate:set-default-loadout-preset', (event, kind: unknown, id: unknown) => {
+    trusted(event)
+    return setDefaultPreset(backend.root, kind, id)
   })
   ipcMain.handle('predate:choose-mod', async (event) => {
     trusted(event)

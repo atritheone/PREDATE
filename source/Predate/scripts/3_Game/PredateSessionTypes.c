@@ -81,10 +81,27 @@ class PredateContactMemory
     bool SearchOnLOSLost;
 }
 
+class PredateWeatherForecast
+{
+    float Actual;
+    float Target;
+    float Remaining;
+}
+
+class PredateWeatherSnapshot
+{
+    ref array<ref PredateWeatherForecast> Forecasts = {};
+    float DistanceFog;
+    float HeightFog;
+    float HeightBias;
+    bool HadSandstorm;
+}
+
 class PredateWorldState
 {
     int Schema = 1;
     float SimulationSeconds;
+    ref PredateWeatherSnapshot WeatherSnapshot;
     int PlayerLife = 1;
     string PlayerCharacterModel;
     bool PlayerPrimaryAssigned;

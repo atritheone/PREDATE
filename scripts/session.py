@@ -25,7 +25,7 @@ from app_runtime import ROOT, command as helper_command, saves_directory
 RUNTIME = ROOT / "session-runtime"
 STATUS = RUNTIME / "status.json"
 MANAGER = RUNTIME / "manager.json"
-OPERATION_SETUP_VERSION = 11
+OPERATION_SETUP_VERSION = 12
 DELETE_SAVE_VERSION = 1
 PLAY_TIME_CHECKPOINT_SECONDS = 30
 _status_cache = None

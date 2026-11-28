@@ -158,6 +158,7 @@ class PredateConfig
     int StartHour = -1;
     int StartMinute;
     bool FreezeTimeOfDay;
+    string WeatherPreset = "clear";
     float PulseInterval = 60;
     float BearingErrorDegrees = 3;
     float FinalApproachRadius = 200;

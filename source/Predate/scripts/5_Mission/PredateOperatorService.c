@@ -445,7 +445,6 @@ class PredateOperatorService
     static void PredateStart(PredateSession s)
     {
         if (!s.m_HuntSchemaValid || s.m_HuntError != "") return;
-        s.PredateClearWeather();
         s.PredateApplyWorldClock();
         if (s.m_WorldState.Year > 0)
             GetGame().GetWorld().SetDate(s.m_WorldState.Year, s.m_WorldState.Month, s.m_WorldState.Day, s.m_WorldState.Hour, s.m_WorldState.Minute);
@@ -455,6 +454,7 @@ class PredateOperatorService
             GetGame().GetWorld().GetDate(year, month, day, hour, minute);
             GetGame().GetWorld().SetDate(year, month, day, s.m_HuntConfig.StartHour, s.m_HuntConfig.StartMinute);
         }
+        PredateWeather.Apply(s);
         PredateOperatorRecord record = s.m_HuntProgress.Operator;
         bool restoring = record.LifeState == "alive";
         if (record.LifeState != "defeated")

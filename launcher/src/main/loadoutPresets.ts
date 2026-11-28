@@ -68,7 +68,11 @@ export function loadPresets(root: string): LoadoutPreset[] {
     throw new Error('Saved presets could not be read.')
   return data.presets.map((value: unknown) => {
     if (!record(value) || typeof value.id !== 'string') throw new Error('Invalid saved preset.')
-    return { id: value.id, ...presetInput(value) }
+    return {
+      id: value.id,
+      ...presetInput(value),
+      ...(value.isDefault === true && { isDefault: true }),
+    }
   })
 }
 
@@ -84,17 +88,30 @@ export function savePreset(root: string, value: unknown): LoadoutPreset {
     throw new Error('A preset of this type already has that name.')
 
   const preset = { id: randomUUID(), ...input }
+  writePresets(root, [...presets, preset])
+  return preset
+}
+
+export function setDefaultPreset(root: string, kind: unknown, id: unknown): LoadoutPreset[] {
+  if (kind !== 'weapon' && kind !== 'equipment') throw new Error('Choose a preset type.')
+  const presets = loadPresets(root)
+  if (id !== null && !presets.some((preset) => preset.kind === kind && preset.id === id))
+    throw new Error('Choose a saved preset.')
+
+  const updated = presets.map((preset) =>
+    preset.kind === kind ? { ...preset, isDefault: preset.id === id ? true : undefined } : preset,
+  )
+  writePresets(root, updated)
+  return updated
+}
+
+function writePresets(root: string, presets: LoadoutPreset[]): void {
   const path = presetPath(root)
-  const temporary = path + '.' + preset.id + '.tmp'
+  const temporary = path + '.' + randomUUID() + '.tmp'
   try {
-    writeFileSync(
-      temporary,
-      JSON.stringify({ schema: 1, presets: [...presets, preset] }, null, 2),
-      'utf8',
-    )
+    writeFileSync(temporary, JSON.stringify({ schema: 1, presets }, null, 2), 'utf8')
     renameSync(temporary, path)
   } finally {
     rmSync(temporary, { force: true })
   }
-  return preset
 }

@@ -292,7 +292,7 @@ def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, pl
     kit = loadouts.get(player_loadout) if hunt_defaults else None
     map_id = maps.terrain(map_id).id
     player_start = spawn_points.config({"preset": "original"} if spawn is None else spawn, map_id)
-    rules = operation_setup.config(setup) if setup is not None else {}
+    rules = operation_setup.config(setup, map_id) if setup is not None else {}
     if kit and kit.get("PlayerPreset") and not rules.get("HasCustomInventory"):
         raise ValueError("Workshop starting kits require a loadout from New Operation")
     mods = preferences()["extra_mods"] if extra_mods is None else mod_presets.optional_paths(extra_mods)

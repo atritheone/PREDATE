@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import {
   DEFAULT_OPPONENT_COUNT,
   MAX_OPPONENT_COUNT,
@@ -7,6 +7,7 @@ import {
   isHuntMap,
   weaponSlots,
   type HuntMap,
+  type HuntTerrain,
   type LoadoutPreset,
   type OpponentCount,
   type Overview,
@@ -14,6 +15,7 @@ import {
   type SessionAction,
 } from '../../shared/types'
 import { InventoryEditor } from './InventoryEditor'
+import { presetForLight } from './presetVariants'
 import { SavePresetDialog } from './SavePresetDialog'
 import { SpawnEditor, validSpawn } from './SpawnEditor'
 import { terrainAssets } from './terrainAssets'
@@ -40,6 +42,7 @@ const timePresets = [
   ['Night', '00:00'],
 ] as const
 const defaultTime = '12:00'
+const defaultWeather = 'dynamic'
 const defaultRespawnDelay = '7'
 
 function isNightStart(time: string, map: HuntMap = 'chernarusplus'): boolean {
@@ -52,6 +55,10 @@ function isNightStart(time: string, map: HuntMap = 'chernarusplus'): boolean {
 
 function clockLabel(minutes: number): string {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+}
+
+function weatherForTerrain(terrain: HuntTerrain, weather: string): string {
+  return terrain.weatherOptions.some(({ id }) => id === weather) ? weather : defaultWeather
 }
 
 const presetSaveTitles = {
@@ -69,6 +76,7 @@ export interface OperationDraft {
   map: HuntMap
   time: string
   dayNightCycle: boolean
+  weather: string
   opponents: OpponentCount
   enemyRespawns: boolean
   respawnDelay: string
@@ -78,8 +86,9 @@ export interface OperationDraft {
   kit: string
   playerOutfit: string
   inventory: Inventory | null
-  weaponPresetId?: string
-  equipmentPresetId?: string
+  // An omitted ID follows the saved default. Null keeps the draft's own inventory.
+  weaponPresetId?: string | null
+  equipmentPresetId?: string | null
 }
 
 const defaults: OperationDraft = {
@@ -87,6 +96,7 @@ const defaults: OperationDraft = {
   map: 'chernarusplus',
   time: defaultTime,
   dayNightCycle: true,
+  weather: defaultWeather,
   opponents: DEFAULT_OPPONENT_COUNT,
   enemyRespawns: true,
   respawnDelay: defaultRespawnDelay,
@@ -102,17 +112,19 @@ export function readOperationDraft(): OperationDraft {
   try {
     const saved = localStorage.getItem(setupKey)
     if (!saved) return { ...defaults }
-    const { componentsReady, respawnRules, ...draft } = JSON.parse(saved) as Partial<OperationDraft> & {
+    const { componentsReady, respawnRules, presetDefaultRules, ...draft } = JSON.parse(saved) as Partial<OperationDraft> & {
       componentsReady?: boolean
       footprints?: boolean
       operatorOutfit?: string
       respawnRules?: number
+      presetDefaultRules?: number
     }
     delete draft.footprints
     delete draft.operatorOutfit
     if (respawnRules === undefined && draft.respawnDelay === '120') draft.respawnDelay = defaultRespawnDelay
     if (!isHuntMap(draft.map)) delete draft.map
     if (typeof draft.dayNightCycle !== 'boolean') delete draft.dayNightCycle
+    if (typeof draft.weather !== 'string') delete draft.weather
     if (!isOpponentCount(draft.opponents)) delete draft.opponents
     if (draft.inventory) {
       draft.inventory = removeEpinephrine(draft.inventory)
@@ -146,6 +158,17 @@ export function readOperationDraft(): OperationDraft {
         starterInventory(kit, outfit, true),
       )
     }
+    if (!presetDefaultRules) {
+      const kit = draft.kit ?? defaults.kit
+      const outfit = draft.playerOutfit ?? defaults.playerOutfit
+      const stock = starterInventory(kit, outfit, isNightStart(draft.time ?? defaultTime, draft.map))
+      if (draft.weaponPresetId === undefined &&
+          (kit !== defaults.kit || (draft.inventory && !samePart(draft.inventory, stock, 'weapon'))))
+        draft.weaponPresetId = null
+      if (draft.equipmentPresetId === undefined &&
+          (outfit !== defaults.playerOutfit || (draft.inventory && !samePart(draft.inventory, stock, 'equipment'))))
+        draft.equipmentPresetId = null
+    }
     return { ...defaults, ...draft }
   } catch {
     return { ...defaults }
@@ -175,6 +198,20 @@ function presetValue(preset: LoadoutPreset): string {
   return 'saved:' + preset.id
 }
 
+function applyPreset(inventory: Inventory, preset?: LoadoutPreset): Inventory {
+  return preset ? {
+    ...inventoryPart(inventory, preset.kind === 'weapon' ? 'equipment' : 'weapon'),
+    ...removeEpinephrine(preset.inventory),
+  } : inventory
+}
+
+function presetSelection(presets: LoadoutPreset[], id: string | null | undefined, night: boolean) {
+  const preset = presets.find((item) => id === undefined ? item.isDefault : item.id === id)
+  return preset && presetForLight(preset, presets, night)
+}
+
+const presetFields = { weapon: 'weaponPresetId', equipment: 'equipmentPresetId' } as const
+
 export function OperationSetup({
   overview,
   draft,
@@ -186,15 +223,16 @@ export function OperationSetup({
 }: {
   overview: Overview
   draft: OperationDraft
-  update: (draft: OperationDraft) => void
+  update: Dispatch<SetStateAction<OperationDraft>>
   busy: boolean
   active: boolean
-  create: (action: Extract<SessionAction, { action: 'new' }>) => Promise<void>
+  create: (action: Extract<SessionAction, { action: 'new' }>) => Promise<boolean>
   showError: (message: string) => void
 }): ReactNode {
   const [saveStatus, setSaveStatus] = useState('')
   const [presets, setPresets] = useState<LoadoutPreset[] | null>(null)
   const [savingPreset, setSavingPreset] = useState<PresetKind | null>(null)
+  const [changingDefault, setChangingDefault] = useState(false)
   const [exactOpponents, setExactOpponents] = useState<string | null>(null)
   useEffect(() => {
     let mounted = true
@@ -203,7 +241,10 @@ export function OperationSetup({
         if (mounted) setPresets(saved)
       },
       () => {
-        if (mounted) showError('Could not read the saved loadout presets.')
+        if (mounted) {
+          showError('Could not read the saved loadout presets.')
+          setPresets([])
+        }
       },
     )
     return () => {
@@ -212,7 +253,7 @@ export function OperationSetup({
   }, [showError])
 
   const change = (patch: Partial<OperationDraft>): void => {
-    update({ ...draft, ...patch })
+    update((current) => ({ ...current, ...patch }))
     setSaveStatus('')
   }
   const kit = overview.loadouts.find((item) => item.id === draft.kit) ?? overview.loadouts[0]
@@ -220,51 +261,53 @@ export function OperationSetup({
     ? draft.playerOutfit
     : defaults.playerOutfit
   const terrain = overview.maps.find((item) => item.id === draft.map) ?? overview.maps[0]
+  const weather = weatherForTerrain(terrain, draft.weather)
   const lighting = terrainAssets[terrain.id]
   const times = terrain.id === 'sakhal' || terrain.id === 'nasdara'
     ? [['Dawn', clockLabel(lighting.sunrise)], ['Day', '12:00'], ['Dusk', clockLabel(lighting.sunset)], ['Night', '00:00']]
     : timePresets
   const night = isNightStart(draft.time, draft.map)
   const standardLoadout = starterInventory(kit?.id ?? '', playerOutfit, night)
-  const loadout = draft.inventory ?? standardLoadout
+  const weaponPresets = presets?.filter(({ kind }) => kind === 'weapon') ?? []
+  const equipmentPresets = presets?.filter(({ kind }) => kind === 'equipment') ?? []
+  const weaponDefault = presetSelection(weaponPresets, undefined, night)
+  const equipmentDefault = presetSelection(equipmentPresets, undefined, night)
+  const savedWeapon = draft.weaponPresetId === undefined
+    ? weaponDefault : presetSelection(weaponPresets, draft.weaponPresetId, night)
+  const savedEquipment = draft.equipmentPresetId === undefined
+    ? equipmentDefault : presetSelection(equipmentPresets, draft.equipmentPresetId, night)
+  const loadout = applyPreset(applyPreset(draft.inventory ?? standardLoadout, savedWeapon), savedEquipment)
   const changeTime = (time: string): void => {
     const nextNight = isNightStart(time, terrain.id)
-    if (draft.inventory && !draft.weaponPresetId && nextNight !== night) {
+    if (draft.inventory && !savedWeapon && nextNight !== night) {
       const nextLoadout = starterInventory(kit?.id ?? '', playerOutfit, nextNight)
       change({ time, inventory: switchPresetOptic(draft.inventory, standardLoadout, nextLoadout) })
     } else {
       change({ time })
     }
   }
-  const changeMap = (map: HuntMap): void => {
+  const changeMap = (nextTerrain: HuntTerrain): void => {
+    const map = nextTerrain.id
     const nextNight = isNightStart(draft.time, map)
     const inventory =
-      draft.inventory && !draft.weaponPresetId && nextNight !== night
+      draft.inventory && !savedWeapon && nextNight !== night
         ? switchPresetOptic(
             draft.inventory,
             standardLoadout,
             starterInventory(kit?.id ?? '', playerOutfit, nextNight),
           )
         : draft.inventory
-    change({ map, spawn: 'original', x: '', z: '', inventory })
+    change({
+      map,
+      weather: weatherForTerrain(nextTerrain, weather),
+      spawn: 'original',
+      x: '',
+      z: '',
+      inventory,
+    })
   }
-  const weaponPresets = presets?.filter(({ kind }) => kind === 'weapon') ?? []
-  const equipmentPresets = presets?.filter(({ kind }) => kind === 'equipment') ?? []
-  const savedWeapon = weaponPresets.find(({ id }) => id === draft.weaponPresetId)
-  const savedEquipment = equipmentPresets.find(({ id }) => id === draft.equipmentPresetId)
   const weaponEdit = !samePart(loadout, standardLoadout, 'weapon')
   const equipmentEdit = !samePart(loadout, standardLoadout, 'equipment')
-  const applyPreset = (preset: LoadoutPreset): void => {
-    const inventory = {
-      ...inventoryPart(loadout, preset.kind === 'weapon' ? 'equipment' : 'weapon'),
-      ...removeEpinephrine(preset.inventory),
-    }
-    change(
-      preset.kind === 'weapon'
-        ? { inventory, weaponPresetId: preset.id }
-        : { inventory, equipmentPresetId: preset.id },
-    )
-  }
   const savePreset = async (kind: PresetKind, name: string): Promise<void> => {
     const preset = await window.predate.saveLoadoutPreset({
       kind,
@@ -272,15 +315,43 @@ export function OperationSetup({
       inventory: inventoryPart(loadout, kind),
     })
     setPresets((existing) => [...(existing ?? []), preset])
-    applyPreset(preset)
+    change({ [presetFields[kind]]: preset.id })
     setSaveStatus(kind === 'weapon' ? 'Weapon preset saved.' : 'Equipment preset saved.')
+  }
+  const defaultButton = (preset: LoadoutPreset, currentDefault?: LoadoutPreset): ReactNode => {
+    const active = currentDefault?.id === preset.id
+    const label = `${active ? 'Clear' : 'Set'} Default ${preset.kind === 'weapon' ? 'Weapon' : 'Equipment'} Preset`
+    return (
+      <button
+        className="preset-default"
+        type="button"
+        title={label}
+        aria-label={label}
+        aria-pressed={active}
+        disabled={busy || changingDefault}
+        onClick={async () => {
+          setChangingDefault(true)
+          try {
+            setPresets(await window.predate.setDefaultLoadoutPreset(preset.kind, active ? null : preset.id))
+            change({ [presetFields[preset.kind]]: active ? preset.id : undefined })
+            setSaveStatus(active ? 'Default preset cleared.' : 'Default preset saved.')
+          } catch {
+            showError('Could not update the default preset.')
+          } finally {
+            setChangingDefault(false)
+          }
+        }}
+      >
+        {active ? '★' : '☆'}
+      </button>
+    )
   }
   const selectWeapon = (value: string): void => {
     const preset = weaponPresets.find((option) => presetValue(option) === value)
     if (preset) {
-      applyPreset(preset)
+      change({ weaponPresetId: preset.id })
     } else if (value === 'empty') {
-      change({ inventory: {}, weaponPresetId: undefined, equipmentPresetId: undefined })
+      change({ inventory: {}, weaponPresetId: null, equipmentPresetId: null })
     } else if (overview.loadouts.some(({ id }) => id === value)) {
       const inventory =
         savedEquipment || equipmentEdit
@@ -289,23 +360,23 @@ export function OperationSetup({
               ...inventoryPart(starterInventory(value, playerOutfit, night), 'weapon'),
             }
           : null
-      change({ kit: value, inventory, weaponPresetId: undefined })
+      change({ kit: value, inventory, weaponPresetId: null })
     }
   }
   const selectPlayerOutfit = (outfitId: string): void => {
     const preset = equipmentPresets.find((option) => presetValue(option) === outfitId)
     if (preset) {
-      applyPreset(preset)
+      change({ equipmentPresetId: preset.id })
       return
     }
     if (!clothingPresets.some(({ Id }) => Id === outfitId)) return
-    const inventory =
-      draft.inventory && changeOutfit(draft.inventory, outfitId, playerOutfit, kit?.id ?? '')
-    if (draft.inventory && !inventory) {
+    const preserveLoadout = draft.inventory || savedWeapon || savedEquipment
+    const inventory = preserveLoadout ? changeOutfit(loadout, outfitId, playerOutfit, kit?.id ?? '') : null
+    if (preserveLoadout && !inventory) {
       showError('There is no room for your carried gear in this outfit.')
       return
     }
-    change({ playerOutfit: outfitId, inventory, equipmentPresetId: undefined })
+    change({ playerOutfit: outfitId, inventory, equipmentPresetId: null })
   }
   const opponentOptions: readonly number[] = overview.operationOptions?.opponents ?? OPPONENT_COUNTS
   const customOpponents = exactOpponents !== null || !opponentOptions.includes(draft.opponents)
@@ -315,6 +386,7 @@ export function OperationSetup({
   const spawnValid = spawn !== 'custom' || validSpawn(draft.x, draft.z, terrain.size)
   const delay = Number(draft.respawnDelay)
   const valid =
+    !!presets &&
     !!draft.name.trim() &&
     terrain.available &&
     !!kit &&
@@ -334,8 +406,10 @@ export function OperationSetup({
           ...draft,
           opponents,
           spawn,
+          weather,
           playerOutfit,
           respawnRules: 1,
+          presetDefaultRules: 1,
           componentsReady: true,
         }),
       )
@@ -363,11 +437,20 @@ export function OperationSetup({
         startHour,
         startMinute,
         dayNightCycle: draft.dayNightCycle,
+        weather,
         enemyRespawns: draft.enemyRespawns,
         respawnDelay: draft.enemyRespawns ? delay : Number(defaultRespawnDelay),
         playerOutfit,
         inventory: inventoryEntries(packed),
       },
+    }).then((started) => {
+      if (started && (weaponDefault || equipmentDefault)) {
+        update((current) => ({
+          ...current,
+          ...(weaponDefault && { weaponPresetId: undefined }),
+          ...(equipmentDefault && { equipmentPresetId: undefined }),
+        }))
+      }
     })
   }
 
@@ -402,7 +485,7 @@ export function OperationSetup({
                   value={terrain.id}
                   onChange={(event) => {
                     const selected = overview.maps.find((item) => item.id === event.target.value && item.available)
-                    if (selected) changeMap(selected.id)
+                    if (selected) changeMap(selected)
                   }}
                 >
                   {overview.maps.map((item) => (
@@ -422,7 +505,7 @@ export function OperationSetup({
                     onChange={(event) => changeTime(event.target.value)}
                   />
                 </label>
-                <label className="day-night-cycle">
+                <label className="game-checkbox day-night-cycle">
                   <input
                     type="checkbox"
                     id="day-night-cycle"
@@ -431,13 +514,34 @@ export function OperationSetup({
                   />
                   <span>Day Night Cycle</span>
                 </label>
-                <div className="time-presets" aria-label="Time Presets">
+                <div className="preset-buttons time-presets" role="group" aria-label="Time Presets">
                   {times.map(([label, value]) => (
                     <button
                       type="button"
                       key={value}
                       aria-pressed={draft.time === value}
                       onClick={() => changeTime(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="weather-controls">
+                <span className="field" id="weather-heading">Weather</span>
+                <div
+                  className="preset-buttons weather-presets"
+                  id="operation-weather"
+                  role="group"
+                  aria-labelledby="weather-heading"
+                >
+                  {terrain.weatherOptions.map(({ id, label }) => (
+                    <button
+                      type="button"
+                      key={id}
+                      value={id}
+                      aria-pressed={weather === id}
+                      onClick={() => change({ weather: id })}
                     >
                       {label}
                     </button>
@@ -467,8 +571,17 @@ export function OperationSetup({
                     <option value="custom">Custom</option>
                   </select>
                 </label>
+                <label className="game-checkbox">
+                  <input
+                    type="checkbox"
+                    id="enemy-redeployments"
+                    checked={draft.enemyRespawns}
+                    onChange={(event) => change({ enemyRespawns: event.target.checked })}
+                  />
+                  <span>Enemy Redeployments</span>
+                </label>
                 {customOpponents && (
-                  <label className="field">
+                  <label className="field exact-opponent-field">
                     Exact Operator Count
                     <input
                       id="exact-opponent-count"
@@ -487,20 +600,9 @@ export function OperationSetup({
                   </label>
                 )}
               </div>
-              <label className="game-toggle split">
-                <span>
-                  <strong>Enemy Respawns</strong>
-                  <small>Replace defeated operators after a delay.</small>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={draft.enemyRespawns}
-                  onChange={(event) => change({ enemyRespawns: event.target.checked })}
-                />
-              </label>
               {draft.enemyRespawns && (
-                <label className="field respawn-delay">
-                  Respawn Delay (Seconds)
+                <label className="field redeploy-delay">
+                  Redeploy Delay (Seconds)
                   <input
                     type="number"
                     min="1"
@@ -531,14 +633,17 @@ export function OperationSetup({
               <div className="kit-select">
                 <div className="field">
                   <label htmlFor="starting-kit">Weapon Presets</label>
-                  <button
-                    type="button"
-                    aria-label={presetSaveTitles.weapon}
-                    disabled={!presets || busy}
-                    onClick={() => setSavingPreset('weapon')}
-                  >
-                    Save
-                  </button>
+                  <div className="preset-actions">
+                    {savedWeapon && defaultButton(savedWeapon, weaponDefault)}
+                    <button
+                      type="button"
+                      aria-label={presetSaveTitles.weapon}
+                      disabled={!presets || busy || changingDefault}
+                      onClick={() => setSavingPreset('weapon')}
+                    >
+                      Save
+                    </button>
+                  </div>
                   <select
                     id="starting-kit"
                     value={savedWeapon ? presetValue(savedWeapon) : weaponEdit ? 'custom' : kit?.id}
@@ -584,14 +689,17 @@ export function OperationSetup({
                 </div>
                 <div className="field">
                   <label htmlFor="player-outfit">Equipment Presets</label>
-                  <button
-                    type="button"
-                    aria-label={presetSaveTitles.equipment}
-                    disabled={!presets || busy}
-                    onClick={() => setSavingPreset('equipment')}
-                  >
-                    Save
-                  </button>
+                  <div className="preset-actions">
+                    {savedEquipment && defaultButton(savedEquipment, equipmentDefault)}
+                    <button
+                      type="button"
+                      aria-label={presetSaveTitles.equipment}
+                      disabled={!presets || busy || changingDefault}
+                      onClick={() => setSavingPreset('equipment')}
+                    >
+                      Save
+                    </button>
+                  </div>
                   <select
                     id="player-outfit"
                     value={
@@ -634,10 +742,10 @@ export function OperationSetup({
                     inventory,
                     weaponPresetId: samePart(inventory, loadout, 'weapon')
                       ? draft.weaponPresetId
-                      : undefined,
+                      : null,
                     equipmentPresetId: samePart(inventory, loadout, 'equipment')
                       ? draft.equipmentPresetId
-                      : undefined,
+                      : null,
                   })
                 }
               />

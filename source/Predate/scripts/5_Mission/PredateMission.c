@@ -34,6 +34,8 @@ class PredateSession
     float m_SoloCombatTimer;
     ref PredateServerBridge m_Bridge;
     ref PredateWorldState m_WorldState;
+    ref PredateWeatherSnapshot m_PausedWeather;
+    bool m_WeatherInitialized;
     bool m_MemoryRestored;
     bool m_ActorsActive;
     bool m_Suspending;
@@ -226,6 +228,7 @@ class PredateSession
     {
         if (paused == m_Paused || m_Suspending) return;
         m_PauseReady = false;
+        PredateWeather.SetHeld(this, paused);
         if (paused)
         {
             PredateMemoryPersistence.Capture(this);
@@ -280,6 +283,7 @@ class PredateSession
     void BeginSuspend()
     {
         if (m_Suspending) return;
+        PredateWeather.SetHeld(this, true);
         // Native shutdown completion needs the system queue. Keep gameplay,
         // actors and physics held while allowing those closing callbacks.
         if (GetGame().IsDedicatedServer()) PredateServerPauseDriver.Held = false;
@@ -500,46 +504,6 @@ class PredateSession
 
     void SoloApplyCombatRules(PlayerBase player)
     { PredateSurvivalRules.SoloApplyCombatRules(this, player); }
-
-    void PredateClearWeather()
-    {
-        Weather weather = GetGame().GetWeather();
-        // Freeze forecast changes after the persisted world has loaded.
-        weather.MissionWeather(false);
-        weather.SetWeatherUpdateFreeze(true);
-        array<WeatherPhenomenon> clear = {weather.GetOvercast(), weather.GetFog(), weather.GetRain(), weather.GetSnowfall()};
-        foreach (WeatherPhenomenon phenomenon : clear)
-        {
-            phenomenon.SetLimits(0, 0);
-            phenomenon.SetForecastChangeLimits(0, 0);
-            phenomenon.Set(0, 0, 86400);
-        }
-        weather.SetDynVolFogDistanceDensity(0);
-        // With zero distance density, height density 1 removes the altitude
-        // bias. Height density 0 retains a fog layer near low coastal terrain.
-        weather.SetDynVolFogHeightDensity(1);
-        weather.SetStorm(0, 1, 86400);
-        Sandstorm dust = weather.GetSandstorm();
-        if (dust && dust.IsActive()) dust.Stop(0, true);
-        weather.GetWindMagnitude().SetLimits(2, 2);
-        weather.GetWindMagnitude().Set(2, 0, 86400);
-        GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(PredateCheckClearWeather, 2000, false);
-    }
-
-    void PredateCheckClearWeather()
-    {
-        Weather weather = GetGame().GetWeather();
-        bool clear = weather.GetOvercast().GetActual() < 0.001;
-        clear = clear && weather.GetFog().GetActual() < 0.001;
-        clear = clear && weather.GetRain().GetActual() < 0.001;
-        clear = clear && weather.GetSnowfall().GetActual() < 0.001;
-        clear = clear && weather.GetDynVolFogDistanceDensity() < 0.001;
-        clear = clear && weather.GetDynVolFogHeightDensity() > 0.999;
-        float lowAltitudeVisibility = Environment.Expansion_GetDynVolFogVisibilityEx(0);
-        clear = clear && lowAltitudeVisibility > 0.999;
-        if (clear) Print("[Predate] Clear weather confirmed: no cloud, rain, snow or fog; light breeze.");
-        else Print("[Predate] WEATHER CHECK FAIL: overcast=" + weather.GetOvercast().GetActual() + "; rain=" + weather.GetRain().GetActual() + "; fog=" + weather.GetFog().GetActual());
-    }
 
     void PredateTick(float seconds)
     {

@@ -3,8 +3,11 @@
 modded class eAIBase
 {
     protected static const float PREDATE_NVG_RANGE = 800.0;
+    protected static const float PREDATE_FULL_SANDSTORM_RANGE = 85.0;
     protected static const float PREDATE_PERIPHERAL_RANGE = 250.0;
     protected static const float PREDATE_PERIPHERAL_HALF_ANGLE = 100.0;
+    static bool s_PredateSandstormAffectsVisibility;
+    protected float m_PredateSandstormVisibility = 1.0;
     bool m_PredateCombatEnabled;
     bool m_PredateKnowledgeEnabled;
     string m_PredateOperatorId;
@@ -389,6 +392,22 @@ modded class eAIBase
         return entity && entity.GetHierarchyRoot() == person;
     }
 
+    override void Expansion_UpdateVisibility(bool force = false)
+    {
+        super.Expansion_UpdateVisibility(force);
+        if (!m_PredateCombatEnabled || !s_PredateSandstormAffectsVisibility) return;
+
+        m_PredateSandstormVisibility = 1.0;
+        Sandstorm dust = GetGame().GetWeather().GetSandstorm();
+        if (!dust || !dust.IsActive()) return;
+
+        // Reuse Expansion's weather update cadence and avoid shelter traces per operator.
+        float clearAir = 1 - Math.Clamp(dust.GetIntensity(GetPosition()), 0, 1);
+        m_PredateSandstormVisibility = Math.Lerp(PREDATE_FULL_SANDSTORM_RANGE / 1100.0, 1.0, clearAir * clearAir);
+        m_Expansion_Visibility = Math.Min(m_Expansion_Visibility, m_PredateSandstormVisibility);
+        m_Expansion_VisibilityDistThreshold = Math.Min(m_Expansion_VisibilityDistThreshold, 900 * m_PredateSandstormVisibility);
+    }
+
     override void eAI_UpdateNightVisibility()
     {
         super.eAI_UpdateNightVisibility();
@@ -420,6 +439,7 @@ modded class eAIBase
             visible = Math.Max(visible, 250);
         if (player.m_PredatePEQInfraredLitUntil > m_PredateSimulationTime && PredatePEQVision.HasNightVision(this))
             visible = Math.Max(visible, Math.Min(PREDATE_NVG_RANGE, visible + 60));
+        visible = Math.Min(visible, 1100.0 * m_PredateSandstormVisibility);
         return Math.Min(m_eAI_ThreatDistanceLimit, visible);
     }
 

@@ -19,12 +19,14 @@ export function isHuntMap(map: unknown): map is HuntMap {
   return typeof map === 'string' && Object.hasOwn(huntMaps, map)
 }
 export type SpawnPoint = { id: string; name: string; x: number; z: number }
+export type WeatherOption = { id: string; label: string }
 export type HuntTerrain = {
   id: HuntMap
   name: string
   size: number
   available: boolean
   spawnPoints: SpawnPoint[]
+  weatherOptions: WeatherOption[]
 }
 
 export function huntMapName(map?: HuntMap): string {
@@ -113,6 +115,7 @@ export interface LoadoutPresetInput {
 }
 export interface LoadoutPreset extends LoadoutPresetInput {
   id: string
+  isDefault?: boolean
 }
 export const weaponSlots: readonly string[] = ['Hands', 'Sidearm', 'Shoulder', 'Melee']
 export const equipment = [
@@ -148,6 +151,7 @@ export interface NewOperationSettings {
   startHour: number
   startMinute: number
   dayNightCycle: boolean
+  weather: string
   enemyRespawns: boolean
   respawnDelay: number
   playerOutfit?: string
@@ -250,6 +254,7 @@ export interface PredateAPI {
   chooseMod(): Promise<string | null>
   loadoutPresets(): Promise<LoadoutPreset[]>
   saveLoadoutPreset(preset: LoadoutPresetInput): Promise<LoadoutPreset>
+  setDefaultLoadoutPreset(kind: PresetKind, id: string | null): Promise<LoadoutPreset[]>
   setSetupOpen(open: boolean): Promise<void>
   onStatus(callback: (status: SessionStatus) => void): () => void
   onContinueError(callback: (message: string) => void): () => void
