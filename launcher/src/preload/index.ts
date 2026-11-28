@@ -10,6 +10,8 @@ const api: PredateAPI = {
   savePreferences: (values) => ipcRenderer.invoke('predate:preferences', values),
   chooseMod: () => ipcRenderer.invoke('predate:choose-mod'),
   loadoutPresets: () => ipcRenderer.invoke('predate:loadout-presets'),
+  gamePresets: () => ipcRenderer.invoke('predate:game-presets'),
+  saveGamePreset: (preset) => ipcRenderer.invoke('predate:save-game-preset', preset),
   saveLoadoutPreset: (preset) => ipcRenderer.invoke('predate:save-loadout-preset', preset),
   setDefaultLoadoutPreset: (kind, id) =>
     ipcRenderer.invoke('predate:set-default-loadout-preset', kind, id),

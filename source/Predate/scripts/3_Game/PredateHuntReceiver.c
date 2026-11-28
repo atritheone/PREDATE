@@ -13,18 +13,62 @@ class PredateHuntReceiver
     float BestUncertainty;
     float LastDecisionAt;
     bool Replanned;
+    [NonSerialized()]
+    protected ref map<string, PredateSignalTrack> m_TrackLookup;
+    [NonSerialized()]
+    protected ref map<string, ref PredateHuntSectorGeometry> m_Sectors;
+
+    protected void IndexTracks()
+    {
+        if (m_TrackLookup && m_TrackLookup.Count() == Tracks.Count()) return;
+        if (!m_TrackLookup) m_TrackLookup = new map<string, PredateSignalTrack>;
+        else m_TrackLookup.Clear();
+        foreach (PredateSignalTrack track : Tracks)
+            m_TrackLookup.Insert(track.SubjectId, track);
+    }
 
     PredateSignalTrack Find(string subject)
     {
-        foreach (PredateSignalTrack track : Tracks)
-            if (track.SubjectId == subject) return track;
-        return null;
+        if (subject == "" || !Tracks.Count()) return null;
+        IndexTracks();
+        return m_TrackLookup.Get(subject);
+    }
+
+    void AddTrack(PredateSignalTrack track)
+    {
+        IndexTracks();
+        Tracks.Insert(track);
+        m_TrackLookup.Insert(track.SubjectId, track);
+    }
+
+    PredateHuntSectorGeometry SectorGeometry(PredateObservation reading)
+    {
+        if (!m_Sectors) m_Sectors = new map<string, ref PredateHuntSectorGeometry>;
+        PredateHuntSectorGeometry sector = m_Sectors.Get(reading.SubjectId);
+        if (!sector)
+        {
+            sector = new PredateHuntSectorGeometry;
+            m_Sectors.Insert(reading.SubjectId, sector);
+        }
+        // A recorded observation is immutable. New readings replace its reference.
+        if (sector.Reading != reading)
+        {
+            sector.Reading = reading;
+            sector.Center = PredateHuntSelection.SectorCenter(reading);
+            sector.BaseRadius = PredateHuntSelection.SectorRadius(reading, reading.ObservedAt);
+        }
+        return sector;
     }
 
     void Retire(string subject)
     {
         PredateSignalTrack track = Find(subject);
-        if (track) Tracks.RemoveItem(track);
+        if (track)
+        {
+            Tracks.RemoveItem(track);
+            m_TrackLookup.Remove(subject);
+        }
+        if (m_Sectors) m_Sectors.Remove(subject);
         if (TargetId == subject) TargetId = "";
         if (DeferredId == subject) DeferredId = "";
     }
@@ -62,6 +106,13 @@ class PredateHuntReceiver
     }
 }
 
+class PredateHuntSectorGeometry
+{
+    PredateObservation Reading;
+    vector Center;
+    float BaseRadius;
+}
+
 class PredateHuntLead
 {
     string Id;
@@ -86,12 +137,13 @@ class PredateHuntSelection
         return width / 2.0 + outer * Math.Sin(sample.BearingError * Math.DEG2RAD) + (now - sample.ObservedAt) * 1.5;
     }
 
-    static void Score(PredateHuntLead lead, string id, PredateObservation evidence, vector own, float now)
+    static void Score(PredateHuntReceiver receiver, PredateHuntLead lead, string id, PredateObservation evidence, vector own, float now)
     {
+        PredateHuntSectorGeometry sector = receiver.SectorGeometry(evidence);
         lead.Id = id;
         lead.Evidence = evidence;
-        lead.Distance = PredateHunterBrain.Distance(own, SectorCenter(evidence));
-        lead.Uncertainty = SectorRadius(evidence, now);
+        lead.Distance = PredateHunterBrain.Distance(own, sector.Center);
+        lead.Uncertainty = sector.BaseRadius + (now - evidence.ObservedAt) * 1.5;
     }
 
     static bool Closer(PredateHuntLead candidate, PredateHuntLead other, string current)
@@ -137,7 +189,7 @@ class PredateHuntSelection
         if (!finalApproach && tracked && tracked.LastSample && !tracked.LastSample.Expired(now))
         {
             current = new PredateHuntLead;
-            Score(current, tracked.SubjectId, tracked.LastSample, own, now);
+            Score(receiver, current, tracked.SubjectId, tracked.LastSample, own, now);
         }
         bool searchActive = (hunter.Mode == "search" || hunter.Mode == "investigate" || hunter.Mode == "approach") && hunter.HasGoal && hunter.SearchUntil > now;
         if (current && (current.Distance + 50 < receiver.BestDistance || current.Uncertainty + 50 < receiver.BestUncertainty))
@@ -159,7 +211,14 @@ class PredateHuntSelection
             PredateObservation sample = track.LastSample;
             if (!sample || sample.Expired(now)) continue;
             if (!candidate) candidate = new PredateHuntLead;
-            Score(candidate, subject, sample, own, now);
+            if (current && sample == current.Evidence)
+            {
+                candidate.Id = current.Id;
+                candidate.Evidence = sample;
+                candidate.Distance = current.Distance;
+                candidate.Uncertainty = current.Uncertainty;
+            }
+            else Score(receiver, candidate, subject, sample, own, now);
             if (Closer(candidate, chosen, receiver.TargetId))
             {
                 PredateHuntLead previous = chosen;

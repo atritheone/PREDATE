@@ -62,7 +62,10 @@
 
 .setup-footer {
   flex-shrink: 0;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
   padding: 11px clamp(12px, 4vw, 28px) 13px;
   border-top: 1px solid var(--rule);
   background: var(--field);
@@ -71,6 +74,14 @@
 .setup-footer button {
   flex-shrink: 0;
   min-height: 39px;
+}
+
+.game-preset-controls {
+  display: grid;
+  grid-template-columns: minmax(110px, 160px) auto auto;
+  gap: 8px;
+  padding-inline-end: 12px;
+  border-inline-end: 1px solid var(--rule);
 }
 
 .setup-actions {

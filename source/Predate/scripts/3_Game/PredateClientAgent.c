@@ -22,7 +22,10 @@ class PredateClientAgent
 {
     static ref ScriptInvoker BeforeExit = new ScriptInvoker;
     ref PredateClientStatus m_Status;
+    ref PredateClientStatus m_PublishedStatus;
     float m_Timer;
+    float m_StatusElapsed;
+    string m_LastCommand;
     float m_QuitTime;
     bool m_QuitRequested;
     bool m_UserPaused;
@@ -100,14 +103,14 @@ class PredateClientAgent
     void Update(float seconds)
     {
         m_Timer += seconds;
+        m_StatusElapsed += seconds;
         if (m_QuitRequested)
         {
             m_QuitTime += seconds;
             if (GetDayZGame().m_PredateSessionQuitAck)
             {
                 m_Status.Phase = "exiting";
-                string exitError;
-                JsonFileLoader<PredateClientStatus>.SaveFile("$profile:PredateClientStatus.json", m_Status, exitError);
+                Publish(true);
                 Print("[Predate] Save acknowledged; closing the game normally.");
                 ExitGame();
                 return;
@@ -136,11 +139,13 @@ class PredateClientAgent
             m_Status.Phase = "menu";
             if (GetGame().GetGameState() == DayZGameState.IN_GAME) m_Status.Phase = "connected";
         }
-        if (FileExist("$profile:PredateClientCommand.json"))
+        string contents = PredateCommandFile.ReadChanged("$profile:PredateClientCommand.json", m_LastCommand);
+        if (contents != "")
         {
+            m_LastCommand = contents;
             PredateClientCommand command = new PredateClientCommand;
             string readError;
-            if (JsonFileLoader<PredateClientCommand>.LoadFile("$profile:PredateClientCommand.json", command, readError))
+            if (JsonFileLoader<PredateClientCommand>.LoadData(contents, command, readError))
             {
                 if (command.Schema == 1 && command.SessionId == m_Status.SessionId && command.Sequence > m_Status.Acknowledged)
                 {
@@ -153,6 +158,7 @@ class PredateClientAgent
                     {
                         // The server has already failed; an acknowledgement cannot arrive.
                         m_Status.Phase = "exiting";
+                        Publish(true);
                         ExitGame();
                         return;
                     }
@@ -179,8 +185,17 @@ class PredateClientAgent
             }
         }
         if (m_StagingInitialJoin) JoinReadyWorld();
+        Publish();
+    }
+
+    protected void Publish(bool force = false)
+    {
+        if (!force && m_StatusElapsed < 1 && m_Status.Matches(m_PublishedStatus)) return;
         string error;
-        JsonFileLoader<PredateClientStatus>.SaveFile("$profile:PredateClientStatus.json", m_Status, error);
+        if (!JsonFileLoader<PredateClientStatus>.SaveFile("$profile:PredateClientStatus.json", m_Status, error)) return;
+        if (!m_PublishedStatus) m_PublishedStatus = new PredateClientStatus;
+        m_PublishedStatus.Remember(m_Status);
+        m_StatusElapsed = 0;
     }
 
     void JoinReadyWorld()

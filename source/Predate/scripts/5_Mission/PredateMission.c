@@ -4,6 +4,7 @@ class PredateSession
     ref PredateScoreService m_Score;
     static const float CHECKPOINT_INTERVAL = 30;
     static const float CHECKPOINT_MAX_DEFER = 0.1;
+    static const float CHECKPOINT_ACTOR_SPACING = 0.05;
     ref PredateConfig m_HuntConfig;
     ref PredateLoadoutCatalog m_Loadouts;
     ref PredateProgress m_HuntProgress;
@@ -21,8 +22,15 @@ class PredateSession
     float m_DiagnosticWorstFrame;
     int m_DiagnosticFrames;
     int m_DiagnosticSlowFrames;
+    ref PredatePerfHistogram m_PerfFrames;
+    ref PredatePerfHistogram m_PerfHunt;
+    ref PredatePerfHistogram m_PerfPeers;
+    ref PredatePerfHistogram m_PerfStrategy;
+    ref PredatePerfHistogram m_PerfCheckpoint;
+    int m_PerfStartupDelayStart;
     float m_PredateNextLightScan;
     int m_PredateRouteCursor;
+    ref PredateHuntScratch m_PredateHuntScratch = new PredateHuntScratch;
     bool m_HuntReady;
     bool m_HuntSentState;
     bool m_HuntSentCloseApproach;
@@ -34,6 +42,7 @@ class PredateSession
     float m_SoloCombatTimer;
     ref PredateServerBridge m_Bridge;
     ref PredateWorldState m_WorldState;
+    ref PredateMapPulseCache m_MapPulseCache = new PredateMapPulseCache;
     ref PredateWeatherSnapshot m_PausedWeather;
     bool m_WeatherInitialized;
     bool m_MemoryRestored;
@@ -56,6 +65,16 @@ class PredateSession
         string flag;
         m_Development = GetGame().CommandlineGetParam("predateDevelopment", flag) && FileExist("$profile:PredateDevelopment.txt");
         PredateServerDiagnostics.Enabled = GetGame().CommandlineGetParam("predateServerDiagnostics", flag);
+        PredateServerDiagnostics.Performance = PredateServerDiagnostics.Enabled || FileExist("$profile:PredatePerf.txt");
+        if (PredateServerDiagnostics.Performance)
+        {
+            m_PerfFrames = new PredatePerfHistogram;
+            m_PerfHunt = new PredatePerfHistogram;
+            m_PerfPeers = new PredatePerfHistogram;
+            m_PerfStrategy = new PredatePerfHistogram;
+            m_PerfCheckpoint = new PredatePerfHistogram;
+            PredateServerDiagnostics.StartAIProfile();
+        }
         PredateServerDiagnostics.TraceOperators = FileExist("$profile:PredateAITrace.txt");
         PredateServerDiagnostics.TraceShots = GetGame().CommandlineGetParam("predateShotTrace", flag) || (PredateServerDiagnostics.Enabled && FileExist("$profile:PredateShotTrace.txt"));
         PredateInit();
@@ -63,7 +82,11 @@ class PredateSession
 
     void PredateInit()
     {
+        int loadStarted;
+        if (PredateServerDiagnostics.Performance) loadStarted = TickCount(0);
         m_HuntSchemaValid = PredatePersistence.Load(this);
+        if (PredateServerDiagnostics.Performance)
+            Print("[PredatePerf] startup state_load_ms=" + TickCount(loadStarted) * 0.0001);
         if (!m_HuntSchemaValid) return;
         if (m_Score) m_Score.m_SessionStartSeconds = m_WorldState.SimulationSeconds;
         m_Operators = new PredateOperatorRegistry;
@@ -72,6 +95,7 @@ class PredateSession
             PredatePersistence.Fail(this, "Duplicate operator registration");
             return;
         }
+        if (PredateServerDiagnostics.Performance) m_PerfStartupDelayStart = TickCount(0);
         GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(PredateStart, 6000, false);
     }
 
@@ -112,13 +136,16 @@ class PredateSession
             m_CheckpointPeakRowMillis = 0;
         }
         m_CheckpointWait += timeslice;
-        // Give a busy frame room to recover while keeping the checkpoint moving.
+        // Leave normal hunt ticks for gameplay. A server already taking a
+        // whole hunt interval per frame must still finish the checkpoint.
+        if (updatedHunt && timeslice < 0.25) return;
         if (m_CheckpointWait < CHECKPOINT_MAX_DEFER && (updatedHunt || timeslice > 0.022)) return;
-        m_CheckpointWait = 0;
-        int started;
-        if (PredateServerDiagnostics.Enabled) started = TickCount(0);
         int peerCount;
         if (m_PeerRoster) peerCount = m_PeerRoster.m_Bindings.Count();
+        if (m_CheckpointPeer <= peerCount && m_CheckpointWait < CHECKPOINT_ACTOR_SPACING) return;
+        m_CheckpointWait = 0;
+        int started;
+        if (PredateServerDiagnostics.Performance) started = TickCount(0);
         string error;
         // Schedule a native actor write or a roster JSON row per frame.
         if (m_CheckpointPeer <= peerCount)
@@ -129,19 +156,19 @@ class PredateSession
                 PredatePersistence.Fail(this, "Cannot checkpoint operator roster: " + error);
                 return;
             }
-            if (PredateServerDiagnostics.Enabled) m_CheckpointActorMillis += TickCount(started) * 0.0001;
+            if (PredateServerDiagnostics.Performance) m_CheckpointActorMillis += TickCount(started) * 0.0001;
             m_CheckpointPeer++;
             return;
         }
         if (m_CheckpointRosterRow < peerCount)
         {
-            if ((m_CheckpointRosterRow == 0 && !m_PeerRoster.BeginStateSave(error)) || !m_PeerRoster.WriteStateRow(m_CheckpointRosterRow, error))
+            if ((m_CheckpointRosterRow == 0 && !m_PeerRoster.BeginStateSave(error)) || !m_PeerRoster.WriteStateRow(m_CheckpointRosterRow, error, m_WorldState.SimulationSeconds))
             {
                 m_PeerRoster.CancelStateSave();
                 PredatePersistence.Fail(this, "Cannot stage operator roster: " + error);
                 return;
             }
-            if (PredateServerDiagnostics.Enabled)
+            if (PredateServerDiagnostics.Performance)
             {
                 float rowMillis = TickCount(started) * 0.0001;
                 m_CheckpointRosterMillis += rowMillis;
@@ -156,15 +183,15 @@ class PredateSession
             return;
         }
         int publishStarted;
-        if (PredateServerDiagnostics.Enabled) publishStarted = TickCount(0);
+        if (PredateServerDiagnostics.Performance) publishStarted = TickCount(0);
         if (peerCount > 0 && !m_PeerRoster.FinishStateSave(error))
         {
             PredatePersistence.Fail(this, "Cannot publish operator roster: " + error);
             return;
         }
         float publishMillis;
-        if (peerCount > 0 && PredateServerDiagnostics.Enabled) publishMillis = TickCount(publishStarted) * 0.0001;
-        if (PredateServerDiagnostics.Enabled)
+        if (peerCount > 0 && PredateServerDiagnostics.Performance) publishMillis = TickCount(publishStarted) * 0.0001;
+        if (PredateServerDiagnostics.Performance)
             Print("[PredatePerf] checkpoint actors_ms=" + m_CheckpointActorMillis + "; roster_ms=" + m_CheckpointRosterMillis + "; peak_row_ms=" + m_CheckpointPeakRowMillis + "; publish_ms=" + publishMillis + "; state_ms=" + TickCount(started) * 0.0001 + "; roster=" + (peerCount + 1));
         m_CheckpointPeer = -1;
         m_CheckpointRosterRow = 0;
@@ -172,13 +199,25 @@ class PredateSession
 
     void PredateReportFrames(float timeslice)
     {
-        if (!PredateServerDiagnostics.Enabled || !m_ActorsActive || m_Paused || m_Suspending) return;
+        if (!m_PerfFrames || !m_ActorsActive || m_Paused || m_Suspending) return;
+        m_PerfFrames.Add(timeslice * 1000);
         m_DiagnosticElapsed += timeslice;
         m_DiagnosticFrames++;
         m_DiagnosticWorstFrame = Math.Max(m_DiagnosticWorstFrame, timeslice);
         if (timeslice > 0.033) m_DiagnosticSlowFrames++;
         if (m_DiagnosticElapsed < 60) return;
         Print("[PredatePerf] active_frames=" + m_DiagnosticFrames + "; mean_ms=" + (m_DiagnosticElapsed * 1000 / m_DiagnosticFrames) + "; max_ms=" + m_DiagnosticWorstFrame * 1000 + "; over_33ms=" + m_DiagnosticSlowFrames);
+        Print("[PredatePerf] frame " + m_PerfFrames.Report());
+        Print("[PredatePerf] hunt_tick " + m_PerfHunt.Report() + "; peers " + m_PerfPeers.Report() + "; strategy " + m_PerfStrategy.Report() + "; checkpoint_step " + m_PerfCheckpoint.Report());
+        Print("[PredatePerf] ai_update_near " + PredateServerDiagnostics.NearAI.Report() + "; ai_update_engaged " + PredateServerDiagnostics.EngagedAI.Report() + "; ai_update_remote " + PredateServerDiagnostics.RemoteAI.Report());
+        m_PerfFrames.Reset();
+        m_PerfHunt.Reset();
+        m_PerfPeers.Reset();
+        m_PerfStrategy.Reset();
+        m_PerfCheckpoint.Reset();
+        PredateServerDiagnostics.NearAI.Reset();
+        PredateServerDiagnostics.EngagedAI.Reset();
+        PredateServerDiagnostics.RemoteAI.Reset();
         m_DiagnosticFrames = 0;
         m_DiagnosticSlowFrames = 0;
         m_DiagnosticWorstFrame = 0;
@@ -527,7 +566,7 @@ class PredateSession
         eAIBase resolvedActor;
         eAIGroup resolvedGroup;
         PredateOperatorIndex index;
-        if (m_PeerRoster) index = PredateOperatorIndex.Capture();
+        if (m_PeerRoster) index = m_Operators.CaptureLiveIndex();
         string primaryId = m_HuntProgress.Operator.Id;
         if (!m_Operators.Resolve(primaryId, resolvedActor, resolvedGroup, registryError, index))
         {
@@ -660,14 +699,24 @@ class PredateSession
                 else m_HuntBot.SetMovementSpeedLimits(0, 0);
             }
         }
+        int sectionStart;
+        if (m_PerfPeers) sectionStart = TickCount(0);
         if (m_PeerRoster && !m_PeerRoster.Advance(this, activeParticipant, registryError, index))
         {
             PredatePersistence.Fail(this, registryError);
             return;
         }
+        if (m_PerfPeers)
+        {
+            m_PerfPeers.Add(TickCount(sectionStart) * 0.0001);
+            PredateServerDiagnostics.HasPerfPlayer = activePlayer;
+            if (activePlayer) PredateServerDiagnostics.PerfPlayerPosition = activeParticipant.GetPosition();
+        }
         if (activePlayer)
         {
+            if (m_PerfStrategy) sectionStart = TickCount(0);
             PredateHuntRuntime.Tick(this, activeParticipant, activePlayerId);
+            if (m_PerfStrategy) m_PerfStrategy.Add(TickCount(sectionStart) * 0.0001);
             PredateSupplyService.Tick(this, activeParticipant);
         }
         m_HuntStateTimer += seconds;
@@ -735,9 +784,12 @@ class PredateSession
         bool updatedHunt = m_SoloCombatTimer >= 0.25;
         if (updatedHunt)
         {
+            int huntStarted;
+            if (m_PerfHunt) huntStarted = TickCount(0);
             float elapsed = m_SoloCombatTimer;
             m_SoloCombatTimer = 0;
             PredateTick(elapsed);
+            if (m_PerfHunt && m_ActorsActive && !m_Paused) m_PerfHunt.Add(TickCount(huntStarted) * 0.0001);
             array<Man> players = new array<Man>;
             GetGame().GetPlayers(players);
             foreach (Man man : players)
@@ -747,8 +799,12 @@ class PredateSession
                 if (player) player.PredateUpdateVitalHud();
             }
         }
-        PredateReportFrames(timeslice);
+        int checkpointStarted;
+        bool profileCheckpoint = m_PerfCheckpoint && m_ActorsActive && !m_Paused && (m_CheckpointPeer >= 0 || m_HuntSaveTimer + timeslice >= CHECKPOINT_INTERVAL);
+        if (profileCheckpoint) checkpointStarted = TickCount(0);
         PredateUpdateCheckpoint(timeslice, updatedHunt);
+        if (profileCheckpoint) m_PerfCheckpoint.Add(TickCount(checkpointStarted) * 0.0001);
+        PredateReportFrames(timeslice);
     }
 
     void Finish()

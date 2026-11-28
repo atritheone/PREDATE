@@ -65,11 +65,7 @@ class PredateScoreService
                 life = new PredateLifeScore;
                 if (JsonFileLoader<PredateLifeScore>.LoadFile(path, life, error) && life && life.Life == number && (life.Version == 1 || life.Version == 2) && life.Encounters)
                 {
-                    if (life.PendingRounds > 0)
-                    {
-                        life.RecoverInterruptedRounds();
-                        m_DirtyLives.Insert(number);
-                    }
+                    if (life.RecoverInterruptedRounds()) m_DirtyLives.Insert(number);
                     m_Lives.Set(number, life);
                 }
                 else
@@ -143,19 +139,8 @@ class PredateScoreService
         if (m_Tracked && m_TrackActor && m_TrackSignal && m_TrackSignal.HasLostPlayerReception())
             RecordPursuitOutcome(m_TrackActor.m_PredateOperatorRecord, "Signal lost");
 
-        PredateSignalTrack signal = state.PlayerSignal;
-        eAIBase actor = m_Session.m_HuntBot;
-        // The receiver already scans its bindings during a regular refresh.
-        // The locked target alone contributes any sampling work here.
-        if (m_Session.m_PeerRoster)
-        {
-            PredatePeerBinding peer = m_Session.m_PeerRoster.PlayerLock();
-            if (peer)
-            {
-                signal = peer.State.PlayerReceiver;
-                actor = peer.Actor;
-            }
-        }
+        PredateSignalTrack signal;
+        eAIBase actor = ReceiverTarget(signal);
 
         PredatePursuitScore next;
         if (actor && actor.IsAlive() && actor.m_PredateOperatorRecord && signal && signal.Selected && !signal.HasLostPlayerReception())
@@ -183,6 +168,21 @@ class PredateScoreService
             m_PlayerPosition = player.GetPosition();
             m_TargetPosition = actor.GetPosition();
         }
+    }
+
+    eAIBase ReceiverTarget(out PredateSignalTrack signal)
+    {
+        signal = m_Session.m_WorldState.PlayerSignal;
+        if (m_Session.m_PeerRoster)
+        {
+            PredatePeerBinding peer = m_Session.m_PeerRoster.PlayerLock();
+            if (peer)
+            {
+                signal = peer.State.PlayerReceiver;
+                return peer.Actor;
+            }
+        }
+        return m_Session.m_HuntBot;
     }
 
     void Sample(PlayerBase player, float now)
@@ -226,6 +226,7 @@ class PredateScoreService
         life.BeginExactScoring();
         life.Shots++;
         m_DirtyLives.Insert(life.Life);
+        RecordPursuitShot(life, round);
         if (round)
         {
             round.Deployment = life.Life;
@@ -253,6 +254,27 @@ class PredateScoreService
                 Print("[PredateShot] ammo config " + ammo + " simulation=" + GetGame().ConfigGetTextOut("CfgAmmo " + ammo + " simulation") + " speed=" + GetGame().ConfigGetFloat("CfgAmmo " + ammo + " initSpeed") + " lifetime=" + GetGame().ConfigGetFloat("CfgAmmo " + ammo + " timeToLive"));
             else Print("[PredateShot] confirmed discharge has no round tag: " + ammo);
         }
+    }
+
+    void RecordPursuitShot(PredateLifeScore life, PredateProjectileRound round)
+    {
+        PredateWorldState state = m_Session.m_WorldState;
+        if (life.Life != state.PlayerLife || life.EndReason != "" || state.PlayerAwaitingRedeploy) return;
+        PredateSignalTrack signal;
+        eAIBase actor = ReceiverTarget(signal);
+        if (!actor || !actor.IsAlive() || !actor.m_PredateOperatorRecord || !signal || !signal.Selected || signal.HasLostPlayerReception()) return;
+
+        PredateOperatorRecord record = actor.m_PredateOperatorRecord;
+        PredatePursuitScore entry = life.Find(record.Id, record.Deployment, true);
+        entry.BeginTracking(state.SimulationSeconds, life.Shots - 1);
+        entry.PursuitShots++;
+        if (round)
+        {
+            // Keep the target at discharge so switching locks cannot move an in-flight round.
+            round.Pursuit = entry;
+            entry.PursuitPending++;
+        }
+        else entry.PursuitUnverified++;
     }
 
     void TrackFlight(PredateProjectileRound round)
@@ -317,6 +339,11 @@ class PredateScoreService
     {
         if (round.Number > 0 && !round.Hit)
             ResolveRound(Life(round.Deployment), round, false);
+        if (round.Pursuit && !round.PursuitHit)
+        {
+            round.Pursuit.PursuitPending--;
+            m_DirtyLives.Insert(round.Deployment);
+        }
         round.Closed = true;
         PredateProjectileRounds.Active.Remove(round.Tag);
     }
@@ -324,6 +351,15 @@ class PredateScoreService
     void RecordRoundHit(PredateLifeScore life, PredateProjectileRound round, PredateOperatorRecord record)
     {
         string key = record.Id;
+        PredatePursuitScore pursuit = round.Pursuit;
+        bool hitPursuedOperator = pursuit && !round.PursuitHit && pursuit.OperatorId == key && pursuit.Deployment == record.Deployment;
+        if (hitPursuedOperator)
+        {
+            round.PursuitHit = true;
+            pursuit.PursuitHits++;
+            pursuit.PursuitPending--;
+            m_DirtyLives.Insert(life.Life);
+        }
         if (!round.HitOperators) round.HitOperators = new set<string>;
         if (round.HitOperators.Find(key) >= 0) return;
         round.HitOperators.Insert(key);
@@ -336,7 +372,15 @@ class PredateScoreService
             life.MultiHitBonusPoints += ADDITIONAL_OPERATOR_POINTS;
             // Preserve the existing extra accuracy credit for single-projectile rounds.
             if (GetGame().ConfigGetTextOut("CfgAmmo " + round.Tag + " simulation") == "shotBullet")
+            {
                 life.ExtraOperatorHits++;
+                // Other contacts can arrive before the pursued Operator's contact.
+                if (pursuit && round.PursuitHit)
+                {
+                    if (hitPursuedOperator) pursuit.PursuitExtraHits += round.HitOperators.Count() - 1;
+                    else pursuit.PursuitExtraHits++;
+                }
+            }
         }
         life.UpdateScore();
         m_DirtyLives.Insert(life.Life);

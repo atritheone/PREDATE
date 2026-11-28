@@ -59,6 +59,18 @@ class PredateFootprintTests
         ledger.Prune(305);
         ledger.Nearby(site, 305, nearby);
         Check(nearby.Count() == 0, "all snow marks age out at their configured lifetime");
+
+        ledger = new PredateFootprintLedger;
+        int mixed = ledger.Record(site, PredateFootprintSurface.SNOW, 400, "raven-01");
+        ledger.Record(site, PredateFootprintSurface.EARTH, 401, "raven-01", 0, mixed);
+        ledger.Record(site, PredateFootprintSurface.SAND, 402, "raven-01", 0, mixed);
+        ledger.Nearby(site, 402, nearby);
+        Check(nearby.Count() == 3 && ledger.Read(nearby[0], "player-01", 402), "mixed terrain tracks share one trail");
+        ledger.Prune(492);
+        ledger.Nearby(site, 492, nearby);
+        bool survivors = nearby.Count() == 2 && nearby[0].CreatedAt == 400 && nearby[1].CreatedAt == 401;
+        Check(survivors, "incremental expiry preserves surviving footprint order");
+        Check(survivors && ledger.m_LastByCreator.Get("raven-01") == nearby[1] && !ledger.Read(nearby[1], "player-01", 492), "expiry preserves the newest surviving print and trail readership");
         PrintResult();
     }
 

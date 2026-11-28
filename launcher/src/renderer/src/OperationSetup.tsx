@@ -5,11 +5,13 @@ import {
   OPPONENT_COUNTS,
   isOpponentCount,
   isHuntMap,
+  isHuntStartTime,
   weaponSlots,
+  type GamePreset,
+  type GamePresetSetup,
   type HuntMap,
   type HuntTerrain,
   type LoadoutPreset,
-  type OpponentCount,
   type Overview,
   type PresetKind,
   type SessionAction,
@@ -46,7 +48,7 @@ const defaultWeather = 'dynamic'
 const defaultRespawnDelay = '7'
 
 function isNightStart(time: string, map: HuntMap = 'chernarusplus'): boolean {
-  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) return false
+  if (!isHuntStartTime(time)) return false
   const [hour, minute] = time.split(':').map(Number)
   const start = hour * 60 + minute
   const { sunrise, sunset } = terrainAssets[map]
@@ -64,6 +66,7 @@ function weatherForTerrain(terrain: HuntTerrain, weather: string): string {
 const presetSaveTitles = {
   weapon: 'Save Weapon Preset',
   equipment: 'Save Equipment Preset',
+  game: 'Save Game Preset',
 } as const
 const rifleGroups = [
   ['Assault rifle', 'Assault Rifles'],
@@ -71,20 +74,7 @@ const rifleGroups = [
   ['Sniper rifle', 'Sniper Rifles'],
 ] as const
 
-export interface OperationDraft {
-  name: string
-  map: HuntMap
-  time: string
-  dayNightCycle: boolean
-  weather: string
-  opponents: OpponentCount
-  enemyRespawns: boolean
-  respawnDelay: string
-  spawn: string
-  x: string
-  z: string
-  kit: string
-  playerOutfit: string
+export interface OperationDraft extends Omit<GamePresetSetup, 'customOpponents' | 'inventory'> {
   inventory: Inventory | null
   // An omitted ID follows the saved default. Null keeps the draft's own inventory.
   weaponPresetId?: string | null
@@ -231,7 +221,9 @@ export function OperationSetup({
 }): ReactNode {
   const [saveStatus, setSaveStatus] = useState('')
   const [presets, setPresets] = useState<LoadoutPreset[] | null>(null)
-  const [savingPreset, setSavingPreset] = useState<PresetKind | null>(null)
+  const [savingPreset, setSavingPreset] = useState<PresetKind | 'game' | null>(null)
+  const [gamePresets, setGamePresets] = useState<GamePreset[] | null>(null)
+  const [gamePresetId, setGamePresetId] = useState('')
   const [changingDefault, setChangingDefault] = useState(false)
   const [exactOpponents, setExactOpponents] = useState<string | null>(null)
   useEffect(() => {
@@ -245,6 +237,14 @@ export function OperationSetup({
           showError('Could not read the saved loadout presets.')
           setPresets([])
         }
+      },
+    )
+    void window.predate.gamePresets().then(
+      (saved) => {
+        if (mounted) setGamePresets(saved)
+      },
+      () => {
+        if (mounted) showError('Could not read the saved game presets.')
       },
     )
     return () => {
@@ -385,15 +385,50 @@ export function OperationSetup({
   const spawn = draft.spawn === 'regional' && !randomRegion ? 'original' : draft.spawn
   const spawnValid = spawn !== 'custom' || validSpawn(draft.x, draft.z, terrain.size)
   const delay = Number(draft.respawnDelay)
-  const valid =
+  const validSetup =
     !!presets &&
-    !!draft.name.trim() &&
-    terrain.available &&
     !!kit &&
     spawnValid &&
     isOpponentCount(opponents) &&
-    /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(draft.time) &&
+    isHuntStartTime(draft.time) &&
     (!draft.enemyRespawns || (Number.isInteger(delay) && delay >= 1 && delay <= 3600))
+  const valid = validSetup && !!draft.name.trim() && terrain.available
+  const selectedGamePreset = gamePresets?.find(({ id }) => id === gamePresetId)
+
+  const saveGamePreset = async (name: string): Promise<void> => {
+    const preset = await window.predate.saveGamePreset({
+      name,
+      setup: {
+        name: draft.name,
+        map: terrain.id,
+        time: draft.time,
+        dayNightCycle: draft.dayNightCycle,
+        weather,
+        opponents,
+        customOpponents,
+        enemyRespawns: draft.enemyRespawns,
+        respawnDelay: draft.respawnDelay,
+        spawn,
+        x: draft.x,
+        z: draft.z,
+        kit: kit.id,
+        playerOutfit,
+        inventory: loadout,
+      },
+    })
+    setGamePresets((existing) => [...(existing ?? []), preset])
+    setGamePresetId(preset.id)
+    setSaveStatus('Game preset saved.')
+  }
+
+  const loadGamePreset = (): void => {
+    if (!selectedGamePreset) return
+    const { customOpponents, ...setup } = selectedGamePreset.setup
+    setExactOpponents(customOpponents ? String(setup.opponents) : null)
+    update({ ...setup, weaponPresetId: null, equipmentPresetId: null })
+    setSaveStatus('Game preset loaded.')
+  }
+
   const saveDraft = (): void => {
     if (!isOpponentCount(opponents)) {
       showError('Enter a whole number from 1 to 100 opponents.')
@@ -752,7 +787,36 @@ export function OperationSetup({
             </section>
           </div>
         </div>
-        <div className="setup-footer split">
+        <div className="setup-footer">
+          <div className="game-preset-controls" role="group" aria-label="Game Presets">
+            <select
+              aria-label="Game Presets"
+              value={gamePresetId}
+              disabled={busy || !gamePresets?.length}
+              onChange={(event) => setGamePresetId(event.target.value)}
+            >
+              <option value="">Game Presets</option>
+              {gamePresets?.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.name}
+                </option>
+              ))}
+            </select>
+            <button type="button" onClick={loadGamePreset} disabled={busy || !selectedGamePreset}>
+              Load
+            </button>
+            <button
+              type="button"
+              aria-label="Save Game Preset"
+              disabled={busy || !gamePresets || !validSetup}
+              onClick={() => setSavingPreset('game')}
+            >
+              Save Preset
+            </button>
+          </div>
+          <button type="button" onClick={saveDraft}>
+            Save Draft
+          </button>
           <p className="hint" role="status">
             {saveStatus ||
               (!spawnValid
@@ -761,20 +825,15 @@ export function OperationSetup({
                   ? 'The current hunt will save and close.'
                   : '')}
           </p>
-          <div className="setup-actions">
-            <button type="button" onClick={saveDraft}>
-              Save Draft
-            </button>
-            <button className="primary" type="submit" disabled={!valid || busy}>
-              Create and Play
-            </button>
-          </div>
+          <button className="primary" type="submit" disabled={!valid || busy}>
+            Create and Play
+          </button>
         </div>
       </form>
       {savingPreset && (
         <SavePresetDialog
           title={presetSaveTitles[savingPreset]}
-          save={(name) => savePreset(savingPreset, name)}
+          save={savingPreset === 'game' ? saveGamePreset : (name) => savePreset(savingPreset, name)}
           close={() => setSavingPreset(null)}
         />
       )}

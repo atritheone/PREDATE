@@ -518,12 +518,14 @@ class PredatePeerRoster
         PredateOperatorIndex index = PredateOperatorIndex.Capture();
         foreach (PredatePeerBinding binding : m_Bindings)
             if (!SaveActor(session, binding, error, index)) return false;
-        return SaveState(error);
+        return SaveState(session.m_WorldState.SimulationSeconds, error);
     }
 
-    bool SaveState(out string error)
+    bool SaveState(float now, out string error)
     {
         CancelStateSave();
+        foreach (PredatePeerState peer : m_State.Peers)
+            PredatePersistence.TrimExpiredPrivateHistory(peer.HuntReceiver, now);
         // Explicit saves continue to produce the standard roster file.
         string data;
         if (!JsonFileLoader<PredatePeerRosterSave>.MakeData(m_State, data, error, false)) return false;
@@ -573,9 +575,10 @@ class PredatePeerRoster
         return true;
     }
 
-    bool WriteStateRow(int row, out string error)
+    bool WriteStateRow(int row, out string error, float now = -1)
     {
         string data;
+        PredatePersistence.TrimExpiredPrivateHistory(m_State.Peers[row].HuntReceiver, now);
         if (!JsonFileLoader<PredatePeerState>.MakeData(m_State.Peers[row], data, error, false)) return false;
         if (row > 0) FPrint(m_StateFile, ",");
         FPrint(m_StateFile, data);

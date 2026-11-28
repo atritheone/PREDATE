@@ -8,7 +8,13 @@ class PredateHuntParticipant
     PredateObservationMemory Memory;
     float InterceptedUntil;
 
-    void PredateHuntParticipant(string id, PlayerBase actor, PredateHuntReceiver receiver = null, PredateHunterState hunter = null, PredateObservationMemory memory = null, float interceptedUntil = 0)
+    void PredateHuntParticipant(string id = "", PlayerBase actor = null, PredateHuntReceiver receiver = null, PredateHunterState hunter = null,
+        PredateObservationMemory memory = null, float interceptedUntil = 0)
+    {
+        if (actor) Sample(id, actor, receiver, hunter, memory, interceptedUntil);
+    }
+
+    void Sample(string id, PlayerBase actor, PredateHuntReceiver receiver, PredateHunterState hunter, PredateObservationMemory memory, float interceptedUntil)
     {
         Id = id;
         Actor = actor;
@@ -17,6 +23,87 @@ class PredateHuntParticipant
         Hunter = hunter;
         Memory = memory;
         InterceptedUntil = interceptedUntil;
+    }
+}
+
+class PredateHuntScratch
+{
+    ref array<ref PredateHuntParticipant> Participants = {};
+    ref map<string, vector> Live = new map<string, vector>;
+    protected ref array<ref PredateHuntParticipant> m_Pool = {};
+    protected ref array<ref PredateSignalTrack> m_Order = {};
+    protected ref array<ref PredateObservation> m_Readings = {};
+    protected ref array<float> m_Ranges = {};
+    protected ref array<int> m_BearingLanes = {};
+
+    void BeginTick()
+    {
+        Participants.Clear();
+        Live.Clear();
+    }
+
+    void AddParticipant(string id, PlayerBase actor, PredateHuntReceiver receiver = null, PredateHunterState hunter = null,
+        PredateObservationMemory memory = null, float interceptedUntil = 0)
+    {
+        int index = Participants.Count();
+        if (index == m_Pool.Count()) m_Pool.Insert(new PredateHuntParticipant);
+        PredateHuntParticipant participant = m_Pool[index];
+        participant.Sample(id, actor, receiver, hunter, memory, interceptedUntil);
+        Participants.Insert(participant);
+        Live.Insert(id, participant.Position);
+    }
+
+    void AddReading(PredateSignalTrack track, PredateObservation reading, float distance)
+    {
+        int first = 0;
+        int end = m_Ranges.Count();
+        while (first < end)
+        {
+            int middle = (first + end) / 2;
+            if (m_Ranges[middle] >= distance) first = middle + 1;
+            else end = middle;
+        }
+        m_Order.InsertAt(track, first);
+        m_Readings.InsertAt(reading, first);
+        m_Ranges.InsertAt(distance, first);
+    }
+
+    void PublishReadings()
+    {
+        // A lane is one above the highest prior overlapping lane. Integer
+        // pulse starts let dense receivers query just the neighboring bearings.
+        bool dense = m_Readings.Count() >= 64;
+        if (dense)
+        {
+            m_BearingLanes.Resize(360);
+            for (int bearingSlot = 0; bearingSlot < 360; bearingSlot++) m_BearingLanes[bearingSlot] = 0;
+        }
+        for (int index = 0; index < m_Readings.Count(); index++)
+        {
+            PredateObservation reading = m_Readings[index];
+            if (dense)
+            {
+                int bearing = Math.Floor(reading.Bearing);
+                int slot = (bearing + 360 - PredateBearingPulse.DEGREES + 1) % 360;
+                for (int offset = 0; offset < 2 * PredateBearingPulse.DEGREES - 1; offset++)
+                {
+                    reading.OverlapLane = Math.Max(reading.OverlapLane, m_BearingLanes[slot]);
+                    slot++;
+                    if (slot == 360) slot = 0;
+                }
+                m_BearingLanes[bearing] = reading.OverlapLane + 1;
+            }
+            else
+            {
+                for (int preceding = 0; preceding < index; preceding++)
+                    if (PredateBearingPulse.Overlap(reading.Bearing, m_Readings[preceding].Bearing))
+                        reading.OverlapLane = Math.Max(reading.OverlapLane, m_Readings[preceding].OverlapLane + 1);
+            }
+            m_Order[index].RecordSample(reading);
+        }
+        m_Order.Clear();
+        m_Readings.Clear();
+        m_Ranges.Clear();
     }
 }
 
@@ -32,24 +119,20 @@ class PredateHuntRuntime
         hunter.LastSignalKey = "";
     }
 
-    static void Scan(PredateHuntParticipant observer, array<ref PredateHuntParticipant> participants, PredateConfig config, float now)
+    static void Scan(PredateHuntParticipant observer, array<ref PredateHuntParticipant> participants, PredateConfig config, float now,
+        PredateHuntScratch workspace = null)
     {
         PredateHuntReceiver receiver = observer.Receiver;
         if (now < receiver.NextPulseAt) return;
         receiver.NextPulseAt = now + PredateBearingPulse.INTERVAL;
-        array<ref PredateSignalTrack> order = {};
-        array<ref PredateObservation> readings = {};
-        array<float> ranges = {};
-        map<string, PredateSignalTrack> existingTracks = new map<string, PredateSignalTrack>;
-        foreach (PredateSignalTrack existingTrack : receiver.Tracks)
-            existingTracks.Insert(existingTrack.SubjectId, existingTrack);
+        PredateHuntScratch scratch = workspace;
+        if (!scratch) scratch = new PredateHuntScratch;
         vector origin = observer.Position;
         foreach (PredateHuntParticipant contact : participants)
         {
             if (contact.Id == observer.Id) continue;
             int reception = PredateSignalRules.Reception(origin, contact.Position, true);
-            PredateSignalTrack track;
-            existingTracks.Find(contact.Id, track);
+            PredateSignalTrack track = receiver.Find(contact.Id);
             bool existing = track != null;
             if (!existing && reception != PredatePulseReception.BEARING) continue;
             if (!track) track = PredateSignalService.Track(observer.Id, contact.Id);
@@ -63,24 +146,12 @@ class PredateHuntRuntime
                 if (existing) track.RecordSample(null);
                 continue;
             }
-            if (!existing) receiver.Tracks.Insert(track);
+            if (!existing) receiver.AddTrack(track);
             track.BroadcastTime = now;
             track.NextPulseAt = receiver.NextPulseAt;
-            float distance = PredateHunterBrain.Distance(origin, samplePosition);
-            int at;
-            while (at < ranges.Count() && ranges[at] >= distance) at++;
-            order.InsertAt(track, at);
-            readings.InsertAt(sample, at);
-            ranges.InsertAt(distance, at);
+            scratch.AddReading(track, sample, PredateHunterBrain.Distance(origin, samplePosition));
         }
-        for (int index = 0; index < order.Count(); index++)
-        {
-            PredateObservation reading = readings[index];
-            for (int preceding = 0; preceding < index; preceding++)
-                if (PredateBearingPulse.Overlap(reading.Bearing, readings[preceding].Bearing))
-                    reading.OverlapLane = Math.Max(reading.OverlapLane, readings[preceding].OverlapLane + 1);
-            order[index].RecordSample(reading);
-        }
+        scratch.PublishReadings();
     }
 
     static void Tick(PredateSession session, PlayerBase player, string playerId)
@@ -88,25 +159,27 @@ class PredateHuntRuntime
         if (!session.m_HuntConfig.EnableStrategicHunter) return;
         PredateWorldState worldState = session.m_WorldState;
         float now = worldState.SimulationSeconds;
-        array<ref PredateHuntParticipant> participants = {new PredateHuntParticipant("player-01", player)};
+        PredateHuntScratch scratch = session.m_PredateHuntScratch;
+        scratch.BeginTick();
+        scratch.AddParticipant("player-01", player);
         if (session.m_HuntBot && session.m_HuntBot.IsAlive())
-            participants.Insert(new PredateHuntParticipant(worldState.Hunter.OwnerId, session.m_HuntBot, worldState.HuntReceiver, worldState.Hunter, worldState.Observations, worldState.BotInterceptionUntil));
+            scratch.AddParticipant(worldState.Hunter.OwnerId, session.m_HuntBot, worldState.HuntReceiver, worldState.Hunter, worldState.Observations, worldState.BotInterceptionUntil);
         if (session.m_PeerRoster)
         {
             foreach (PredatePeerBinding binding : session.m_PeerRoster.m_Bindings)
             {
                 if (!binding.Actor || !binding.Actor.IsAlive()) continue;
                 PredatePeerState peer = binding.State;
-                participants.Insert(new PredateHuntParticipant(peer.Operator.Id, binding.Actor, peer.HuntReceiver, peer.Hunter, peer.Memory, peer.InterceptedUntil));
+                scratch.AddParticipant(peer.Operator.Id, binding.Actor, peer.HuntReceiver, peer.Hunter, peer.Memory, peer.InterceptedUntil);
             }
         }
+        array<ref PredateHuntParticipant> participants = scratch.Participants;
         if (now >= session.m_PredateNextLightScan)
         {
             session.m_PredateNextLightScan = now + 0.75;
             PredatePEQClues.Scan(participants, now);
         }
-        map<string, vector> live = new map<string, vector>;
-        foreach (PredateHuntParticipant participant : participants) live.Insert(participant.Id, participant.Position);
+        map<string, vector> live = scratch.Live;
         foreach (PredateHuntParticipant observer : participants)
         {
             if (!observer.Receiver) continue;
@@ -126,7 +199,7 @@ class PredateHuntRuntime
                 for (int memoryIndex = observer.Memory.Entries.Count() - 1; memoryIndex >= 0; memoryIndex--)
                     if (observer.Memory.Entries[memoryIndex].SubjectId == subject) observer.Memory.Entries.RemoveOrdered(memoryIndex);
             }
-            Scan(observer, participants, session.m_HuntConfig, now);
+            Scan(observer, participants, session.m_HuntConfig, now, scratch);
         }
         PredatePeerBinding selected;
         if (session.m_PeerRoster) selected = session.m_PeerRoster.PlayerLock();

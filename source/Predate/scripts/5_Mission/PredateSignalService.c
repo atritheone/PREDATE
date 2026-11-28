@@ -1,4 +1,34 @@
 // Authoritative event producer. Receivers and the hunter only consume samples.
+class PredateMapPulseCache
+{
+    ref array<PredateObservation> m_Current = {};
+    ref array<PredateObservation> m_Previous = {};
+    ref array<PredateObservation> m_Sorted = {};
+
+    void Collect(PredateSignalTrack track, float now, bool hideSelected)
+    {
+        if (!track || (hideSelected && track.Selected)) return;
+        PredateObservation sample = track.PlayerDisplaySample();
+        if (sample && !sample.Expired(now)) m_Current.Insert(sample);
+    }
+
+    void SortIfChanged()
+    {
+        bool changed = m_Previous.Count() != m_Current.Count();
+        for (int index = 0; !changed && index < m_Current.Count(); index++)
+            changed = m_Previous[index] != m_Current[index];
+        if (!changed) return;
+
+        m_Sorted.Clear();
+        m_Previous.Clear();
+        foreach (PredateObservation sample : m_Current)
+        {
+            m_Previous.Insert(sample);
+            PredateSignalService.InsertMapPulse(m_Sorted, sample);
+        }
+    }
+}
+
 class PredateSignalService
 {
     static PredateSignalTrack Track(string owner, string subject)
@@ -200,6 +230,11 @@ class PredateSignalService
         if (!track || (hideSelected && track.Selected)) return;
         PredateObservation sample = track.PlayerDisplaySample();
         if (!sample || sample.Expired(now)) return;
+        InsertMapPulse(samples, sample);
+    }
+
+    static void InsertMapPulse(array<PredateObservation> samples, PredateObservation sample)
+    {
         // Sort on the server so the overlay can stack even rivals in the same distance band.
         int position;
         while (position < samples.Count() && samples[position].PulseDistance >= sample.PulseDistance)
@@ -215,13 +250,19 @@ class PredateSignalService
             rpc.Write(count);
             return;
         }
-        array<PredateObservation> samples = {};
+        PredateMapPulseCache cache = s.m_MapPulseCache;
+        cache.m_Current.Clear();
         float now = s.m_WorldState.SimulationSeconds;
-        AddMapPulse(samples, s.m_WorldState.PlayerSignal, now, hideSelected);
-        if (s.m_PeerRoster) s.m_PeerRoster.AddMapPulses(samples, now, hideSelected);
-        count = samples.Count();
+        cache.Collect(s.m_WorldState.PlayerSignal, now, hideSelected);
+        if (s.m_PeerRoster)
+        {
+            foreach (PredatePeerBinding binding : s.m_PeerRoster.m_Bindings)
+                cache.Collect(binding.State.PlayerReceiver, now, hideSelected);
+        }
+        cache.SortIfChanged();
+        count = cache.m_Sorted.Count();
         rpc.Write(count);
-        foreach (PredateObservation sample : samples)
+        foreach (PredateObservation sample : cache.m_Sorted)
         {
             rpc.Write(sample.SubjectId);
             int sector = sample.Bearing;

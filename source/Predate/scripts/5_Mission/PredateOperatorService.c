@@ -445,6 +445,13 @@ class PredateOperatorService
     static void PredateStart(PredateSession s)
     {
         if (!s.m_HuntSchemaValid || s.m_HuntError != "") return;
+        int openingStarted;
+        bool profileOpening = PredateServerDiagnostics.Performance && !s.m_HuntReady;
+        if (profileOpening)
+        {
+            Print("[PredatePerf] startup deferred_ms=" + TickCount(s.m_PerfStartupDelayStart) * 0.0001);
+            openingStarted = TickCount(0);
+        }
         s.PredateApplyWorldClock();
         if (s.m_WorldState.Year > 0)
             GetGame().GetWorld().SetDate(s.m_WorldState.Year, s.m_WorldState.Month, s.m_WorldState.Day, s.m_WorldState.Hour, s.m_WorldState.Minute);
@@ -548,7 +555,14 @@ class PredateOperatorService
         }
         s.m_PredateOpeningSites.Clear();
         s.m_HuntReady = true;
+        int saveStarted;
+        if (profileOpening)
+        {
+            Print("[PredatePerf] startup roster_open_ms=" + TickCount(openingStarted) * 0.0001);
+            saveStarted = TickCount(0);
+        }
         s.PredateSave();
+        if (profileOpening) Print("[PredatePerf] startup initial_save_ms=" + TickCount(saveStarted) * 0.0001);
         Print("[Predate] SESSION READY: schema=1; operator=" + record.Id + "; state=" + record.LifeState + "; development=" + s.m_Development);
         if (s.m_Development && s.m_HuntConfig.RunSelfTests)
             GetGame().GetCallQueue(CALL_CATEGORY_SYSTEM).CallLater(s.PredateSelfTest, 2000, false);

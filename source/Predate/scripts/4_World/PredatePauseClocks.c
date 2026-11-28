@@ -1,5 +1,26 @@
 // Native scheduled ticks use engine uptime even while gameplay is held. Shift
 // their timestamps by the held interval so Resume cannot apply catch-up time.
+modded class ExpansionWorld
+{
+    protected bool m_PredateSchedulerHeld;
+
+    override void eAI_OnUpdate(bool doSim, float timeslice)
+    {
+        if (PredateServerPauseDriver.Held)
+        {
+            m_PredateSchedulerHeld = true;
+            return;
+        }
+        if (m_PredateSchedulerHeld)
+        {
+            // The existing actor clock hold rebases each actor's own timestamps.
+            m_LastAIUpdateTime = GetGame().GetTime();
+            m_PredateSchedulerHeld = false;
+        }
+        super.eAI_OnUpdate(doSim, timeslice);
+    }
+}
+
 modded class PlayerBase
 {
     bool m_PredateClockHeld;
@@ -34,6 +55,20 @@ modded class PlayerBase
 
 modded class eAIBase
 {
+    override void eAI_OnUpdate(float pDt)
+    {
+        if (PredateServerDiagnostics.Performance && PredateServerDiagnostics.HasPerfPlayer && m_PredateCombatEnabled)
+        {
+            float milliseconds = pDt * 1000;
+            float distanceSquared = vector.DistanceSq(GetPosition(), PredateServerDiagnostics.PerfPlayerPosition);
+            if (distanceSquared <= 90000) PredateServerDiagnostics.NearAI.Add(milliseconds);
+            else PredateServerDiagnostics.RemoteAI.Add(milliseconds);
+            if (m_PredateLastVisualAt >= 0 && m_PredateSimulationTime - m_PredateLastVisualAt <= 1)
+                PredateServerDiagnostics.EngagedAI.Add(milliseconds);
+        }
+        super.eAI_OnUpdate(pDt);
+    }
+
     override void PredateEndClockHold()
     {
         if (!m_PredateClockHeld) return;

@@ -36,6 +36,7 @@ class PredateShotScoreRegression : MissionServer
             m_ShotTarget = m_PredateSession.m_HuntBot;
             m_ShotTarget.m_PredateProbeShooter = true;
             m_ShotTarget.m_PredateProbeCeaseFire = true;
+            PredateSignalService.Select(m_PredateSession, false);
             // Let this discharge expire without any native stop callback.
             PredateProjectileRound miss = RegisterRound(weapon, "PR_0_Bullet_556x45");
             // Verify confirmation can recover the staged tag without EEFired.
@@ -50,7 +51,10 @@ class PredateShotScoreRegression : MissionServer
 
     void ApplyFixtureImpact(Weapon_Base weapon)
     {
+        m_PredateSession.m_WorldState.PlayerSignal.Reception = PredatePulseReception.BEARING;
+        PredateSignalService.Select(m_PredateSession, true);
         PredateProjectileRound hit = SeedRound(weapon, "PR_1_Bullet_556x45");
+        PredateSignalService.Select(m_PredateSession, false);
         // The projectile was fired on the previous deployment.
         m_PredateSession.m_WorldState.PlayerLife = m_FiringDeployment + 1;
         m_ShotPlayer.m_PredateScoringLife = m_FiringDeployment + 1;
@@ -58,6 +62,7 @@ class PredateShotScoreRegression : MissionServer
         m_ShotTarget.SetPosition(position);
         vector impact = position + "0 1.2 0";
         m_ExpectedRange = vector.Distance(m_ShotPlayer.GetPosition(), impact);
+        if (m_ShotPeer) PredateProjectileRounds.ReportContact(hit.Tag, m_ShotPeer, m_ShotPeer.GetPosition() + "0 1.2 0");
         m_ShotTarget.ProcessDirectDamage(DT_FIRE_ARM, weapon, "Torso", hit.Tag, impact, 0.2);
         if (m_ShotPeer)
         {
@@ -106,13 +111,18 @@ class PredateShotScoreRegression : MissionServer
         m_TargetHealthAfterHit = m_ShotTarget.GetHealth("", "Health");
         foreach (PredatePursuitScore encounter : life.Encounters)
             if (encounter.OperatorId == m_ShotTarget.m_PredateOperatorRecord.Id) m_CreditedRangeAfterHit = encounter.CreditedRange;
+        m_PredateSession.m_WorldState.PlayerLife = m_FiringDeployment;
         m_ShotPlayer.m_PredateScoringLife = m_FiringDeployment;
-        SeedRound(weapon, "PR_2_Bullet_556x45", m_ShotTarget, impact);
+        m_PredateSession.m_WorldState.PlayerSignal.Reception = PredatePulseReception.BEARING;
+        PredateSignalService.Select(m_PredateSession, true);
+        PredateProjectileRound secondHit = SeedRound(weapon, "PR_2_Bullet_556x45", m_ShotTarget, impact);
         SeedRound(weapon, "PR_3_Bullet_556x45");
         if (m_ShotPeer)
         {
-            PredateProjectileRound spread = SeedRound(weapon, "PR_4_Bullet_12GaugePellets", m_ShotTarget, impact);
             vector peerImpact = m_ShotPeer.GetPosition() + "0 1.2 0";
+            PredateProjectileRounds.ReportContact(secondHit.Tag, m_ShotPeer, peerImpact);
+            SeedRound(weapon, "PR_5_Bullet_556x45", m_ShotPeer, peerImpact);
+            PredateProjectileRound spread = SeedRound(weapon, "PR_4_Bullet_12GaugePellets", m_ShotTarget, impact);
             PredateProjectileRounds.ReportContact(spread.Tag, m_ShotPeer, peerImpact);
             PredateProjectileRounds.ReportContact(spread.Tag, m_ShotTarget, impact + "0 0.1 0");
             PredateProjectileRounds.ReportContact(spread.Tag, m_ShotPeer, peerImpact + "0 0.1 0");
@@ -151,6 +161,10 @@ class PredateShotScoreRegression : MissionServer
         resumed.PendingRounds = 1;
         resumed.RecoverInterruptedRounds();
         resumed.RecoverInterruptedRounds();
+        PredatePursuitScore pendingPursuit = resumed.Find("raven-01", 1, true);
+        pendingPursuit.PursuitShots = 1;
+        pendingPursuit.PursuitPending = 1;
+        bool recoveredPursuit = resumed.RecoverInterruptedRounds() && pendingPursuit.PursuitPending == 0;
         score.Save();
         FileHandle report = OpenFile("$profile:ShotScoreRegression.json", FileMode.WRITE);
         if (!report) return;
@@ -172,6 +186,7 @@ class PredateShotScoreRegression : MissionServer
         FPrintln(report, "\"ExpiryReleased\":" + expiryReleased + ",");
         FPrintln(report, "\"QuitReleased\":" + quitReleased + ",");
         FPrintln(report, "\"ResumedMisses\":" + resumed.Misses + ",");
+        FPrintln(report, "\"RecoveredPursuit\":" + recoveredPursuit + ",");
         FPrintln(report, "\"LaterDeploymentHits\":" + nextHits + ",");
         FPrintln(report, "\"BuckshotLifetime\":" + GetGame().ConfigGetFloat("CfgAmmo PR_0_Bullet_12GaugePellets timeToLive") + ",");
         FPrintln(report, "\"BucaLifetime\":" + GetGame().ConfigGetFloat("CfgAmmo PR_0_BC_Bullet_FN57x28mm timeToLive") + ",");

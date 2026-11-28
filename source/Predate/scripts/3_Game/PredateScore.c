@@ -22,6 +22,11 @@ class PredatePursuitScore
     int LastPulseSerial;
     int RoundsAtLock;
     int RoundsToFirstHit;
+    int PursuitShots;
+    int PursuitHits;
+    int PursuitExtraHits;
+    int PursuitPending;
+    int PursuitUnverified;
     int PrecisionRounds;
     int PrecisionHits;
     int PrecisionThrough;
@@ -107,23 +112,30 @@ class PredateLifeScore
         Version = 2;
     }
 
-    void RecoverInterruptedRounds()
+    bool RecoverInterruptedRounds()
     {
-        if (PendingRounds <= 0) return;
         // Native projectiles are transient. A resumed checkpoint has no way
         // for its remaining in-flight rounds to reach an operator.
+        bool interrupted = PendingRounds > 0;
         Misses += PendingRounds;
         PendingRounds = 0;
         foreach (PredatePursuitScore entry : Encounters)
         {
+            if (entry.PursuitPending > 0)
+            {
+                entry.PursuitPending = 0;
+                interrupted = true;
+            }
             if (entry.PrecisionPending <= 0) continue;
             entry.PrecisionPending = 0;
+            interrupted = true;
             if (entry.KillPoints == 0) continue;
             int previous = entry.PrecisionPoints;
             entry.UpdatePrecision();
             KillScore += entry.PrecisionPoints - previous;
         }
-        UpdateScore();
+        if (interrupted) UpdateScore();
+        return interrupted;
     }
 
     void UpdateScore()

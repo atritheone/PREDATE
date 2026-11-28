@@ -72,25 +72,31 @@ def main():
         print(json.dumps(result, indent=2), flush=True)
         assert result.get("Unverified") == result.get("Pending") == 0, result
         spread_round = int(args.operators > 1)
-        expected_counts = (4 + spread_round, 2 + spread_round, 2)
+        expected_counts = (4 + 2 * spread_round, 2 + 2 * spread_round, 2)
         assert (result.get("Shots"), result.get("Hits"), result.get("Misses")) == expected_counts, result
-        assert result.get("ExtraOperatorHits") == spread_round, result
-        assert result.get("HitPointsBeforeKill") == 250 * spread_round, result
-        assert result.get("HitPointsAfterFirstKill") == 200 * spread_round, result
+        assert result.get("ExtraOperatorHits") == 2 * spread_round, result
+        assert result.get("HitPointsBeforeKill") == 350 * spread_round, result
+        assert result.get("HitPointsAfterFirstKill") == 300 * spread_round, result
         assert result.get("BonusAfterFirstKill") == 0 and result.get("KillsAfterFirstKill") == spread_round, result
-        assert result.get("NonLethalHitPoints") == 100 + 50 * spread_round, result
-        assert result.get("MultiHitBonusPoints") == 200 * spread_round, result
+        assert result.get("NonLethalHitPoints") == 100 + 150 * spread_round, result
+        assert result.get("MultiHitBonusPoints") == 300 * spread_round, result
         assert result.get("MultiKillBonusPoints") == 500 * spread_round, result
         assert result.get("Kills") == 2 * spread_round, result
         saved = store.read_json(world.PROFILE / "PredateLifeScore-1.json")
-        assert saved["ExtraOperatorHits"] == spread_round, saved
+        assert saved["ExtraOperatorHits"] == 2 * spread_round, saved
         assert saved["NonLethalHitPoints"] == result["NonLethalHitPoints"], saved
         assert saved["MultiHitBonusPoints"] == result["MultiHitBonusPoints"], saved
         assert saved["MultiKillBonusPoints"] == result["MultiKillBonusPoints"], saved
+        pursuit = next(entry for entry in saved["Encounters"] if entry["PursuitShots"])
+        assert len([entry for entry in saved["Encounters"] if entry["PursuitShots"]]) == 1, saved
+        assert (pursuit["PursuitShots"], pursuit["PursuitHits"], pursuit["PursuitPending"],
+                pursuit["PursuitUnverified"]) == (3 + 2 * spread_round, 2 + spread_round, 0, 0), pursuit
+        assert pursuit["PursuitExtraHits"] == 2 * spread_round, pursuit
         assert sum(entry["KillPoints"] for entry in saved["Encounters"]) == 2000 * spread_round, saved
         assert saved["Score"] == sum(saved[name] for name in (
             "KillScore", "SurvivalScore", "NonLethalHitPoints", "MultiHitBonusPoints", "MultiKillBonusPoints")), saved
         assert result.get("ExpiryReleased") and result.get("QuitReleased") and result.get("ResumedMisses") == 1, result
+        assert result.get("RecoveredPursuit"), result
         assert result.get("LaterDeploymentHits") == 0 and result.get("BuckshotLifetime", 0) > 0, result
         if args.buca:
             assert result.get("BucaLifetime", 0) > 0, result

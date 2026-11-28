@@ -6,6 +6,21 @@ class PredateControl
     string Action;
 }
 
+class PredateCommandFile
+{
+    static string ReadChanged(string path, string previous)
+    {
+        if (!FileExist(path)) return "";
+        FileHandle file = OpenFile(path, FileMode.READ);
+        if (!file) return "";
+        string contents;
+        ReadFile(file, contents, 8192);
+        CloseFile(file);
+        if (contents == previous) return "";
+        return contents;
+    }
+}
+
 class PredateSessionStatus
 {
     int Schema = 1;
@@ -54,6 +69,24 @@ class PredateClientStatus
     bool PauseMenu;
     int GameState;
     bool StartupArtworkReady;
+
+    bool Matches(PredateClientStatus other)
+    {
+        if (!other) return false;
+        return Phase == other.Phase && Error == other.Error && Acknowledged == other.Acknowledged && Paused == other.Paused && PauseDisconnected == other.PauseDisconnected && PauseMenu == other.PauseMenu && GameState == other.GameState && StartupArtworkReady == other.StartupArtworkReady;
+    }
+
+    void Remember(PredateClientStatus other)
+    {
+        Phase = other.Phase;
+        Error = other.Error;
+        Acknowledged = other.Acknowledged;
+        Paused = other.Paused;
+        PauseDisconnected = other.PauseDisconnected;
+        PauseMenu = other.PauseMenu;
+        GameState = other.GameState;
+        StartupArtworkReady = other.StartupArtworkReady;
+    }
 }
 
 class PredateClientCommand

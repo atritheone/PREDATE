@@ -26,6 +26,8 @@ class PredateProjectileRound
     ref set<string> FatalHits;
     int Deployment;
     int Number;
+    PredatePursuitScore Pursuit;
+    bool PursuitHit;
     bool Fired;
     bool Hit;
     bool Closed;

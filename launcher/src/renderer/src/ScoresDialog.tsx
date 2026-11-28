@@ -11,6 +11,25 @@ const duration = (seconds: number): string => {
 const scoreText = (points: number): string => String(points).padStart(9, '0')
 const accuracyText = (hits: number, shots: number): string =>
   shots ? `${Math.round((1000 * hits) / shots) / 10}%` : '—'
+
+function PursuitAccuracy({ entry }: { entry: ScoreEncounter }) {
+  const shots = entry.PursuitShots ?? 0
+  const hits = entry.PursuitHits ?? 0
+  const extraHits = entry.PursuitExtraHits ?? 0
+  const pending = entry.PursuitPending ?? 0
+  const unverified = entry.PursuitUnverified ?? 0
+  const accuracy = shots > 0 && !pending && !unverified ? (hits + extraHits) / shots : null
+  return (
+    <div>
+      <dt>Accuracy</dt>
+      <dd>{formatAccuracy(accuracy)}</dd>
+      {shots > 0 && <dd>{hits} / {shots} rounds hit</dd>}
+      {extraHits > 0 && <dd>{extraHits} extra {extraHits === 1 ? 'hit' : 'hits'}</dd>}
+      {pending > 0 && <dd>{pending} pending</dd>}
+      {unverified > 0 && <dd>{unverified} unverified</dd>}
+    </div>
+  )
+}
 const encounterPoints = (entry: ScoreEncounter): number =>
   entry.KillPoints +
   entry.PursuitPoints +
@@ -205,6 +224,7 @@ export function ScoresDialog({ profile, onClose }: { profile: string; onClose: (
                   {encounterPoints(entry).toLocaleString()} pts
                 </summary>
                 <dl className="score-stats">
+                  <PursuitAccuracy entry={entry} />
                   {Boolean(entry.Tracked) && (
                     <>
                       <div>

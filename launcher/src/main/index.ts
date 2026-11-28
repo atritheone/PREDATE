@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Backend, findProject } from './backend'
+import { loadGamePresets, saveGamePreset } from './gamePresets'
 import { loadPresets, savePreset, setDefaultPreset } from './loadoutPresets'
 import {
   DEFAULT_OPPONENT_COUNT,
@@ -169,6 +170,14 @@ async function createWindow(): Promise<void> {
   ipcMain.handle('predate:save-loadout-preset', (event, preset: unknown) => {
     trusted(event)
     return savePreset(backend.root, preset)
+  })
+  ipcMain.handle('predate:game-presets', (event) => {
+    trusted(event)
+    return loadGamePresets(backend.root)
+  })
+  ipcMain.handle('predate:save-game-preset', (event, preset: unknown) => {
+    trusted(event)
+    return saveGamePreset(backend.root, preset)
   })
   ipcMain.handle('predate:set-default-loadout-preset', (event, kind: unknown, id: unknown) => {
     trusted(event)

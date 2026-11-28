@@ -218,6 +218,7 @@ class PredatePersistence
         PredateSignalService.Capture(s);
         PredateMemoryPersistence.Capture(s);
         PredateWeather.CaptureForSave(s);
+        TrimExpiredPrivateHistory(s.m_WorldState.HuntReceiver, s.m_WorldState.SimulationSeconds);
         string error;
         string worldData;
         if (!JsonFileLoader<PredateWorldState>.MakeData(s.m_WorldState, worldData, error, false))
@@ -230,6 +231,18 @@ class PredatePersistence
             return Fail(s, "Cannot save progress: " + error);
         if (s.m_Score) s.m_Score.Save();
         return true;
+    }
+
+    static void TrimExpiredPrivateHistory(PredateHuntReceiver receiver, float now)
+    {
+        if (!receiver || now < 0) return;
+        foreach (PredateSignalTrack track : receiver.Tracks)
+        {
+            // Keep the newest reading as a directional prior and preserve
+            // the current sample, sequence, and unexpired triangulation history.
+            while (track.History.Count() > 1 && track.History[0].Expired(now))
+                track.History.RemoveOrdered(0);
+        }
     }
 
     static bool Save(PredateSession s)

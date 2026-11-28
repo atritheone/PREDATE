@@ -79,23 +79,57 @@ class PredateFootprintLedger
     {
         if (now < m_NextPrune && m_Cells) return;
         m_NextPrune = now + 2;
+        set<string> expiredCreators;
         int kept;
         for (int index = 0; index < Marks.Count(); index++)
         {
             PredateFootprint mark = Marks[index];
-            if (now >= mark.ExpiresAt) continue;
+            if (now >= mark.ExpiresAt)
+            {
+                if (m_Cells && RemoveIndexedMark(mark))
+                {
+                    if (!expiredCreators) expiredCreators = new set<string>;
+                    expiredCreators.Insert(mark.Creator);
+                }
+                continue;
+            }
             if (kept != index) Marks[kept] = mark;
             kept++;
         }
-        bool changed = kept < Marks.Count();
-        Marks.Resize(kept);
+        if (kept != Marks.Count()) Marks.Resize(kept);
         for (int trailIndex = Trails.Count() - 1; trailIndex >= 0; trailIndex--)
         {
             if (now < Trails[trailIndex].ExpiresAt) continue;
+            if (m_TrailIndex) m_TrailIndex.Remove(Trails[trailIndex].Id);
             Trails.RemoveOrdered(trailIndex);
-            changed = true;
         }
-        if (changed || !m_Cells) BuildIndex();
+        if (!m_Cells) BuildIndex();
+        if (!expiredCreators) return;
+
+        // An older print can outlast the newest one on another surface.
+        for (int fallback = kept - 1; fallback >= 0 && expiredCreators.Count() > 0; fallback--)
+        {
+            PredateFootprint surviving = Marks[fallback];
+            int creator = expiredCreators.Find(surviving.Creator);
+            if (creator < 0) continue;
+            m_LastByCreator.Set(surviving.Creator, surviving);
+            expiredCreators.Remove(creator);
+        }
+    }
+
+    protected bool RemoveIndexedMark(PredateFootprint mark)
+    {
+        string key = CellKey(Math.Floor(mark.Position[0] / CELL_SIZE), Math.Floor(mark.Position[2] / CELL_SIZE));
+        array<ref PredateFootprint> cell = m_Cells.Get(key);
+        if (cell)
+        {
+            int index = cell.Find(mark);
+            if (index >= 0) cell.RemoveOrdered(index);
+            if (cell.Count() == 0) m_Cells.Remove(key);
+        }
+        if (m_LastByCreator.Get(mark.Creator) != mark) return false;
+        m_LastByCreator.Remove(mark.Creator);
+        return true;
     }
 
     bool Validate(float now)

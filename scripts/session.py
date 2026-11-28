@@ -28,6 +28,7 @@ MANAGER = RUNTIME / "manager.json"
 OPERATION_SETUP_VERSION = 12
 DELETE_SAVE_VERSION = 1
 PLAY_TIME_CHECKPOINT_SECONDS = 30
+STATUS_HEARTBEAT_SECONDS = 2
 _status_cache = None
 
 
@@ -141,6 +142,7 @@ class Supervisor:
                      "operation_setup_version": OPERATION_SETUP_VERSION, "can_delete_saves": True,
                      "delete_save_version": DELETE_SAVE_VERSION, "battleye_enabled": not world.diagnostic_runtime(),
                      "game_runtime": world.runtime_name()}
+        self.last_publish = None
         self.quit_waiters = []
         self.pause_preparing = None
         self.pause_resume_sequence = None
@@ -153,11 +155,16 @@ class Supervisor:
 
     def publish(self, phase=None, message=None, **values):
         with self.lock:
-            if phase is not None: self.data["phase"] = phase
-            if message is not None: self.data["message"] = message
-            self.data.update(values)
-            self.data["updated"] = time.time()
-            store.atomic_json(STATUS, self.data)
+            if phase is not None: values["phase"] = phase
+            if message is not None: values["message"] = message
+            now = time.monotonic()
+            if (self.last_publish is not None and now - self.last_publish < STATUS_HEARTBEAT_SECONDS
+                    and all(key in self.data and self.data[key] == value for key, value in values.items())):
+                return
+            status = self.data | values | {"updated": time.time()}
+            store.atomic_json(STATUS, status)
+            self.data = status
+            self.last_publish = now
 
     def result(self, command, ok=True, **values):
         store.atomic_json(RUNTIME / "results" / (command["id"] + ".json"), {"ok": ok, **values})

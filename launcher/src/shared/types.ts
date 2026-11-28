@@ -117,6 +117,38 @@ export interface LoadoutPreset extends LoadoutPresetInput {
   id: string
   isDefault?: boolean
 }
+
+export interface GamePresetSetup {
+  name: string
+  map: HuntMap
+  time: string
+  dayNightCycle: boolean
+  weather: string
+  opponents: OpponentCount
+  customOpponents: boolean
+  enemyRespawns: boolean
+  respawnDelay: string
+  spawn: string
+  x: string
+  z: string
+  kit: string
+  playerOutfit: string
+  inventory: Inventory
+}
+
+export interface GamePresetInput {
+  name: string
+  setup: GamePresetSetup
+}
+
+export interface GamePreset extends GamePresetInput {
+  id: string
+}
+
+export function isHuntStartTime(time: unknown): time is string {
+  return typeof time === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)
+}
+
 export const weaponSlots: readonly string[] = ['Hands', 'Sidearm', 'Shoulder', 'Melee']
 export const equipment = [
   ['Hands', 'Hands'],
@@ -201,6 +233,11 @@ export interface ScoreEncounter {
   TimeToContact: number
   ReachedContact: boolean
   RoundsToFirstHit: number
+  PursuitShots?: number
+  PursuitHits?: number
+  PursuitExtraHits?: number
+  PursuitPending?: number
+  PursuitUnverified?: number
   FinalApproachSeconds: number
   GroundCovered: number
   UsefulClosure: number
@@ -255,6 +292,8 @@ export interface PredateAPI {
   loadoutPresets(): Promise<LoadoutPreset[]>
   saveLoadoutPreset(preset: LoadoutPresetInput): Promise<LoadoutPreset>
   setDefaultLoadoutPreset(kind: PresetKind, id: string | null): Promise<LoadoutPreset[]>
+  gamePresets(): Promise<GamePreset[]>
+  saveGamePreset(preset: GamePresetInput): Promise<GamePreset>
   setSetupOpen(open: boolean): Promise<void>
   onStatus(callback: (status: SessionStatus) => void): () => void
   onContinueError(callback: (message: string) => void): () => void

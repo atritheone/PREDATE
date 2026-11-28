@@ -303,8 +303,6 @@ loginQueueMaxPlayers = 1;
 instanceId = 1;
 storageAutoFix = 0;
 steamQueryPort = QUERY_PORT;
-logAverageFps = 60;
-logMemory = 60;
 adminLogPlayerList = 0;
 class Missions
 {
@@ -404,13 +402,14 @@ def process_failure(identity, logdir=None):
     return None
 
 
-def managed_server_config(config):
+def managed_server_config(config, diagnostics=False):
     use_diagnostic = diagnostic_runtime()
     # The diagnostic server rejects a stock PBO with its signature handshake.
     # Only the password-protected loopback launch uses this configuration.
     for name, value in (("BattlEye", int(not use_diagnostic)), ("verifySignatures", 0 if use_diagnostic else 2),
                         ("allowFilePatching", 0), ("disable3rdPerson", 1), ("thirdPersonView", 0),
-                        ("disableVoN", 1), ("adminLogPlayerList", 0)):
+                        ("disableVoN", 1), ("adminLogPlayerList", 0),
+                        ("logAverageFps", 60 if diagnostics else 0), ("logMemory", 60 if diagnostics else 0)):
         config, count = re.subn(rf"(?im)^[ \t]*{name}\s*=\s*[^;\r\n]+;", f"{name} = {value};", config)
         if not count:
             config = f"{name} = {value};\n" + config
@@ -421,7 +420,7 @@ def start(session_id=None, progress=None, cancelled=None, on_started=None,
           diagnostics=None):
     import release
     import workshop_lasers
-    release.verify()
+    release.verify(launch=True)
     if TERRAIN.dlc:
         release.verify_terrain(TERRAIN, CLIENT, SERVER)
     native_mission_inputs()
@@ -439,15 +438,15 @@ def start(session_id=None, progress=None, cancelled=None, on_started=None,
     expected_template = re.escape(TERRAIN.mission)
     if not MISSION.is_dir() or not re.search(rf'(?im)^\s*template\s*=\s*"{expected_template}"\s*;', config):
         raise RuntimeError(f"The server configuration does not select {TERRAIN.name}.")
-    updated_config = managed_server_config(config)
+    if diagnostics is None:
+        diagnostics = PROFILE_NAME == "development" or PROFILE_NAME.startswith("validation-")
+    updated_config = managed_server_config(config, diagnostics)
     if updated_config != config:
         CONFIG.write_text(updated_config, encoding="utf-8")
     # Refuse occupied ports instead of starting against another instance.
     for port in (PORT, QUERY_PORT):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
             probe.bind(("127.0.0.1", port))
-    if diagnostics is None:
-        diagnostics = PROFILE_NAME == "development" or PROFILE_NAME.startswith("validation-")
     binary = server_executable()
     if not binary.is_file(): raise RuntimeError(f"Missing DayZ server executable: {binary}")
     args = [str(binary)]

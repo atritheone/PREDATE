@@ -1,9 +1,66 @@
+class PredatePerfHistogram
+{
+    ref array<int> m_Buckets = {};
+    int m_Count;
+    float m_Sum;
+    float m_Maximum;
+
+    void Add(float milliseconds)
+    {
+        int bucket = Math.Clamp(Math.Ceil(milliseconds), 0, 1000);
+        while (m_Buckets.Count() <= bucket) m_Buckets.Insert(0);
+        m_Buckets[bucket] = m_Buckets[bucket] + 1;
+        m_Count++;
+        m_Sum += milliseconds;
+        m_Maximum = Math.Max(m_Maximum, milliseconds);
+    }
+
+    int Percentile(float fraction)
+    {
+        if (m_Count == 0) return 0;
+        int threshold = Math.Ceil(m_Count * fraction);
+        int cumulative;
+        foreach (int bucket, int count : m_Buckets)
+        {
+            cumulative += count;
+            if (cumulative >= threshold) return bucket;
+        }
+        return 0;
+    }
+
+    string Report()
+    {
+        return "samples=" + m_Count + " total_ms=" + m_Sum + " p50_ms=" + Percentile(0.5) + " p95_ms=" + Percentile(0.95) + " p99_ms=" + Percentile(0.99) + " max_ms=" + m_Maximum;
+    }
+
+    void Reset()
+    {
+        m_Buckets.Clear();
+        m_Count = 0;
+        m_Sum = 0;
+        m_Maximum = 0;
+    }
+}
+
 class PredateServerDiagnostics
 {
     static bool Enabled;
+    static bool Performance;
+    static bool HasPerfPlayer;
+    static vector PerfPlayerPosition;
+    static ref PredatePerfHistogram NearAI;
+    static ref PredatePerfHistogram EngagedAI;
+    static ref PredatePerfHistogram RemoteAI;
     static bool TraceOperators;
     static bool TraceShots;
     static ref set<Object> ShotSources;
+
+    static void StartAIProfile()
+    {
+        NearAI = new PredatePerfHistogram;
+        EngagedAI = new PredatePerfHistogram;
+        RemoteAI = new PredatePerfHistogram;
+    }
 
     static void RememberShotSource(Object source)
     {

@@ -118,12 +118,16 @@ modded class MissionServer
                 model = characterName;
             if (models.Find(model) < 0) model = "SurvivorM_Mirek";
         }
+        int createStarted;
+        if (nativeInsertion && PredateServerDiagnostics.Performance) createStarted = TickCount(0);
         Entity entity = GetGame().CreatePlayer(identity, model, start, 0, "NONE");
         Class.CastTo(m_player, entity);
         if (!m_player) return null;
         state.PlayerCharacterModel = m_player.GetType();
         m_player.m_PredateNativeInsertion = nativeInsertion;
         GetGame().SelectPlayer(identity, m_player);
+        if (nativeInsertion && PredateServerDiagnostics.Performance)
+            Print("[PredatePerf] player_redeploy_native_create_ms=" + TickCount(createStarted) * 0.0001);
         if (m_PredateSession.m_Paused) m_PredateSession.HoldPauseActor(m_player);
         return m_player;
     }
@@ -156,6 +160,7 @@ modded class MissionServer
         PredateDeployment.ObserveDeath(m_PredateSession, player);
         if (identity && player && !player.IsAlive() && m_PredateSession.m_WorldState.PlayerAwaitingRedeploy)
             m_PredateRespawningIdentity = identity.GetId();
+        if (PredateServerDiagnostics.Performance) Print("[PredatePerf] client_redeploy_received");
         super.OnClientRespawnEvent(identity, player);
     }
 

@@ -27,11 +27,13 @@ def validate_paths(values):
         seen.add(resolved)
 
 
-def capture(values):
+def capture(values, cache=None, expected=None):
     validate_paths(values)
     mods = []
-    for value in values:
+    expected_mods = expected.get('mods', []) if expected else []
+    for index, value in enumerate(values):
         base = Path(value).resolve()
+        previous = expected_mods[index]['files'] if index < len(expected_mods) else {}
         files = {}
         for path in sorted(base.rglob('*')):
             if not path.is_file(): continue
@@ -39,31 +41,35 @@ def capture(values):
             runtime = (relative.parts[0].casefold() in {'addons', 'keys'} and path.suffix.lower() in {'.pbo', '.bisign', '.bikey'})
             descriptor = len(relative.parts) == 1 and path.name.casefold() in {'mod.cpp', 'meta.cpp'}
             if not runtime and not descriptor: continue
+            path_key = relative.as_posix()
+            if cache:
+                files[path_key] = cache.fingerprint(path, previous.get(path_key))
+                continue
             before = path.stat()
-            with path.open('rb') as stream:
-                digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+            files[path_key] = release.digest(path)
             after = path.stat()
-            if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+            if release._file_stamp(before) != release._file_stamp(after):
                 raise RuntimeError(f"Mod changed while checking it. Let its update finish, then retry: {base.name}")
-            files[relative.as_posix()] = digest
         mods.append({'path': str(base), 'files': files})
     return {'schema': 1, 'mods': mods}
 
 
-def verify(values, expected):
+def verify(values, expected, cache=None):
+    if expected is not None:
+        if not isinstance(expected, dict) or expected.get('schema') != 1 or not isinstance(expected.get('mods'), list):
+            raise ValueError('Unsupported operation mod record; the saved world was retained')
+        if any(not isinstance(mod, dict) or not isinstance(mod.get('path'), str) or not isinstance(mod.get('files'), dict)
+               for mod in expected['mods']):
+            raise ValueError('Invalid operation mod record; the saved world was retained')
     # Older hunts may have selected a Workshop copy of a now-required mod.
     # Verify its saved fingerprint against the staged copy used at launch.
-    actual = capture([str(release.installed_realism_mod(value) or value) for value in values])
+    actual = capture([str(release.installed_realism_mod(value) or value) for value in values], cache, expected)
     if expected is None:
         # Legacy operations have no earlier content record to compare against.
         return actual
-    if not isinstance(expected, dict) or expected.get('schema') != 1 or not isinstance(expected.get('mods'), list):
-        raise ValueError('Unsupported operation mod record; the saved world was retained')
     if len(expected['mods']) != len(actual['mods']):
         raise ValueError('This operation\'s mod preset changed. Restore its recorded preset or start a new operation.')
     for previous, current in zip(expected['mods'], actual['mods']):
-        if not isinstance(previous, dict) or not isinstance(previous.get('path'), str) or not isinstance(previous.get('files'), dict):
-            raise ValueError('Invalid operation mod record; the saved world was retained')
         previous_path = release.installed_realism_mod(previous['path']) or Path(previous['path'])
         if previous_path.resolve() != Path(current['path']):
             raise ValueError('This operation\'s mod order or folders changed. Restore its recorded preset or start a new operation.')

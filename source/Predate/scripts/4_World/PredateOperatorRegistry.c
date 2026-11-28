@@ -12,6 +12,14 @@ class PredateOperatorIndex
     static PredateOperatorIndex Capture()
     {
         PredateOperatorIndex index = new PredateOperatorIndex;
+        index.Refresh();
+        return index;
+    }
+
+    void Refresh()
+    {
+        Actors.Clear();
+        Duplicates.Clear();
         foreach (eAIBase actor : eAIBase.eAI_GetAll())
         {
             if (!actor || !actor.IsAlive()) continue;
@@ -19,16 +27,22 @@ class PredateOperatorIndex
             if (!group || group.m_BaseName == "") continue;
             string key = group.m_BaseName;
             eAIBase previous;
-            if (!index.Actors.Find(key, previous)) index.Actors.Insert(key, actor);
-            else if (previous != actor && index.Duplicates.Find(key) == -1) index.Duplicates.Insert(key);
+            if (!Actors.Find(key, previous)) Actors.Insert(key, actor);
+            else if (previous != actor && Duplicates.Find(key) == -1) Duplicates.Insert(key);
         }
-        return index;
     }
 }
 
 class PredateOperatorRegistry
 {
     ref map<string, ref PredateOperatorSlot> m_Slots = new map<string, ref PredateOperatorSlot>;
+    protected ref PredateOperatorIndex m_LiveIndex = new PredateOperatorIndex;
+
+    PredateOperatorIndex CaptureLiveIndex()
+    {
+        m_LiveIndex.Refresh();
+        return m_LiveIndex;
+    }
 
     bool Register(PredateOperatorRecord record)
     {

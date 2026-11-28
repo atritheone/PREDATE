@@ -53,8 +53,24 @@ class PredateSurvivalRules
             return;
 
         ModifiersManager manager = player.GetModifiersManager();
-        if (manager)
+        float now = GetGame().GetTickTime();
+        if (manager && (manager != player.m_PredateSurvivalManager || now >= player.m_PredateNextSurvivalCheck))
         {
+            bool firstCheck = manager != player.m_PredateSurvivalManager;
+            player.m_PredateSurvivalManager = manager;
+            player.m_PredateNextSurvivalCheck = now + 5;
+            if (firstCheck)
+            {
+                // New opponents are often configured together. Spread their recurring checks.
+                eAIBase actor = eAIBase.Cast(player);
+                int slot = -1;
+                if (actor) slot = PredateProtocol.OperatorSlot(actor.m_PredateOperatorId);
+                if (slot >= 0)
+                {
+                    int phase = slot % 20;
+                    player.m_PredateNextSurvivalCheck = now + 2.5 + phase * 0.25;
+                }
+            }
             for (int id = 1; id < eModifiers.COUNT; id++)
             {
                 if (!s.SoloIsSurvivalModifier(id))

@@ -99,8 +99,10 @@ def validate_mods(values):
 def verify_operation_mods(profile):
     info = metadata(profile)
     validate_mods(mod_presets.optional_paths(info['extra_mods']))
-    verified = mod_presets.verify(info['extra_mods'], info.get('mod_lock'))
+    cache = release.LaunchFingerprints(ROOT / "session-runtime" / "launch-operation-fingerprints.json")
+    verified = mod_presets.verify(info['extra_mods'], info.get('mod_lock'), cache)
     workshop_lasers.verify_pair(verified)
+    cache.save()
     if 'mod_lock' not in info:
         info['mod_lock'] = verified
         atomic_json(world_path(profile)/'operation.json', info)
@@ -309,8 +311,10 @@ def create_operation(name, profile=None, extra_mods=None, hunt_defaults=True, pl
         configured = {Path(value).resolve() for value in mods}
         pair = workshop_lasers.ready_pair(ROOT, loadouts.WORKSHOP)
         mods = [*mods, *(str(pack) for pack in pair if pack.resolve() not in configured)]
-    mod_lock = mod_presets.capture(mods)
+    cache = release.LaunchFingerprints(ROOT / "session-runtime" / "launch-operation-fingerprints.json")
+    mod_lock = mod_presets.capture(mods, cache)
     workshop_lasers.verify_pair(mod_lock)
+    cache.save()
     profile = profile or new_id()
     target = world_path(profile)
     if target.exists(): raise ValueError("That operation already exists; its saved data was retained")
@@ -393,14 +397,13 @@ def snapshot(profile, session_id="", reason="manual"):
 
 def validate_snapshot(path):
     with zipfile.ZipFile(path) as archive:
-        if archive.testzip() is not None: raise ValueError("Backup ZIP checksum failed")
         names = archive.namelist()
         if len(names) != len(set(names)): raise ValueError("Duplicate backup entries")
         for name in names:
             item = PurePosixPath(name)
             if not item.parts or item.is_absolute() or ".." in item.parts or "\\" in name or ":" in name:
                 raise ValueError("Unsafe backup path")
-        manifest = json.loads(archive.read("manifest.json"))
+        manifest = json.loads(read_snapshot_entry(archive, "manifest.json"))
         if manifest.get("schema") != SCHEMA: raise ValueError("Unsupported backup schema")
         terrain = maps.operation_terrain(manifest["operation"])
         if set(names) != set(manifest["files"]) | {"manifest.json"}:
@@ -409,7 +412,7 @@ def validate_snapshot(path):
             parts = PurePosixPath(name).parts
             if parts[0] == "mission" and (len(parts) < 4 or parts[1:3] != (terrain.mission, "storage_1")):
                 raise ValueError("Backup mission storage does not match the hunt map.")
-            payload = archive.read(name)
+            payload = read_snapshot_entry(archive, name)
             if hashlib.sha256(payload).hexdigest() != expected: raise ValueError(f"Backup hash mismatch: {name}")
             if name.endswith("players.db"):
                 with tempfile.TemporaryDirectory(prefix="predate-db-") as temporary:
@@ -419,6 +422,15 @@ def validate_snapshot(path):
                         if db.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                             raise ValueError("Character database integrity check failed")
         return manifest
+
+
+def read_snapshot_entry(archive, name):
+    # A complete ZipFile.read validates CRC. Share that pass with the
+    # SHA-256 check and SQLite integrity check.
+    try:
+        return archive.read(name)
+    except zipfile.BadZipFile as error:
+        raise ValueError("Backup ZIP checksum failed") from error
 
 
 def backups():
